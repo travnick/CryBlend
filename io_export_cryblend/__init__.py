@@ -31,8 +31,8 @@
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
-    "blender": (2, 6, 6),
-    "version": (4, 8, 3),
+    "blender": (2, 6, 7),
+    "version": (4, 9),
     "location": "CryBlend Menu",
     "description": ("CryEngine3 Utilities and Exporter"),
     "warning": "",
@@ -205,11 +205,16 @@ class Open_UDP_Wp(bpy.types.Operator):
 
 
 class Get_Ridof_Nasty(bpy.types.Operator):
+    '''Select the object to test in object mode with nothing selected in it's mesh before running this.'''
     bl_label = "Find Degenerate Faces"
     bl_idname = "find_deg.faces"
     def execute(self, context):
         me = bpy.context.active_object
         vert_list = [vert for vert in me.data.vertices]
+        #bpy.ops.object.mode_set(mode='EDIT')
+        context.tool_settings.mesh_select_mode = (True, False, False)
+        #bpy.ops.mesh.select_all({'object':me, 'active_object':me, 'edit_object':me}, action='DESELECT')
+        bpy.ops.object.mode_set(mode='OBJECT')
         cbPrint("Locating degenerate faces.")
         for i in me.data.polygons:
             #print("1 face")
@@ -219,8 +224,34 @@ class Get_Ridof_Nasty(bpy.types.Operator):
                 if i.area == 0:
                     cbPrint("Selecting face vertices.")
                     vert_list[v].select = True
+        bpy.ops.object.mode_set(mode='EDIT')
         return {'FINISHED'}
 
+#Duo Oratar
+class Find_multiFaceLine(bpy.types.Operator):
+    '''Select the object to test in object mode with nothing selected in it's mesh before running this.'''
+    bl_label = "Find lines with 3+ faces."
+    bl_idname = "find_multiface.lines"
+    def execute(self, context):
+        me = bpy.context.active_object
+        vert_list = [vert for vert in me.data.vertices]
+        #bpy.ops.object.mode_set(mode='EDIT')
+        context.tool_settings.mesh_select_mode = (True, False, False)
+        #bpy.ops.mesh.select_all({'object':me, 'active_object':me, 'edit_object':me}, action='DESELECT')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        cbPrint("Locating degenerate faces.")
+        for i in me.data.edges:
+            counter = 0
+            for polygon in me.data.polygons:
+                if i.vertices[0] in polygon.vertices and i.vertices[1] in polygon.vertices:
+                    counter += 1
+            if counter > 2:
+                cbPrint('Found a multi-face line')
+                for v in i.vertices:
+                    cbPrint('Selecting line vertices.')
+                    vert_list[v].select = True
+        bpy.ops.object.mode_set(mode='EDIT')
+        return {'FINISHED'}
 
 #-------------------------------------------------------------------------------
 #Menu Classes
@@ -1318,6 +1349,7 @@ class CustomMenu(bpy.types.Menu):
         layout.menu("Cust_props.add", icon='SCRIPT')
         layout.separator()
         layout.operator("find_deg.faces", icon='ZOOM_ALL')
+        layout.operator("find_multiface.lines", icon='ZOOM_ALL')
         layout.separator()
         #layout.operator("fix_wh.trans", icon='ZOOM_ALL')
         layout.separator()
@@ -1406,6 +1438,8 @@ def register():
     bpy.utils.register_class(Open_UDP_Wp)
     bpy.utils.register_class(Add_wh_Prop)
     bpy.utils.register_class(Get_Ridof_Nasty)
+    #Duo Oratar
+    bpy.utils.register_class(Find_multiFaceLine)
     # lets add ourselves to the main headerAdd_rm_e_Prop
     bpy.types.INFO_HT_header.append(draw_item)
     bpy.utils.register_class(CryBlend_Cfg)
@@ -1483,6 +1517,8 @@ def unregister():#you guys allready know this but for my reference, unregister y
     bpy.utils.unregister_class(Open_UDP_Wp)
     bpy.utils.unregister_class(Add_wh_Prop)
     bpy.utils.unregister_class(Get_Ridof_Nasty)
+    #Duo Oratar
+    bpy.utils.unregister_class(Find_multiFaceLine)
 
     bpy.types.INFO_HT_header.remove(draw_item)
     bpy.utils.unregister_class(CryBlend_Cfg)
