@@ -32,12 +32,12 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 7),
-    "version": (4, 9),
+    "version": (4, 9, 1),
     "location": "CryBlend Menu",
     "description": ("CryEngine3 Utilities and Exporter"),
     "warning": "",
     "wiki_url": ("http://wiki.blender.org/index.php/Extensions:2.5/Py/Scripts/Import-Export/CryEngine3"),
-    "tracker_url": "http://projects.blender.org/tracker/?group_id=153&atid=467&func=detail&aid=30686",
+    "tracker_url": "https://github.com/travnick/CryBlend/issues?state=open",
     "support": 'OFFICIAL',
     "category": "Import-Export"}
 
@@ -53,7 +53,6 @@ from bpy.app import binary_path
 import os.path
 import bmesh
 from bpy.props import FloatProperty, BoolProperty, FloatVectorProperty
-__angelo__ = "angelo"
 
 import io_export_cryblend
 from io_export_cryblend import add
