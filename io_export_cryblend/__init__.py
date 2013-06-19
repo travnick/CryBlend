@@ -32,12 +32,12 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 7),
-    "version": (4, 9),
+    "version": (4, 9, 1),
     "location": "CryBlend Menu",
     "description": ("CryEngine3 Utilities and Exporter"),
     "warning": "",
     "wiki_url": ("http://wiki.blender.org/index.php/Extensions:2.5/Py/Scripts/Import-Export/CryEngine3"),
-    "tracker_url": "http://projects.blender.org/tracker/?group_id=153&atid=467&func=detail&aid=30686",
+    "tracker_url": "https://github.com/travnick/CryBlend/issues?state=open",
     "support": 'OFFICIAL',
     "category": "Import-Export"}
 
@@ -53,7 +53,6 @@ from bpy.app import binary_path
 import os.path
 import bmesh
 from bpy.props import FloatProperty, BoolProperty, FloatVectorProperty
-__angelo__ = "angelo"
 
 import io_export_cryblend
 from io_export_cryblend import add
@@ -1376,164 +1375,99 @@ def draw_item(self, context):
     layout.menu(CustomMenu.bl_idname)
 
 
+def get_classes_to_register():
+    classes = (
+        CustomMenu,
+        Add_CE_Node,
+        Add_BO_Joint,
+        Export,
+        Cust_props_add,
+        
+        Add_Def_Prop,
+        Mat_phys_add,
+        
+        Mesh_Repair_Tools,
+        Find_Weightless,
+        Find_Overweight,
+        Find_Underweight,
+        Remove_All_Weight,
+        
+        Remove_FakeBones,
+        Find_No_UVs,
+        Add_M_Pd,
+        Add_M_PND,
+        Add_M_None,
+        Add_M_Obstr,
+        Add_M_NoCol,
+        
+        J_Props_Add,
+        
+        Add_rm_e_Prop,
+        Add_rm_m_Prop,
+        Add_rm_d_Prop,
+        Add_rm_p_Prop,
+        
+        Add_j_gpc_Prop,
+        Add_j_pcb_Prop,
+        Add_j_b_Prop,
+        Add_j_t_Prop,
+        Add_j_pull_Prop,
+        Add_j_push_Prop,
+        Add_j_shift_Prop,
+        Add_j_climit_Prop,
+        Add_j_cminang_Prop,
+        Add_j_cmaxang_Prop,
+        Add_j_cdamp_Prop,
+        Add_j_ccol_Prop,
+        
+        Add_neo_Prop,
+        Add_orm_Prop,
+        Add_colp_Prop,
+        Add_b_Prop,
+        Add_cyl_Prop,
+        Add_caps_Prop,
+        Add_sph_Prop,
+        Add_nap_Prop,
+        Add_nhr_Prop,
+        Add_dyn_Prop,
+        
+        CFAR_Props_Add,
+        
+        Open_UDP_Wp,
+        Add_wh_Prop,
+        Get_Ridof_Nasty,
+
+        Find_multiFaceLine,
+        CryBlend_Cfg,
+        Find_Rc,
+        
+        Fix_wh_trans,
+        Add_ANIM_Node,
+        Make_key_framelist,
+        Add_fkey_frame,
+        AddFakeBone,
+        
+        RenamePhysBones,
+        AddBoneGeometry,
+    )
+    
+    return classes
+
 def register():
-    bpy.utils.register_class(CustomMenu)
-    bpy.utils.register_class(Add_CE_Node)
-    bpy.utils.register_class(Add_BO_Joint)
-    bpy.utils.register_class(Export)
-    bpy.utils.register_class(Cust_props_add)
-
-    bpy.utils.register_class(Add_Def_Prop)
-    bpy.utils.register_class(Mat_phys_add)
-    
-    #Duo Oratar
-    bpy.utils.register_class(Mesh_Repair_Tools)
-    bpy.utils.register_class(Find_Weightless)
-    bpy.utils.register_class(Find_Overweight)
-    bpy.utils.register_class(Find_Underweight)
-    bpy.utils.register_class(Remove_All_Weight)
-    
-    bpy.utils.register_class(Remove_FakeBones)
-    bpy.utils.register_class(Find_No_UVs)
-    
-    bpy.utils.register_class(Add_M_Pd)
-    bpy.utils.register_class(Add_M_PND)
-    bpy.utils.register_class(Add_M_None)
-    bpy.utils.register_class(Add_M_Obstr)
-    bpy.utils.register_class(Add_M_NoCol)
-
-    bpy.utils.register_class(J_Props_Add)
-
-    bpy.utils.register_class(Add_rm_e_Prop)
-    bpy.utils.register_class(Add_rm_m_Prop)
-    bpy.utils.register_class(Add_rm_d_Prop)
-    bpy.utils.register_class(Add_rm_p_Prop)
-
-    bpy.utils.register_class(Add_j_gpc_Prop)
-    bpy.utils.register_class(Add_j_pcb_Prop)
-    bpy.utils.register_class(Add_j_b_Prop)
-    bpy.utils.register_class(Add_j_t_Prop)
-    bpy.utils.register_class(Add_j_pull_Prop)
-    bpy.utils.register_class(Add_j_push_Prop)
-    bpy.utils.register_class(Add_j_shift_Prop)
-    bpy.utils.register_class(Add_j_climit_Prop)
-    bpy.utils.register_class(Add_j_cminang_Prop)
-    bpy.utils.register_class(Add_j_cmaxang_Prop)
-    bpy.utils.register_class(Add_j_cdamp_Prop)
-    bpy.utils.register_class(Add_j_ccol_Prop)
-
-    bpy.utils.register_class(Add_neo_Prop)
-    bpy.utils.register_class(Add_orm_Prop)
-    bpy.utils.register_class(Add_colp_Prop)
-    bpy.utils.register_class(Add_b_Prop)
-    bpy.utils.register_class(Add_cyl_Prop)
-    bpy.utils.register_class(Add_caps_Prop)
-    bpy.utils.register_class(Add_sph_Prop)
-    bpy.utils.register_class(Add_nap_Prop)
-    bpy.utils.register_class(Add_nhr_Prop)
-    bpy.utils.register_class(Add_dyn_Prop)
-
-    bpy.utils.register_class(CFAR_Props_Add)
-
-    bpy.utils.register_class(Open_UDP_Wp)
-    bpy.utils.register_class(Add_wh_Prop)
-    bpy.utils.register_class(Get_Ridof_Nasty)
-    #Duo Oratar
-    bpy.utils.register_class(Find_multiFaceLine)
+    for classToRegister in get_classes_to_register():
+        bpy.utils.register_class(classToRegister)
+		    
     # lets add ourselves to the main headerAdd_rm_e_Prop
     bpy.types.INFO_HT_header.append(draw_item)
-    bpy.utils.register_class(CryBlend_Cfg)
-    bpy.utils.register_class(Find_Rc)
 
-    #bpy.utils.register_class(Open_Donate_Wp)
-
-    bpy.utils.register_class(Fix_wh_trans)
-    bpy.utils.register_class(Add_ANIM_Node)
-    bpy.utils.register_class(Make_key_framelist)
-    bpy.utils.register_class(Add_fkey_frame)
-    bpy.utils.register_class(AddFakeBone)
-    
-    #Duo Oratar
-    bpy.utils.register_class(RenamePhysBones)
-    bpy.utils.register_class(AddBoneGeometry)
-    
-    #bpy.utils.register_class(Toggle_sys_con)
-
-def unregister():#you guys allready know this but for my reference, unregister your classes or when you do new scene your script wont import other modules properly.
-    bpy.utils.unregister_class(CustomMenu)
-    bpy.utils.unregister_class(Add_CE_Node)
-    bpy.utils.unregister_class(Add_BO_Joint)
-    bpy.utils.unregister_class(Export)
-    bpy.utils.unregister_class(Cust_props_add)
-    bpy.utils.unregister_class(Add_Def_Prop)
-    bpy.utils.unregister_class(Mat_phys_add)
-
-    #Duo Oratar
-    bpy.utils.unregister_class(Mesh_Repair_Tools)    
-    bpy.utils.unregister_class(Find_Weightless)
-    bpy.utils.unregister_class(Find_Overweight)
-    bpy.utils.unregister_class(Find_Underweight)
-    bpy.utils.unregister_class(Remove_All_Weight)
-    
-    bpy.utils.unregister_class(Add_M_Pd)
-    bpy.utils.unregister_class(Add_M_PND)
-    bpy.utils.unregister_class(Add_M_None)
-    bpy.utils.unregister_class(Add_M_Obstr)
-    bpy.utils.unregister_class(Add_M_NoCol)
-
-    bpy.utils.unregister_class(J_Props_Add)
-
-    bpy.utils.unregister_class(Add_rm_e_Prop)
-    bpy.utils.unregister_class(Add_rm_m_Prop)
-    bpy.utils.unregister_class(Add_rm_d_Prop)
-    bpy.utils.unregister_class(Add_rm_p_Prop)
-
-    bpy.utils.unregister_class(Add_j_gpc_Prop)
-    bpy.utils.unregister_class(Add_j_pcb_Prop)
-    bpy.utils.unregister_class(Add_j_b_Prop)
-    bpy.utils.unregister_class(Add_j_t_Prop)
-    bpy.utils.unregister_class(Add_j_pull_Prop)
-    bpy.utils.unregister_class(Add_j_push_Prop)
-    bpy.utils.unregister_class(Add_j_shift_Prop)
-    bpy.utils.unregister_class(Add_j_climit_Prop)
-    bpy.utils.unregister_class(Add_j_cminang_Prop)
-    bpy.utils.unregister_class(Add_j_cmaxang_Prop)
-    bpy.utils.unregister_class(Add_j_cdamp_Prop)
-    bpy.utils.unregister_class(Add_j_ccol_Prop)
-
-    bpy.utils.unregister_class(Add_neo_Prop)
-    bpy.utils.unregister_class(Add_orm_Prop)
-    bpy.utils.unregister_class(Add_colp_Prop)
-    bpy.utils.unregister_class(Add_b_Prop)
-    bpy.utils.unregister_class(Add_cyl_Prop)
-    bpy.utils.unregister_class(Add_caps_Prop)
-    bpy.utils.unregister_class(Add_sph_Prop)
-    bpy.utils.unregister_class(Add_nap_Prop)
-    bpy.utils.unregister_class(Add_nhr_Prop)
-    bpy.utils.unregister_class(Add_dyn_Prop)
-
-    bpy.utils.unregister_class(CFAR_Props_Add)
-
-    bpy.utils.unregister_class(Open_UDP_Wp)
-    bpy.utils.unregister_class(Add_wh_Prop)
-    bpy.utils.unregister_class(Get_Ridof_Nasty)
-    #Duo Oratar
-    bpy.utils.unregister_class(Find_multiFaceLine)
+def unregister():
+    #you guys allready know this but for my reference,
+    #unregister your classes or when you do new scene
+    #your script wont import other modules properly.
+    for classToRegister in get_classes_to_register():
+        bpy.utils.unregister_class(classToRegister)
 
     bpy.types.INFO_HT_header.remove(draw_item)
-    bpy.utils.unregister_class(CryBlend_Cfg)
-    bpy.utils.unregister_class(Find_Rc)
-    #bpy.utils.unregister_class(Open_Donate_Wp)
-    bpy.utils.unregister_class(Fix_wh_trans)
-    bpy.utils.unregister_class(Add_ANIM_Node)
-    bpy.utils.unregister_class(Make_key_framelist)
-    bpy.utils.unregister_class(Add_fkey_frame)
-    bpy.utils.unregister_class(AddFakeBone)
-    #bpy.utils.unregister_class(Toggle_sys_con)
-
-    #Duo Oratar
-    bpy.utils.unregister_class(RenamePhysBones)
-    bpy.utils.unregister_class(AddBoneGeometry)
     
 if __name__ == "__main__":
     register()
