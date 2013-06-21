@@ -43,6 +43,7 @@ import mathutils
 import os
 import random
 import subprocess
+import sys
 import time
 import xml.dom.minidom
 
@@ -87,11 +88,13 @@ def write(self, doc, fname, exe):
     s = doc.toprettyxml(indent="  ")
     f = open(fname, "w")
     f.write(s)
+
+    dae_file_for_rc = get_dae_path_for_rc(fname)        
     mystr = "/createmtl=1 "
     if self.run_rc:
-        run_rc(exe, fname)
+        run_rc(exe, dae_file_for_rc)
     if self.run_rcm:
-        run_rc(exe, fname, mystr)
+        run_rc(exe, dae_file_for_rc, mystr)
     if self.make_layer:
         lName = "ExportedLayer"
         layerDoc = Document()
@@ -196,6 +199,17 @@ def write(self, doc, fname, exe):
         f.write(s)
         f.close()
 # doc = Document()
+
+
+def get_dae_path_for_rc(daeFilePath):
+    # 'z:' is for wine (linux, max) path
+    # there should be better way to determine it
+    WINE_DEFAULT_DRIVE_LETTER = "z:"
+
+    if not sys.platform == 'win32':
+        daeFilePath = WINE_DEFAULT_DRIVE_LETTER + daeFilePath
+
+    return daeFilePath
 
 
 def run_rc(rc_path, dae_path, params=None):
