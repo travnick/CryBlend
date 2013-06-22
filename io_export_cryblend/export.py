@@ -283,9 +283,9 @@ class ExportCrytekDae:
 #library images
         libima = doc.createElement("library_images")
         for image in bpy.data.images:
-                    imaname = (image.name)
-                    fp = (bpy.path.abspath(image.filepath))
-                    if image:
+                    if image and image.filepath:
+                        imaname = image.name
+                        fp = bpy.path.relpath(image.filepath)
                         imaid = doc.createElement("image")
                         imaid.setAttribute("id","%s"%(imaname))
                         imaid.setAttribute("name","%s"%(imaname))
