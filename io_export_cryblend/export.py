@@ -283,17 +283,17 @@ class ExportCrytekDae:
 #library images
         libima = doc.createElement("library_images")
         for image in bpy.data.images:
-                    if image and image.filepath:
-                        imaname = image.name
-                        fp = bpy.path.relpath(image.filepath)
-                        imaid = doc.createElement("image")
-                        imaid.setAttribute("id","%s"%(imaname))
-                        imaid.setAttribute("name","%s"%(imaname))
-                        infrom = doc.createElement("init_from")
-                        fpath = doc.createTextNode("%s"%(fp))
-                        infrom.appendChild(fpath)
-                        imaid.appendChild(infrom)
-                        libima.appendChild(imaid)
+            if image and image.filepath:
+                imaname = image.name
+                image_path = bpy.path.relpath(image.filepath)
+                imaid = doc.createElement("image")
+                imaid.setAttribute("id", "%s" % imaname)
+                imaid.setAttribute("name", "%s" % imaname)
+                infrom = doc.createElement("init_from")
+                fpath = doc.createTextNode("%s" % image_path)
+                infrom.appendChild(fpath)
+                imaid.appendChild(infrom)
+                libima.appendChild(imaid)
         col.appendChild(libima)
 #end library images
 #library effects
