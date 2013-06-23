@@ -283,9 +283,9 @@ class ExportCrytekDae:
 #library images
         libima = doc.createElement("library_images")
         for image in bpy.data.images:
-            if image and image.filepath:
+            if image.has_data:
                 imaname = image.name
-                image_path = bpy.path.relpath(image.filepath)
+                image_path = get_relative_path(image.filepath)
                 imaid = doc.createElement("image")
                 imaid.setAttribute("id", "%s" % imaname)
                 imaid.setAttribute("name", "%s" % imaname)
@@ -2932,6 +2932,27 @@ class ExportCrytekDae:
 #  <scene>
         # write to file
         write(self, doc, filepath, exe)
+
+def get_relative_path(filepath):
+    [is_relative, filepath] = strip_blender_path_prefix(filepath)
+
+    if is_relative:
+        return filepath
+    else:
+        blend_file_path = bpy.data.filepath
+
+        return os.path.relpath(filepath, blend_file_path)
+
+def strip_blender_path_prefix(path):
+    is_relative = False
+    BLENDER_RELATIVE_PATH_PREFIX = "//"
+    prefix_length = len(BLENDER_RELATIVE_PATH_PREFIX)
+
+    if path.startswith(BLENDER_RELATIVE_PATH_PREFIX):
+        path = path[prefix_length:]
+        is_relative = True
+
+    return (is_relative, path)
 
 def save(self, context, exe):
 
