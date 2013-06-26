@@ -53,6 +53,7 @@ import xml.dom.minidom
 from xml.dom.minidom import *#Document
 
 from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend import exceptions
     
 
 #rc = 'G:\\apps\\CryENGINE_PC_v3_3_9_3410_FreeSDK\\Bin32\\rc\\rc.exe'#path to your rc.exe
@@ -2939,9 +2940,7 @@ def get_relative_path(filepath):
     if is_relative:
         return filepath
     else:
-        blend_file_path = bpy.data.filepath
-
-        return os.path.relpath(filepath, blend_file_path)
+        return make_relative_path(filepath)
 
 def strip_blender_path_prefix(path):
     is_relative = False
@@ -2953,6 +2952,18 @@ def strip_blender_path_prefix(path):
         is_relative = True
 
     return (is_relative, path)
+
+def make_relative_path(filepath):
+    blend_file_path = bpy.data.filepath
+
+    if not blend_file_path:
+        raise exceptions.BlendNotSavedException
+
+    try:
+        return os.path.relpath(filepath, blend_file_path)
+
+    except ValueError:
+        raise exceptions.TextureAndBlendDiskMismatch(blend_file_path, filepath)
 
 def save(self, context, exe):
 
