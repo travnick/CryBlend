@@ -2,11 +2,11 @@
 # Name:        add.py
 # Purpose:     this holds the add whatever _joint , exportnode....
 #
-# Author:      angelo j. miner
+# Author:      Angelo J. Miner
 #
 # Created:     23/02/2012
-# Copyright:   (c) angelo j. miner 2012
-# Licence:     GPLv2+
+# Copyright:   (c) Angelo J. Miner 2012
+# License:     GPLv2+
 #-------------------------------------------------------------------------------
 import bpy
 from bpy.props import *

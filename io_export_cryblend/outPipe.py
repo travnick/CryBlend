@@ -1,3 +1,6 @@
+#-------------------------------------------------------------------------------
+# License:   GPLv2+
+#-------------------------------------------------------------------------------
 from logging import basicConfig, info, debug, warning, DEBUG
 
 #Clear the log file
@@ -14,7 +17,7 @@ from logging import basicConfig, info, debug, warning, DEBUG
 class outPipe():
     def __init__(self):
         pass
-        
+
     def pump(self, msg, type='info'):
         if type == 'info':
             print ('CryBlend Exporter: ' + str(msg))
@@ -25,7 +28,7 @@ class outPipe():
         elif type == 'warning':
             print ('CryBlend Exporter Warning: ' + str(msg))
             #warning(str(msg))
-        
+
 oP = outPipe()
 
 def cbPrint(msg, type='info'):
