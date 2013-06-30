@@ -20,19 +20,19 @@
 # Name:  __init__.py
 # Purpose:   primary python file for cryblend addon
 #
-# Author:    angelo j. miner
+# Author:    Angelo J. Miner
 # Extended by: Duo Oratar
 #
 # Created:   23/02/2012
-# Copyright:   (c) angelo j. miner 2012
-# Licence:   GPLv2+
+# Copyright:   (c) Angelo J. Miner 2012
+# License:   GPLv2+
 #-------------------------------------------------------------------------------
 
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 7),
-    "version": (4, 9, 1),
+    "version": (4, 9, 1, 1),
     "location": "CryBlend Menu",
     "description": ("CryEngine3 Utilities and Exporter"),
     "warning": "",
@@ -162,7 +162,7 @@ def save_config():  # PUBLIC API
             cbPrint( 'IO ERROR, can not write: %s' %CONFIG_FILEPATH, type="warning" )
     else:
         cbPrint( 'ERROR: configuration file path is missing %s' %CONFIG_PATH, type="warning" )
-    
+
 
 class CryBlend_Cfg(bpy.types.Operator):
     '''operator: saves current cryblend configuration'''
@@ -563,7 +563,7 @@ class Remove_FakeBones(bpy.types.Operator):
         def execute(self, context):
             for obj in bpy.data.objects:
                 obj.select = False
-            
+
             for obj in bpy.context.selectable_objects:
                 isFakeBone = False
                 try:
@@ -573,16 +573,16 @@ class Remove_FakeBones(bpy.types.Operator):
                     pass
                 if obj.name == obj.parent_bone and isFakeBone and obj.type == 'MESH':
                     obj.select = True
-                    bpy.ops.object.delete(use_global=False) #{'active_object':obj, 'object':obj}, 
+                    bpy.ops.object.delete(use_global=False) #{'active_object':obj, 'object':obj},
             return {'FINISHED'}
-    
+
 class Find_No_UVs(bpy.types.Operator):
         bl_label = "Find all objects with no UVs"
         bl_idname = "cb.find_no_uvs"
         def execute(self, context):
             for obj in bpy.data.objects:
                 obj.select = False
-            
+
             for obj in bpy.context.selectable_objects:
                 if obj.type == 'MESH':
                     a = False
@@ -592,7 +592,7 @@ class Find_No_UVs(bpy.types.Operator):
                     if not a:
                         obj.select = True
             return {'FINISHED'}
-        
+
 class Add_Def_Prop(bpy.types.Operator):
     bl_label = "Add DeformableMesh Properties"
     bl_idname = "add_skeleton.props"
@@ -773,7 +773,7 @@ def add_fake_bone(width, height, depth):
     for i, v in enumerate(verts):
         verts[i] = v[0] * width, v[1] * depth, v[2] * height
 
-    return verts, faces    
+    return verts, faces
 
 def add_bone_geometry():
     """
@@ -799,26 +799,26 @@ def add_bone_geometry():
              (4, 0, 3, 7),
             ]
 
-    return verts, faces  
+    return verts, faces
 
-    
+
 #Duo Oratar
-class RenamePhysBones(bpy.types.Operator):        
+class RenamePhysBones(bpy.types.Operator):
     '''Renames phys bones'''
     bl_idname = "cb.phys_bones_rename"
     bl_label = "Rename Phys bones"
     bl_options = {'REGISTER', 'UNDO'}
-    
+
     def execute(self, context):
         for obj in bpy.context.scene.objects:
             if '_Phys' == obj.name[len(obj.name)-5:] and obj.type == 'ARMATURE':
                 for bone in obj.data.bones:
                     oldName = bone.name
-                    bone.name = oldName + '_Phys' 
-        
+                    bone.name = oldName + '_Phys'
+
         return {'FINISHED'}
-    
-class AddBoneGeometry(bpy.types.Operator):        
+
+class AddBoneGeometry(bpy.types.Operator):
     '''Add BoneGeometry for bones in selected armatures'''
     bl_idname = "cb.bone_geom_add"
     bl_label = "Add boneGeometry"
@@ -840,15 +840,15 @@ class AddBoneGeometry(bpy.types.Operator):
     def draw(self, context):
         layout = self.layout
         layout.label(text="Add boneGeometry")
-            
+
     def execute(self, context):
         verts_loc, faces = add_bone_geometry()
-        
+
         nameList = []
         for obj in bpy.context.scene.objects:
             nameList.append(obj.name)
-        
-        
+
+
         for obj in bpy.context.scene.objects:
             if obj.type == 'ARMATURE' and obj.select:
 
@@ -856,7 +856,7 @@ class AddBoneGeometry(bpy.types.Operator):
                 if obj.name+"_Phys" in nameList:
                     for bone in bpy.data.objects[obj.name+"_Phys"].data.bones:
                         physBonesList.append(bone.name)
-            
+
                 for bone in obj.data.bones:
                     if (not bone.name + "_boneGeometry" in nameList and not obj.name+"_Phys" in nameList) or (obj.name+"_Phys" in nameList and bone.name+'_Phys' in physBonesList):
                         mesh = bpy.data.meshes.new("%s"%bone.name+"_boneGeometry")
@@ -879,9 +879,9 @@ class AddBoneGeometry(bpy.types.Operator):
                         from bpy_extras import object_utils
                         object_utils.object_data_add(context, mesh, operator=self)
                         bpy.ops.mesh.uv_texture_add()
-                    
+
         return {'FINISHED'}
-            
+
 #verts and faces
 #find bone heads and add at that location
 class AddFakeBone(bpy.types.Operator):
@@ -983,7 +983,7 @@ def add_kfl(self, context):
         testValue = ob
     except:
         obPresent = False
-    
+
     if obPresent:
         for frame in range(scene.frame_end + 1):
             #frame = frame + 5
@@ -1055,14 +1055,14 @@ def add_kf(self, context):
             ob = a
     #for kf in loclist[sfc]:
      #   print(kf)
-     
+
     obPresent = True
     try:
         testValue = ob
     except:
         obPresent = False
-    
-    if obPresent:     
+
+    if obPresent:
         for bone in ob.pose.bones:
             i = bpy.context.scene.objects.get(bone.name)
             #for i in bpy.context.scene.objects:
@@ -1176,13 +1176,13 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Generally a Good Idea",
             default=False,
             )
-            
+
     include_ik = BoolProperty(
             name="Include IK in Character",
             description="Adds IK from your skeleton to the phys skeleton upon export.",
             default=False,
             )
-            
+
     make_layer = BoolProperty(
             name="Make .lyr file",
             description="Makes a .lyr to reassemble your scene in the CryEngine 3",
@@ -1204,7 +1204,7 @@ class Export(bpy.types.Operator, ExportHelper):
 class Mesh_Repair_Tools(bpy.types.Menu):
     bl_idname = "mesh_rep_tools"
     bl_label = "Weight Paint Repair"
-    
+
     def draw(self, context):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
@@ -1212,7 +1212,7 @@ class Mesh_Repair_Tools(bpy.types.Menu):
         layout.separator()
         layout.operator("mesh_rep.underweight", icon='MESH_CUBE')
         layout.operator("mesh_rep.overweight", icon='MESH_CUBE')
-        layout.operator("mesh_rep.weightless", icon='MESH_CUBE') 
+        layout.operator("mesh_rep.weightless", icon='MESH_CUBE')
         layout.operator("mesh_rep.removeall", icon='MESH_CUBE')
 
 class Mat_phys_add(bpy.types.Menu):
@@ -1230,7 +1230,7 @@ class Mat_phys_add(bpy.types.Menu):
         layout.operator("mat_phys.none", icon='PHYSICS')
         layout.operator("mat_phys.obstr", icon='PHYSICS')
         layout.operator("mat_phys.nocol", icon='PHYSICS')
-        
+
 class J_Props_Add(bpy.types.Menu):
     bl_idname = "j_props.add"
     bl_label = "Add JOINTED (pre-broken) BREAKABLES Properties"
@@ -1382,16 +1382,16 @@ def get_classes_to_register():
         Add_BO_Joint,
         Export,
         Cust_props_add,
-        
+
         Add_Def_Prop,
         Mat_phys_add,
-        
+
         Mesh_Repair_Tools,
         Find_Weightless,
         Find_Overweight,
         Find_Underweight,
         Remove_All_Weight,
-        
+
         Remove_FakeBones,
         Find_No_UVs,
         Add_M_Pd,
@@ -1399,14 +1399,14 @@ def get_classes_to_register():
         Add_M_None,
         Add_M_Obstr,
         Add_M_NoCol,
-        
+
         J_Props_Add,
-        
+
         Add_rm_e_Prop,
         Add_rm_m_Prop,
         Add_rm_d_Prop,
         Add_rm_p_Prop,
-        
+
         Add_j_gpc_Prop,
         Add_j_pcb_Prop,
         Add_j_b_Prop,
@@ -1419,7 +1419,7 @@ def get_classes_to_register():
         Add_j_cmaxang_Prop,
         Add_j_cdamp_Prop,
         Add_j_ccol_Prop,
-        
+
         Add_neo_Prop,
         Add_orm_Prop,
         Add_colp_Prop,
@@ -1430,9 +1430,9 @@ def get_classes_to_register():
         Add_nap_Prop,
         Add_nhr_Prop,
         Add_dyn_Prop,
-        
+
         CFAR_Props_Add,
-        
+
         Open_UDP_Wp,
         Add_wh_Prop,
         Get_Ridof_Nasty,
@@ -1440,35 +1440,35 @@ def get_classes_to_register():
         Find_multiFaceLine,
         CryBlend_Cfg,
         Find_Rc,
-        
+
         Fix_wh_trans,
         Add_ANIM_Node,
         Make_key_framelist,
         Add_fkey_frame,
         AddFakeBone,
-        
+
         RenamePhysBones,
         AddBoneGeometry,
     )
-    
+
     return classes
 
 def register():
     for classToRegister in get_classes_to_register():
         bpy.utils.register_class(classToRegister)
-		    
+
     # lets add ourselves to the main headerAdd_rm_e_Prop
     bpy.types.INFO_HT_header.append(draw_item)
 
 def unregister():
-    #you guys allready know this but for my reference,
+    #you guys already know this but for my reference,
     #unregister your classes or when you do new scene
     #your script wont import other modules properly.
     for classToRegister in get_classes_to_register():
         bpy.utils.unregister_class(classToRegister)
 
     bpy.types.INFO_HT_header.remove(draw_item)
-    
+
 if __name__ == "__main__":
     register()
 

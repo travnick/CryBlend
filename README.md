@@ -6,13 +6,22 @@ CryEngine3 Utilities and Exporter for Blender
 
 Original source: http://www.crydev.net/viewtopic.php?f=315&t=103136
 
-=============================================
+========
 Place the io_export_cryblend folder into:
 
 Your_Blender_path\scripts\addons\
 
 ========
-Chengeset:
+Changelog:
+
+4.9.1.1
+Fixed:
+* Spelling issues.
+* Trailing white spaces.
+
+4.9.1
+Fixed:
+* [#4] - Few registered class are not unregistered properly.
 
 4.9 Features
 * New tool for locating lines that are connected to too many faces.

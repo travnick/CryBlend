@@ -1,12 +1,12 @@
 #-------------------------------------------------------------------------------
 # Name:        hardbodyanimutils
-# Purpose:      hardbody animation export functions
+# Purpose:     hardbody animation export functions
 #
-# Author:      angelo
+# Author:      Angelo J. Miner
 #
 # Created:     30/05/2012
-# Copyright:   (c) angelo 2012
-# Licence:     <your licence>
+# Copyright:   (c) Angelo J. Miner 2012
+# License:     GPLv2+
 #-------------------------------------------------------------------------------
 #!/usr/bin/env python
 
