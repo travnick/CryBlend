@@ -20,15 +20,17 @@ class outPipe():
 
     def pump(self, msg, type='info'):
         if type == 'info':
-            print ('CryBlend Exporter: ' + str(msg))
-            #info(str(msg))
+            print("CryBlend Exporter: {!r}".format(msg))
+            
         elif type == 'debug':
-            pass
-            #debug(str(msg))
-        elif type == 'warning':
-            print ('CryBlend Exporter Warning: ' + str(msg))
-            #warning(str(msg))
+            print("CryBlend Debug: {!r}".format(msg))
 
+        elif type == 'warning':
+            print("CryBlend Exporter Warning: {!r}".format(msg))
+
+        elif type == 'error':
+            print("CryBlend Exporter Error: {!r}".format(msg))
+        
 oP = outPipe()
 
 def cbPrint(msg, type='info'):

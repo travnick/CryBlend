@@ -268,15 +268,6 @@ def add_phys_nocol(self, context):
         me.active_material.name = mat
     return{'FINISHED'}
 
-#def test(self, context):
-    #pass
-
-
-
 #this is needed if you want to access more than the first def
 if __name__ == "__main__":
     register()
-
-
-
-
