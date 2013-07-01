@@ -19,12 +19,12 @@
 # Name:        export.py
 # Purpose:     export to cryengine main
 #
-# Author:      angelo j miner, some code borrowed from fbx exporter Campbell Barton
+# Author:      Angelo J. Miner, some code borrowed from fbx exporter Campbell Barton
 # Extended by: Duo Oratar
 #
 # Created:     23/01/2012
-# Copyright:   (c) angelo 2012
-# Licence:     GPLv2+
+# Copyright:   (c) Angelo J. Miner 2012
+# License:     GPLv2+
 #-------------------------------------------------------------------------------
 
 
@@ -53,6 +53,7 @@ import xml.dom.minidom
 from xml.dom.minidom import *#Document
 
 from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend import exceptions
     
 
 #rc = 'G:\\apps\\CryENGINE_PC_v3_3_9_3410_FreeSDK\\Bin32\\rc\\rc.exe'#path to your rc.exe
@@ -124,14 +125,14 @@ def write(self, doc, fname, exe):
             count = 0
             for item in group.objects:
                 count += 1
-            
+
             if count > 1:
                 origin = (0,0,0)
                 rotation = (1,0,0,0)
             else:
                 origin = group.objects[0].location
                 rotation = group.objects[0].delta_rotation_quaternion
-        
+
             if 'CryExportNode' in group.name:
                 object = layerDoc.createElement("Object")
                 object.setAttribute('name', group.name[14:])
@@ -153,7 +154,7 @@ def write(self, doc, fname, exe):
                 object.setAttribute('LodRatio', '100')
                 object.setAttribute('ViewDistRatio', '100')
                 object.setAttribute('HiddenInGame', '0')
-                
+
                 properties = layerDoc.createElement("Properties")
                 properties.setAttribute('object_Model', '/Objects/'+group.name[14:]+'.cgf')
                 properties.setAttribute('bCanTriggerAreas', '0')
@@ -167,12 +168,12 @@ def write(self, doc, fname, exe):
                 properties.setAttribute('soclasses_SmartObjectClass', '')
                 properties.setAttribute('bUsable', '0')
                 properties.setAttribute('UseMessage', '0')
-                
+
                 health = layerDoc.createElement("Health")
                 health.setAttribute('bInvulnerable', '1')
                 health.setAttribute('MaxHealth', '500')
                 health.setAttribute('bOnlyEnemyFire', '1')
-                
+
                 interest = layerDoc.createElement("Interest")
                 interest.setAttribute('soaction_Action', '')
                 interest.setAttribute('bInteresting', '0')
@@ -185,7 +186,7 @@ def write(self, doc, fname, exe):
                 vOffset.setAttribute('y', '0')
                 vOffset.setAttribute('z', '0')
                 interest.appendChild(vOffset)
-                
+
                 properties.appendChild(health)
                 properties.appendChild(interest)
                 object.appendChild(properties)
@@ -220,8 +221,8 @@ def randomSector(length):
     while counter < length:
         sector += charOptions[random.randrange(0,36)]
         counter += 1
-    return sector    
-    
+    return sector
+
 class ExportCrytekDae:
     def execute(self, context, exe):
         filepath = bpy.path.ensure_ext(self.filepath, ".dae") #Ensure the correct extension for chosen path
@@ -232,7 +233,7 @@ class ExportCrytekDae:
                     if item.name == i.name: #If item in group is selectable
                         bpy.data.objects[i.name].select = True
                         cbPrint(i.name)
-                        
+
         #Duo Oratar
         #This is a small bit risky (I don't know if including more things in the selected objects will mess things up or not...
         #Easiest solution to the problem though
@@ -241,7 +242,7 @@ class ExportCrytekDae:
             if "_boneGeometry" in i.name:
                 bpy.data.objects[i.name].select = True
                 cbPrint ("Bone Geometry found: " + i.name)
-                        
+
         doc = Document() #New XML document
         col = doc.createElement('collada') #Top level element
 #asset
@@ -283,17 +284,17 @@ class ExportCrytekDae:
 #library images
         libima = doc.createElement("library_images")
         for image in bpy.data.images:
-                    imaname = (image.name)
-                    fp = (bpy.path.abspath(image.filepath))
-                    if image:
-                        imaid = doc.createElement("image")
-                        imaid.setAttribute("id","%s"%(imaname))
-                        imaid.setAttribute("name","%s"%(imaname))
-                        infrom = doc.createElement("init_from")
-                        fpath = doc.createTextNode("%s"%(fp))
-                        infrom.appendChild(fpath)
-                        imaid.appendChild(infrom)
-                        libima.appendChild(imaid)
+            if image.has_data:
+                imaname = image.name
+                image_path = get_relative_path(image.filepath)
+                imaid = doc.createElement("image")
+                imaid.setAttribute("id", "%s" % imaname)
+                imaid.setAttribute("name", "%s" % imaname)
+                infrom = doc.createElement("init_from")
+                fpath = doc.createTextNode("%s" % image_path)
+                infrom.appendChild(fpath)
+                imaid.appendChild(infrom)
+                libima.appendChild(imaid)
         col.appendChild(libima)
 #end library images
 #library effects
@@ -971,13 +972,13 @@ class ExportCrytekDae:
                             libgeo.appendChild(geo)
                             #bpy.data.meshes.remove(mesh)
         col.appendChild(libgeo)
-        
+
         #Duo Oratar
         #Remove the boneGeometry from the selection so we can get on with business as usual
         for i in bpy.context.selected_objects:
             if '_boneGeometry' in i.name:
                 bpy.data.objects[i.name].select = False
-        
+
 #end library geometries
         def GetBones(Arm):
             return [Bone for Bone in Arm.data.bones]
@@ -2573,9 +2574,9 @@ class ExportCrytekDae:
                 bname = Bone.name
                 nodename = bname
                 nodename=doc.createElement("node")
-                
+
                 pExtension = ''
-                
+
                 #Name Extension
                 extend = False
                 if extend or self.include_ik and "_Phys" == Bone.name[len(Bone.name)-5:]:
@@ -2588,38 +2589,38 @@ class ExportCrytekDae:
                         starredBoneName += char
                     pExtension += '%'+exportNodeName+'%'
                     pExtension += '--PRprops_name='+starredBoneName+'_'
-                
+
                 #IK
                 if "_Phys" == Bone.name[len(Bone.name)-5:] and self.include_ik:
                     poseBone = bpy.data.objects[obj.name[:len(obj.name)-5]].pose.bones[Bone.name[:len(Bone.name)-5]]
-                    
+
                     #Start IK props
                     pExtension += 'xmax='+str(poseBone.ik_max_x)+'_'
                     pExtension += 'xmin='+str(poseBone.ik_min_x)+'_'
                     pExtension += 'xdamping='+str(poseBone.ik_stiffness_x)+'_'
                     pExtension += 'xspringangle='+str(0.0)+'_'
                     pExtension += 'xspringtension='+str(1.0)+'_'
-                    
+
                     pExtension += 'ymax='+str(poseBone.ik_max_y)+'_'
                     pExtension += 'ymin='+str(poseBone.ik_min_y)+'_'
                     pExtension += 'ydamping='+str(poseBone.ik_stiffness_y)+'_'
                     pExtension += 'yspringangle='+str(0.0)+'_'
                     pExtension += 'yspringtension='+str(1.0)+'_'
-                    
+
                     pExtension += 'zmax='+str(poseBone.ik_max_z)+'_'
                     pExtension += 'zmin='+str(poseBone.ik_min_z)+'_'
                     pExtension += 'zdamping='+str(poseBone.ik_stiffness_z)+'_'
                     pExtension += 'zspringangle='+str(0.0)+'_'
                     pExtension += 'zspringtension='+str(1.0)+'_'
                     #End IK props
-                
+
                 if extend:
                     pExtension += '_'
-                
+
                 nodename.setAttribute("id","%s"%(bname+pExtension))
                 nodename.setAttribute("name", "%s"%(bname+pExtension))
                 boneExtendedNames.append(bname+pExtension)
-                nodename.setIdAttribute('id')  
+                nodename.setIdAttribute('id')
 
                 for object in bpy.context.selectable_objects:
                     if object.name == Bone.name or (object.name == Bone.name[:len(Bone.name)-5] and "_Phys" == Bone.name[len(Bone.name)-5:]):
@@ -2687,13 +2688,13 @@ class ExportCrytekDae:
                         if name[:len(bprnt.name)] == bprnt.name:
                             nodeparent = doc.getElementById(name)
                             cbPrint(bprnt.name)
-                            nodeparent.appendChild(nodename)                    
+                            nodeparent.appendChild(nodename)
                 else: #Root bone (of any armature type)
                     #nodeparent = doc.getElementById("%s"%pname)
                     #nodeparent.appendChild(nodename)
                     node1.appendChild(nodename)#nodeparent)
 
-    
+
         def GetObjectChildren(Parent):
             return [Object for Object in Parent.children
                     if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
@@ -2890,7 +2891,7 @@ class ExportCrytekDae:
         col.appendChild(libvs)
         for item in bpy.context.blend_data.groups:
             mesh = i.data
-            if (i.type == "MESH"): 
+            if (i.type == "MESH"):
                 mat = mesh.materials[:]
             if item:
                 ename=str(item.id_data.name)
@@ -2932,6 +2933,37 @@ class ExportCrytekDae:
 #  <scene>
         # write to file
         write(self, doc, filepath, exe)
+
+def get_relative_path(filepath):
+    [is_relative, filepath] = strip_blender_path_prefix(filepath)
+
+    if is_relative:
+        return filepath
+    else:
+        return make_relative_path(filepath)
+
+def strip_blender_path_prefix(path):
+    is_relative = False
+    BLENDER_RELATIVE_PATH_PREFIX = "//"
+    prefix_length = len(BLENDER_RELATIVE_PATH_PREFIX)
+
+    if path.startswith(BLENDER_RELATIVE_PATH_PREFIX):
+        path = path[prefix_length:]
+        is_relative = True
+
+    return (is_relative, path)
+
+def make_relative_path(filepath):
+    blend_file_path = bpy.data.filepath
+
+    if not blend_file_path:
+        raise exceptions.BlendNotSavedException
+
+    try:
+        return os.path.relpath(filepath, blend_file_path)
+
+    except ValueError:
+        raise exceptions.TextureAndBlendDiskMismatch(blend_file_path, filepath)
 
 def save(self, context, exe):
 

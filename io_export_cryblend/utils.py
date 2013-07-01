@@ -1,11 +1,11 @@
 #-------------------------------------------------------------------------------
 # Name:        utils
-# Purpose:      utility functions to share throughout the addon
+# Purpose:     utility functions to share throughout the addon
 #
-# Author:      angelo j. miner
+# Author:      Angelo J. Miner
 #
 # Created:     23/02/2012
-# Copyright:   (c) angelo j. miner 2012
+# Copyright:   (c) Angelo J. Miner 2012
 # Licence:     GPLv2+
 #-------------------------------------------------------------------------------
 
