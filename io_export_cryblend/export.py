@@ -53,7 +53,8 @@ import xml.dom.minidom
 from xml.dom.minidom import *#Document
 
 from io_export_cryblend.outPipe import cbPrint
-
+from io_export_cryblend import exceptions
+    
 
 #rc = 'G:\\apps\\CryENGINE_PC_v3_3_9_3410_FreeSDK\\Bin32\\rc\\rc.exe'#path to your rc.exe
 #rc = r'G:\apps\CryENGINE_PC_v3_4_0_3696_freeSDK\Bin32\rc\rc.exe'#path to your rc.exe#thankyou Borgleader
@@ -283,17 +284,17 @@ class ExportCrytekDae:
 #library images
         libima = doc.createElement("library_images")
         for image in bpy.data.images:
-                    imaname = (image.name)
-                    fp = (bpy.path.abspath(image.filepath))
-                    if image:
-                        imaid = doc.createElement("image")
-                        imaid.setAttribute("id","%s"%(imaname))
-                        imaid.setAttribute("name","%s"%(imaname))
-                        infrom = doc.createElement("init_from")
-                        fpath = doc.createTextNode("%s"%(fp))
-                        infrom.appendChild(fpath)
-                        imaid.appendChild(infrom)
-                        libima.appendChild(imaid)
+            if image.has_data:
+                imaname = image.name
+                image_path = get_relative_path(image.filepath)
+                imaid = doc.createElement("image")
+                imaid.setAttribute("id", "%s" % imaname)
+                imaid.setAttribute("name", "%s" % imaname)
+                infrom = doc.createElement("init_from")
+                fpath = doc.createTextNode("%s" % image_path)
+                infrom.appendChild(fpath)
+                imaid.appendChild(infrom)
+                libima.appendChild(imaid)
         col.appendChild(libima)
 #end library images
 #library effects
@@ -2932,6 +2933,37 @@ class ExportCrytekDae:
 #  <scene>
         # write to file
         write(self, doc, filepath, exe)
+
+def get_relative_path(filepath):
+    [is_relative, filepath] = strip_blender_path_prefix(filepath)
+
+    if is_relative:
+        return filepath
+    else:
+        return make_relative_path(filepath)
+
+def strip_blender_path_prefix(path):
+    is_relative = False
+    BLENDER_RELATIVE_PATH_PREFIX = "//"
+    prefix_length = len(BLENDER_RELATIVE_PATH_PREFIX)
+
+    if path.startswith(BLENDER_RELATIVE_PATH_PREFIX):
+        path = path[prefix_length:]
+        is_relative = True
+
+    return (is_relative, path)
+
+def make_relative_path(filepath):
+    blend_file_path = bpy.data.filepath
+
+    if not blend_file_path:
+        raise exceptions.BlendNotSavedException
+
+    try:
+        return os.path.relpath(filepath, blend_file_path)
+
+    except ValueError:
+        raise exceptions.TextureAndBlendDiskMismatch(blend_file_path, filepath)
 
 def save(self, context, exe):
 
