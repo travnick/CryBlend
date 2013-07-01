@@ -15,6 +15,10 @@ Your_Blender_path\scripts\addons\
 Changelog:
 --------
 
+**4.9.2**
+Fixed:
+* Non relative paths to textures in .mlt file.
+
 **4.9.1.1**
 Fixed:
 * Spelling issues.
