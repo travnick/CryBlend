@@ -15,6 +15,10 @@ Your_Blender_path\scripts\addons\
 Changelog:
 --------
 
+**4.9.2.1**
+Features:
+* Code formatted to match PEP-8.
+
 **4.9.2**
 Fixed:
 * Non relative paths to textures in .mlt file.

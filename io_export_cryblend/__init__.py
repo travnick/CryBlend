@@ -16,7 +16,7 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 # Name:  __init__.py
 # Purpose:   primary python file for cryblend addon
 #
@@ -26,17 +26,18 @@
 # Created:   23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012
 # License:   GPLv2+
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 7),
-    "version": (4, 9, 2),
+    "version": (4, 9, 2, 1),
     "location": "CryBlend Menu",
-    "description": ("CryEngine3 Utilities and Exporter"),
+    "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
-    "wiki_url": ("http://wiki.blender.org/index.php/Extensions:2.5/Py/Scripts/Import-Export/CryEngine3"),
+    "wiki_url": "http://wiki.blender.org/index.php/Extensions:2.5/Py/Scripts/"
+        "Import-Export/CryEngine3",
     "tracker_url": "https://github.com/travnick/CryBlend/issues?state=open",
     "support": 'OFFICIAL',
     "category": "Import-Export"}
@@ -46,7 +47,7 @@ VERSION = bl_info["version"]
 import bpy
 import bpy_extras
 import bpy.ops
-#from add_utils import AddObjectHelper, add_object_data
+# from add_utils import AddObjectHelper, add_object_data
 from bpy.props import *
 from bpy_extras.io_utils import ExportHelper
 from bpy.app import binary_path
@@ -59,23 +60,24 @@ from io_export_cryblend import add
 from io_export_cryblend import export
 from io_export_cryblend.outPipe import cbPrint
 
-#for help
+# for help
 import webbrowser
-new = 2 # open in a new tab, if possible
+new = 2  # open in a new tab, if possible
 #
-#for config
-#rc = r'G:\apps\CryENGINE_PC_v3_4_0_3696_freeSDK\Bin32\rc\rc.exe'#temp
+# for config
+# rc = r'G:\apps\CryENGINE_PC_v3_4_0_3696_freeSDK\Bin32\rc\rc.exe'#temp
 import os
 import configparser
 import pickle
 rc = r''
 CONFIG_PATH = bpy.utils.user_resource('CONFIG', path='scripts', create=True)
 CONFIG_FILENAME = 'cryblend.cfg'
-CONFIG_FILEPATH = os.path.join( CONFIG_PATH, CONFIG_FILENAME)
+CONFIG_FILEPATH = os.path.join(CONFIG_PATH, CONFIG_FILENAME)
 _CONFIG_TAGS_ = 'RC_LOCATION'.split()
-_CONFIG_RC = {'RC_LOCATION' : rc}#'find me your rc.exe'}
+_CONFIG_RC = {'RC_LOCATION': rc}  # 'find me your rc.exe'}
 config = configparser.ConfigParser()
 rc = r'c:\\'
+
 
 class Find_Rc(bpy.types.Operator, ExportHelper):
     bl_label = "Find the Resource compiler"
@@ -83,57 +85,56 @@ class Find_Rc(bpy.types.Operator, ExportHelper):
 
     filename_ext = ".exe"
 
-    #filter_glob = StringProperty(
+    # filter_glob = StringProperty(
     #      default="*.exe",
     #      options={'HIDDEN'}, subtype='FILE_PATH'
     #      )
+    # rc = StringProperty(name="rc.exe location",default=rc,
+    # subtype='FILE_PATH')
 
-
-
-
-    #rc = StringProperty(name="rc.exe location",default=rc, subtype='FILE_PATH')
-
-    #_CONFIG_RC = {'RC_LOCATION' : rc}
+    # _CONFIG_RC = {'RC_LOCATION' : rc}
     def execute(self, context):
-        #rc = self.filepath
+        # rc = self.filepath
 
-        #config['_CONFIG_RC'] = {'RC_LOCATION' : rc}
+        # config['_CONFIG_RC'] = {'RC_LOCATION' : rc}
 
-        bpy.context.window_manager.RC_LOCATION = "%s" % (self.filepath)#rc
- #   bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
-  #   message = "Adding CryExportNode_'%s'" % (self.my_string)
-   #     self.report({'INFO'}, message)
+        bpy.context.window_manager.RC_LOCATION = "%s" % (self.filepath)  # rc
+        #   bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
+        #   message = "Adding CryExportNode_'%s'" % (self.my_string)
+        #   self.report({'INFO'}, message)
         cbPrint("Find the resource compiler.")
         save_config()
         return {'FINISHED'}
 
-    #def invoke(self, context, event):
-        #return context.window_manager.invoke_props_dialog(self)
-
-
+    # def invoke(self, context, event):
+        # return context.window_manager.invoke_props_dialog(self)
 
 
 CONFIG = {}
+
+
 def load_config():  # PUBLIC API
-    #filepath = bpy.path.ensure_ext(self.filepath, "rc.exe")
+    # filepath = bpy.path.ensure_ext(self.filepath, "rc.exe")
     global CONFIG
-    if os.path.isfile( CONFIG_FILEPATH ):
+    if os.path.isfile(CONFIG_FILEPATH):
         try:
-            with open( CONFIG_FILEPATH, 'rb' ) as f:
-                CONFIG = pickle.load( f )
-                #CONFIG = config.read( f )
+            with open(CONFIG_FILEPATH, 'rb') as f:
+                CONFIG = pickle.load(f)
+                # CONFIG = config.read( f )
                 cbPrint('Configuration file loaded.')
         except:
-            cbPrint( 'IO ERROR, can not read: %s' %CONFIG_FILEPATH, type='warning' )
+            cbPrint('IO ERROR, can not read: %s' % CONFIG_FILEPATH, 'warning')
 
     for tag in _CONFIG_RC:
         if tag not in CONFIG:
-            #bpy.ops.f_ind.rc()#Find_Rc.execute
-            CONFIG[ tag ] = _CONFIG_RC[ tag ]
+            # bpy.ops.f_ind.rc()#Find_Rc.execute
+            CONFIG[tag] = _CONFIG_RC[tag]
 
-    for tag in _CONFIG_TAGS_: ## setup temp hidden RNA  to expose the file paths ##
-        default = CONFIG[ tag ]
-        func = eval( 'lambda self,con: CONFIG.update( {"%s" : self.%s} )' %(tag,tag) )
+    # # setup temp hidden RNA  to expose the file paths ##
+    for tag in _CONFIG_TAGS_:
+        default = CONFIG[tag]
+        func = eval('lambda self,con: CONFIG.update( {"%s" : self.%s} )'
+                    % (tag, tag))
         if type(default) is bool:
             prop = BoolProperty(
                 name=tag, description='updates bool setting', default=default,
@@ -141,27 +142,29 @@ def load_config():  # PUBLIC API
             )
         else:
             prop = StringProperty(
-                name=tag, description='updates path setting', maxlen=128, default=default,
-                options={'SKIP_SAVE'}, update=func
+                name=tag, description='updates path setting', maxlen=128,
+                default=default, options={'SKIP_SAVE'}, update=func
             )
-        setattr( bpy.types.WindowManager, tag, prop )
+        setattr(bpy.types.WindowManager, tag, prop)
     return CONFIG
 CONFIG = load_config()
 
+
 def save_config():  # PUBLIC API
-    #CONFIG = load_config()
+    # CONFIG = load_config()
     cbPrint('Saving configuration file.')
-    #for key in CONFIG: print( '%s =   %s' %(key, CONFIG[key]) )
-    if os.path.isdir( CONFIG_PATH ):
+    # for key in CONFIG: print( '%s =   %s' %(key, CONFIG[key]) )
+    if os.path.isdir(CONFIG_PATH):
         try:
-            with open( CONFIG_FILEPATH, 'wb' ) as f:
-                pickle.dump( CONFIG, f, -1 )
-                #config.write(CONFIG, f)
+            with open(CONFIG_FILEPATH, 'wb') as f:
+                pickle.dump(CONFIG, f, -1)
+                # config.write(CONFIG, f)
                 cbPrint('Configuration file saved.')
         except:
-            cbPrint( 'IO ERROR, can not write: %s' %CONFIG_FILEPATH, type="warning" )
+            cbPrint('IO ERROR, can not write: %s' % CONFIG_FILEPATH, "warning")
     else:
-        cbPrint( 'ERROR: configuration file path is missing %s' %CONFIG_PATH, type="warning" )
+        cbPrint('ERROR: configuration file path is missing %s'
+                % CONFIG_PATH, "warning")
 
 
 class CryBlend_Cfg(bpy.types.Operator):
@@ -169,27 +172,31 @@ class CryBlend_Cfg(bpy.types.Operator):
     bl_idname = "save_config.file"
     bl_label = "save config file"
     bl_options = {'REGISTER'}
+
     @classmethod
-    def poll(cls, context): return True
+    def poll(cls, context):
+        return True
+
     def invoke(self, context, event):
         save_config()
-        #Report.reset()
-        #Report.messages.append('SAVED %s' %CONFIG_FILEPATH)
-        #Report.show()
-        cbPrint('Saved %s' %CONFIG_FILEPATH)
+        # Report.reset()
+        # Report.messages.append('SAVED %s' %CONFIG_FILEPATH)
+        # Report.show()
+        cbPrint('Saved %s' % CONFIG_FILEPATH)
         return {'FINISHED'}
-
 
 
 class Open_UDP_Wp(bpy.types.Operator):
     bl_label = "Open Web Page for UDP"
     bl_idname = "open_udp.wp"
+
     def execute(self, context):
         url = "http://freesdk.crydev.net/display/SDKDOC3/UDP+Settings"
-        webbrowser.open(url,new=new)
+        webbrowser.open(url, new=new)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
+
 
 # class Open_Donate_Wp(bpy.types.Operator):
     # bl_label = "Open Web Page to donate to the cause"
@@ -202,21 +209,24 @@ class Open_UDP_Wp(bpy.types.Operator):
         # return {'FINISHED'}
 
 
-
 class Get_Ridof_Nasty(bpy.types.Operator):
-    '''Select the object to test in object mode with nothing selected in it's mesh before running this.'''
+    '''Select the object to test in object mode with nothing selected in
+    it's mesh before running this.'''
     bl_label = "Find Degenerate Faces"
     bl_idname = "find_deg.faces"
+
     def execute(self, context):
         me = bpy.context.active_object
         vert_list = [vert for vert in me.data.vertices]
-        #bpy.ops.object.mode_set(mode='EDIT')
+        # bpy.ops.object.mode_set(mode='EDIT')
         context.tool_settings.mesh_select_mode = (True, False, False)
-        #bpy.ops.mesh.select_all({'object':me, 'active_object':me, 'edit_object':me}, action='DESELECT')
+        # bpy.ops.mesh.select_all(
+        #    {'object':me, 'active_object':me, 'edit_object':me},
+        #    action='DESELECT')
         bpy.ops.object.mode_set(mode='OBJECT')
         cbPrint("Locating degenerate faces.")
         for i in me.data.polygons:
-            #print("1 face")
+            # print("1 face")
             if i.area == 0:
                 cbPrint("Found a degenerate face.")
             for v in i.vertices:
@@ -226,23 +236,29 @@ class Get_Ridof_Nasty(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
         return {'FINISHED'}
 
-#Duo Oratar
+
+# Duo Oratar
 class Find_multiFaceLine(bpy.types.Operator):
-    '''Select the object to test in object mode with nothing selected in it's mesh before running this.'''
+    '''Select the object to test in object mode with nothing selected in
+    it's mesh before running this.'''
     bl_label = "Find lines with 3+ faces."
     bl_idname = "find_multiface.lines"
+
     def execute(self, context):
         me = bpy.context.active_object
         vert_list = [vert for vert in me.data.vertices]
-        #bpy.ops.object.mode_set(mode='EDIT')
+        # bpy.ops.object.mode_set(mode='EDIT')
         context.tool_settings.mesh_select_mode = (True, False, False)
-        #bpy.ops.mesh.select_all({'object':me, 'active_object':me, 'edit_object':me}, action='DESELECT')
+        # bpy.ops.mesh.select_all(
+        #     {'object':me, 'active_object':me, 'edit_object':me},
+        #     action='DESELECT')
         bpy.ops.object.mode_set(mode='OBJECT')
         cbPrint("Locating degenerate faces.")
         for i in me.data.edges:
             counter = 0
             for polygon in me.data.polygons:
-                if i.vertices[0] in polygon.vertices and i.vertices[1] in polygon.vertices:
+                if (i.vertices[0] in polygon.vertices
+                    and i.vertices[1] in polygon.vertices):
                     counter += 1
             if counter > 2:
                 cbPrint('Found a multi-face line')
@@ -252,25 +268,25 @@ class Find_multiFaceLine(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
         return {'FINISHED'}
 
-#-------------------------------------------------------------------------------
-#Menu Classes
-#Interfaces with defs in external .py
-#-------------------------------------------------------------------------------
 
-class Add_BO_Joint(bpy.types.Operator):#, AddObjectHelper):
+#------------------------------------------------------------------------------
+# Menu Classes
+# Interfaces with defs in external .py
+#------------------------------------------------------------------------------
+class Add_BO_Joint(bpy.types.Operator):  # , AddObjectHelper):
     bl_label = "Add Joint"
     bl_idname = "add_bo.joint"
+
     def execute(self, context):
-        #from . import helper
+        # from . import helper
         return add.add_joint(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
 
-
-#Add_CE_Node so short it doesnt really need to be in add
-class Add_CE_Node(bpy.types.Operator):#, AddObjectHelper):
+# Add_CE_Node so short it doesn't really need to be in add
+class Add_CE_Node(bpy.types.Operator):  # , AddObjectHelper):
     bl_label = "Add CryExportNode"
     bl_idname = "add_cryexport.node"
     my_string = StringProperty(name="CryExportNode name")
@@ -285,7 +301,8 @@ class Add_CE_Node(bpy.types.Operator):#, AddObjectHelper):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
-class Add_ANIM_Node(bpy.types.Operator):#, AddObjectHelper):
+
+class Add_ANIM_Node(bpy.types.Operator):  # , AddObjectHelper):
     bl_label = "Add AnimNode"
     bl_idname = "add_anim.node"
     my_string = StringProperty(name="Animation Name")
@@ -293,14 +310,14 @@ class Add_ANIM_Node(bpy.types.Operator):#, AddObjectHelper):
     my_floate = FloatProperty(name="End Frame")
 
     def execute(self, context):
-        #bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
+        # bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
         ob = bpy.context.active_object
         bpy.ops.object.add(type='EMPTY')
-        anode=bpy.context.object
+        anode = bpy.context.object
         anode.name = 'animnode'
-        anode["animname"] = self.my_string#"door open"
-        anode["startframe"] = self.my_floats#1
-        anode["endframe"] = self.my_floate#1
+        anode["animname"] = self.my_string  # "door open"
+        anode["startframe"] = self.my_floats  # 1
+        anode["endframe"] = self.my_floate  # 1
 #      anode.select = False
 #      anode.select = True
         if ob:
@@ -317,15 +334,12 @@ class Add_ANIM_Node(bpy.types.Operator):#, AddObjectHelper):
         return context.window_manager.invoke_props_dialog(self)
 
 
-
-
-
-#custom props
-#wheels
-
+# custom props
+# wheels
 class Add_wh_Prop(bpy.types.Operator):
     bl_label = "Add wheel Properties"
     bl_idname = "add_wh.props"
+
     def execute(self, context):
         return add.add_w_phl(self, context)
         self.report({'INFO'}, message)
@@ -333,172 +347,207 @@ class Add_wh_Prop(bpy.types.Operator):
         return {'FINISHED'}
 
 
-#wheel transform fix
+# wheel transform fix
 class Fix_wh_trans(bpy.types.Operator):
     bl_label = "Fix wheel Transforms"
     bl_idname = "fix_wh.trans"
+
     def execute(self, context):
         ob = bpy.context.active_object
-        ob.location.x = (ob.bound_box[0][0]+ob.bound_box[1][0])
+        ob.location.x = (ob.bound_box[0][0] + ob.bound_box[1][0])
         ob.location.x /= 2.0
-        ob.location.y = (ob.bound_box[2][0]+ob.bound_box[3][0])
+        ob.location.y = (ob.bound_box[2][0] + ob.bound_box[3][0])
         ob.location.y /= 2.0
-        ob.location.z = (ob.bound_box[4][0]+ob.bound_box[5][0])
+        ob.location.z = (ob.bound_box[4][0] + ob.bound_box[5][0])
         ob.location.z /= 2.0
-        #return utils.fix_transforms
+        # return utils.fix_transforms
         return {'FINISHED'}
 
-#jointed breakables
-#rendermesh
+
+# jointed breakables
+# rendermesh
 class Add_rm_e_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_rm_e.props"
+
     def execute(self, context):
         return add.add_rm_e_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_rm_m_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_rm_m.props"
+
     def execute(self, context):
         return add.add_rm_m_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_rm_d_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_rm_d.props"
+
     def execute(self, context):
         return add.add_rm_d_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_rm_p_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_rm_p.props"
+
     def execute(self, context):
         return add.add_rm_p_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
-#joint
+
+
+# joint
 class Add_j_gpc_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_gpc.props"
+
     def execute(self, context):
         return add.add_j_gpc_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_pcb_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_pcb.props"
+
     def execute(self, context):
         return add.add_j_pcb_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_b_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_b.props"
+
     def execute(self, context):
         return add.add_j_b_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_t_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_t.props"
+
     def execute(self, context):
         return add.add_j_t_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_pull_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_pull.props"
+
     def execute(self, context):
         return add.add_j_pull_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_push_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_push.props"
+
     def execute(self, context):
         return add.add_j_push_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_shift_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_shift.props"
+
     def execute(self, context):
         return add.add_j_shift_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_climit_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_climit.props"
+
     def execute(self, context):
         return add.add_j_climit_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_cminang_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_cminang.props"
+
     def execute(self, context):
         return add.add_j_cminang_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_cmaxang_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_cmaxang.props"
+
     def execute(self, context):
         return add.add_j_cmaxang_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_cdamp_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_cdamp.props"
+
     def execute(self, context):
         return add.add_j_cdamp_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_j_ccol_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_j_ccol.props"
+
     def execute(self, context):
         return add.add_j_ccol_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
-#jointed breakables
 
+# jointed breakables
 class Find_Weightless(bpy.types.Operator):
     bl_label = "Find Weightless Vertices"
     bl_idname = "mesh_rep.weightless"
+
     def execute(self, context):
         obj = bpy.context.active_object
         if obj.type == 'MESH':
@@ -509,9 +558,11 @@ class Find_Weightless(bpy.types.Operator):
                     break
         return {'FINISHED'}
 
+
 class Find_Overweight(bpy.types.Operator):
     bl_label = "Find Overweight Vertices"
     bl_idname = "mesh_rep.overweight"
+
     def execute(self, context):
         obj = bpy.context.active_object
         if obj.type == 'MESH':
@@ -521,7 +572,8 @@ class Find_Overweight(bpy.types.Operator):
                 for g in v.groups:
                     totalWeight += g.weight
                 if totalWeight > 1:
-                    cbPrint("Vertex at " + str(v.co) + " has a weight of " + str(totalWeight))
+                    cbPrint("Vertex at " + str(v.co) + " has a weight of "
+                            + str(totalWeight))
                     v.select = True
         return {'FINISHED'}
 
@@ -529,6 +581,7 @@ class Find_Overweight(bpy.types.Operator):
 class Find_Underweight(bpy.types.Operator):
     bl_label = "Find Underweight Vertices"
     bl_idname = "mesh_rep.underweight"
+
     def execute(self, context):
         obj = bpy.context.active_object
         if obj.type == 'MESH':
@@ -538,13 +591,16 @@ class Find_Underweight(bpy.types.Operator):
                 for g in v.groups:
                     totalWeight += g.weight
                 if totalWeight < 1:
-                    cbPrint("Vertex at " + str(v.co) + " has a weight of " + str(totalWeight))
+                    cbPrint("Vertex at " + str(v.co) + " has a weight of "
+                            + str(totalWeight))
                     v.select = True
         return {'FINISHED'}
+
 
 class Remove_All_Weight(bpy.types.Operator):
         bl_label = "Remove all weight from selected vertices"
         bl_idname = "mesh_rep.removeall"
+
         def execute(self, context):
             obj = bpy.context.active_object
             if obj.type == 'MESH':
@@ -557,9 +613,11 @@ class Remove_All_Weight(bpy.types.Operator):
                         g.weight = 0
             return {'FINISHED'}
 
+
 class Remove_FakeBones(bpy.types.Operator):
         bl_label = "Remove all FakeBones"
         bl_idname = "cb.fake_bone_remove"
+
         def execute(self, context):
             for obj in bpy.data.objects:
                 obj.select = False
@@ -571,14 +629,19 @@ class Remove_FakeBones(bpy.types.Operator):
                     isFakeBone = True
                 except:
                     pass
-                if obj.name == obj.parent_bone and isFakeBone and obj.type == 'MESH':
+                if (obj.name == obj.parent_bone
+                    and isFakeBone
+                    and obj.type == 'MESH'):
                     obj.select = True
-                    bpy.ops.object.delete(use_global=False) #{'active_object':obj, 'object':obj},
+                    bpy.ops.object.delete(use_global=False)
+                    # {'active_object':obj, 'object':obj},
             return {'FINISHED'}
+
 
 class Find_No_UVs(bpy.types.Operator):
         bl_label = "Find all objects with no UVs"
         bl_idname = "cb.find_no_uvs"
+
         def execute(self, context):
             for obj in bpy.data.objects:
                 obj.select = False
@@ -586,6 +649,7 @@ class Find_No_UVs(bpy.types.Operator):
             for obj in bpy.context.selectable_objects:
                 if obj.type == 'MESH':
                     a = False
+                    # TODO: WTF?
                     for i in obj.data.uv_textures:
                         a = True
                         break
@@ -593,158 +657,192 @@ class Find_No_UVs(bpy.types.Operator):
                         obj.select = True
             return {'FINISHED'}
 
+
 class Add_Def_Prop(bpy.types.Operator):
     bl_label = "Add DeformableMesh Properties"
     bl_idname = "add_skeleton.props"
+
     def execute(self, context):
         return add.add_skel_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
-#mat phys
+
+
+# mat phys
 class Add_M_Pd(bpy.types.Operator):
     bl_label = "Add __physDefault to Material Name"
     bl_idname = "mat_phys.def"
+
     def execute(self, context):
         return add.add_phys_default(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_M_PND(bpy.types.Operator):
     bl_label = "Add __physProxyNoDraw to Material Name"
     bl_idname = "mat_phys.pnd"
+
     def execute(self, context):
         return add.add_phys_pnd(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_M_None(bpy.types.Operator):
     bl_label = "Add __physNone to Material Name"
     bl_idname = "mat_phys.none"
+
     def execute(self, context):
         return add.add_phys_none(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_M_Obstr(bpy.types.Operator):
     bl_label = "Add __physObstruct to Material Name"
     bl_idname = "mat_phys.obstr"
+
     def execute(self, context):
         return add.add_phys_obstr(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_M_NoCol(bpy.types.Operator):
     bl_label = "Add __physNoCollide to Material Name"
     bl_idname = "mat_phys.nocol"
+
     def execute(self, context):
         return add.add_phys_nocol(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
-#CGF/CGA/CHR
+
+# CGF/CGA/CHR
 class Add_neo_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_neo.props"
+
     def execute(self, context):
         return add.add_neo_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_orm_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_orm.props"
+
     def execute(self, context):
         return add.add_orm_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_colp_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_colp.props"
+
     def execute(self, context):
         return add.add_colp_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_b_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_b.props"
+
     def execute(self, context):
         return add.add_b_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_cyl_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_cyl.props"
+
     def execute(self, context):
         return add.add_cyl_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_caps_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_caps.props"
+
     def execute(self, context):
         return add.add_caps_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_sph_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_sph.props"
+
     def execute(self, context):
         return add.add_sph_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_nap_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_nap.props"
+
     def execute(self, context):
         return add.add_nap_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_nhr_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_nhr.props"
+
     def execute(self, context):
         return add.add_nhr_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
 
+
 class Add_dyn_Prop(bpy.types.Operator):
     bl_label = "Add Entity Properties"
     bl_idname = "add_dyn.props"
+
     def execute(self, context):
         return add.add_dyn_p(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
-#fakebones
-#todo:
-#figure out how to auto parent to proper bone<<DONE!!
-#WARNING!!
+
+# fakebones
+# todo:
+# figure out how to auto parent to proper bone<<DONE!!
+# WARNING!!
 #this cleans out all meshes without users!!!
 
 
-#verts and faces
+# verts and faces
 def add_fake_bone(width, height, depth):
     """
     This function takes inputs and returns vertex and face arrays.
@@ -775,20 +873,21 @@ def add_fake_bone(width, height, depth):
 
     return verts, faces
 
+
 def add_bone_geometry():
     """
     This function takes inputs and returns vertex and face arrays.
     no actual mesh data creation is done here.
     """
 
-    verts = [(-0.5    , -0.5    , -0.5    ),
-             (-0.5    , 0.5    , -0.5    ),
-             (0.5    , 0.5    , -0.5    ),
-             (0.5    , -0.5    , -0.5    ),
-             (-0.5    , -0.5    , 0.5    ),
-             (-0.5    , 0.5    , 0.5    ),
-             (0.5    , 0.5    , 0.5    ),
-             (0.5    , -0.5    , 0.5    ),
+    verts = [(-0.5, -0.5, -0.5),
+             (-0.5, 0.5, -0.5),
+             (0.5, 0.5, -0.5),
+             (0.5, -0.5, -0.5),
+             (-0.5, -0.5, 0.5),
+             (-0.5, 0.5, 0.5),
+             (0.5, 0.5, 0.5),
+             (0.5, -0.5, 0.5),
              ]
 
     faces = [(0, 1, 2, 3),
@@ -802,7 +901,7 @@ def add_bone_geometry():
     return verts, faces
 
 
-#Duo Oratar
+# Duo Oratar
 class RenamePhysBones(bpy.types.Operator):
     '''Renames phys bones'''
     bl_idname = "cb.phys_bones_rename"
@@ -811,12 +910,14 @@ class RenamePhysBones(bpy.types.Operator):
 
     def execute(self, context):
         for obj in bpy.context.scene.objects:
-            if '_Phys' == obj.name[len(obj.name)-5:] and obj.type == 'ARMATURE':
+            if ('_Phys' == obj.name[len(obj.name) - 5:]
+                and obj.type == 'ARMATURE'):
                 for bone in obj.data.bones:
                     oldName = bone.name
                     bone.name = oldName + '_Phys'
 
         return {'FINISHED'}
+
 
 class AddBoneGeometry(bpy.types.Operator):
     '''Add BoneGeometry for bones in selected armatures'''
@@ -848,18 +949,23 @@ class AddBoneGeometry(bpy.types.Operator):
         for obj in bpy.context.scene.objects:
             nameList.append(obj.name)
 
-
         for obj in bpy.context.scene.objects:
             if obj.type == 'ARMATURE' and obj.select:
 
                 physBonesList = []
-                if obj.name+"_Phys" in nameList:
-                    for bone in bpy.data.objects[obj.name+"_Phys"].data.bones:
+                if obj.name + "_Phys" in nameList:
+                    for bone in bpy.data.objects[obj.name + "_Phys"].data.bones:
                         physBonesList.append(bone.name)
 
                 for bone in obj.data.bones:
-                    if (not bone.name + "_boneGeometry" in nameList and not obj.name+"_Phys" in nameList) or (obj.name+"_Phys" in nameList and bone.name+'_Phys' in physBonesList):
-                        mesh = bpy.data.meshes.new("%s"%bone.name+"_boneGeometry")
+                    if ((not bone.name + "_boneGeometry" in nameList
+                            and not obj.name + "_Phys" in nameList)
+                        or (obj.name + "_Phys" in nameList
+                            and bone.name + '_Phys' in physBonesList)
+                        ):
+                        mesh = bpy.data.meshes.new(
+                                    "{!s}_boneGeometry".format(bone.name)
+                        )
                         bm = bmesh.new()
 
                         for v_co in verts_loc:
@@ -871,19 +977,23 @@ class AddBoneGeometry(bpy.types.Operator):
                         bm.to_mesh(mesh)
                         mesh.update()
                         bmatrix = bone.head_local
-                        #loc, rotation, scale = bmatrix.decompose()
+                        # loc, rotation, scale = bmatrix.decompose()
                         self.location[0] = bmatrix[0]
                         self.location[1] = bmatrix[1]
                         self.location[2] = bmatrix[2]
-                        # add the mesh as an object into the scene with this utility module
+                        # add the mesh as an object into the scene
+                        # with this utility module
                         from bpy_extras import object_utils
-                        object_utils.object_data_add(context, mesh, operator=self)
+                        object_utils.object_data_add(
+                            context, mesh, operator=self
+                        )
                         bpy.ops.mesh.uv_texture_add()
 
         return {'FINISHED'}
 
-#verts and faces
-#find bone heads and add at that location
+
+# verts and faces
+# find bone heads and add at that location
 class AddFakeBone(bpy.types.Operator):
     '''Add a simple box mesh'''
     bl_idname = "cb.fake_bone_add"
@@ -934,7 +1044,7 @@ class AddFakeBone(bpy.types.Operator):
             if arm.type == 'ARMATURE':
 
                 for pbone in arm.pose.bones:
-                    mesh = bpy.data.meshes.new("%s"%pbone.name)
+                    mesh = bpy.data.meshes.new("%s" % pbone.name)
                     bm = bmesh.new()
 
                     for v_co in verts_loc:
@@ -946,11 +1056,12 @@ class AddFakeBone(bpy.types.Operator):
                     bm.to_mesh(mesh)
                     mesh.update()
                     bmatrix = pbone.bone.head_local
-                    #loc, rotation, scale = bmatrix.decompose()
+                    # loc, rotation, scale = bmatrix.decompose()
                     self.location[0] = bmatrix[0]
                     self.location[1] = bmatrix[1]
                     self.location[2] = bmatrix[2]
-                    # add the mesh as an object into the scene with this utility module
+                    # add the mesh as an object into the scene
+                    # with this utility module
                     from bpy_extras import object_utils
                     object_utils.object_data_add(context, mesh, operator=self)
                     bpy.ops.mesh.uv_texture_add()
@@ -963,21 +1074,24 @@ class AddFakeBone(bpy.types.Operator):
 
         return {'FINISHED'}
 
-#fakebones
-#keyframe insert for fake bones
+# fakebones
+# keyframe insert for fake bones
 loclist = []
 rotlist = []
-#scene = bpy.context.scene
+# scene = bpy.context.scene
+
+
 def add_kfl(self, context):
     scene = bpy.context.scene
     for a in bpy.context.scene.objects:
         if a.type == 'ARMATURE':
             ob = a
     bpy.ops.screen.animation_play()
+
     def kfdat(frame, bonename, data):
         return frame, bonename, data
-    #loclist = []
-    #rotlist = []
+    # loclist = []
+    # rotlist = []
     obPresent = True
     try:
         testValue = ob
@@ -986,7 +1100,7 @@ def add_kfl(self, context):
 
     if obPresent:
         for frame in range(scene.frame_end + 1):
-            #frame = frame + 5
+            # frame = frame + 5
             '''do the inverse parent times current to get proper info here'''
             cbPrint("Stage 1 auto-keyframe.")
             scene.frame_set(frame)
@@ -1023,38 +1137,41 @@ def add_kfl(self, context):
                             rotlist.append(rtmp)
         bpy.ops.screen.animation_play()
 
-    #for frame in range(scene.frame_end + 1):
+    # for frame in range(scene.frame_end + 1):
     #   print("stage2 auto keyframe")
-        #scene.frame_set(frame)
-        #for bone in ob.pose.bones:
+        # scene.frame_set(frame)
+        # for bone in ob.pose.bones:
         #   for i in bpy.context.scene.objects:
             #   if i.name == bone.name:
                 #   for fr in loclist:
                     #   print(fr)
-                        #if fr[0] == frame:
+                        # if fr[0] == frame:
                         #   if fr[1] == bone.name:
                             #       print(fr[2])
                                 #   i.location = fr[2]
-                                    #i.keyframe_insert(data_path="location")
-                    #for fr in rotlist:
+                                    # i.keyframe_insert(data_path="location")
+                    # for fr in rotlist:
                     #   print(fr)
-                        #if fr[0] == frame:
+                        # if fr[0] == frame:
                         #   if fr[1] == bone.name:
                             #       print(fr[2])
                                 #   i.rotation_euler = fr[2]
-                                    #i.keyframe_insert(data_path="rotation_euler")
+                                    # i.keyframe_insert(
+                                    #    data_path="rotation_euler")
 
-    #bpy.ops.screen.animation_play()
+    # bpy.ops.screen.animation_play()
 
     return {'FINISHED'}
+
+
 def add_kf(self, context):
     scene = bpy.context.scene
     sfc = scene.frame_current
     for a in bpy.context.scene.objects:
         if a.type == 'ARMATURE':
             ob = a
-    #for kf in loclist[sfc]:
-     #   print(kf)
+    # for kf in loclist[sfc]:
+    #   print(kf)
 
     obPresent = True
     try:
@@ -1065,44 +1182,52 @@ def add_kf(self, context):
     if obPresent:
         for bone in ob.pose.bones:
             i = bpy.context.scene.objects.get(bone.name)
-            #for i in bpy.context.scene.objects:
-                #if i.name == bone.name:
+            # for i in bpy.context.scene.objects:
+                # if i.name == bone.name:
             if i is not None:
-
+                # TODO: merge those two for loops
                 for fr in loclist:
-                 #   print(fr)
+                #   print(fr)
                     if fr[0] == sfc:
                         if fr[1] == bone.name:
-                                cbPrint(fr[2])
-                                i.location = fr[2]
-                                i.keyframe_insert(data_path="location")
+                            cbPrint(fr[2])
+                            i.location = fr[2]
+                            i.keyframe_insert(data_path="location")
                 for fr in rotlist:
                     cbPrint(fr)
                     if fr[0] == sfc:
                         if fr[1] == bone.name:
-                                cbPrint(fr[2])
-                                i.rotation_euler = fr[2]
-                                i.keyframe_insert(data_path="rotation_euler")
+                            cbPrint(fr[2])
+                            i.rotation_euler = fr[2]
+                            i.keyframe_insert(data_path="rotation_euler")
     return {'FINISHED'}
-#fakebone keyframe
+
+
+# fakebone keyframe
 class Make_key_framelist(bpy.types.Operator):
     bl_label = "Make Fakebone Keyframes list"
     bl_idname = "make_fb.kfml"
+
     def execute(self, context):
         return add_kfl(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
+
+
 class Add_fkey_frame(bpy.types.Operator):
     bl_label = "Add Fakebone Keyframe"
     bl_idname = "add_fb.kfm"
+
     def execute(self, context):
         return add_kf(self, context)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
-#exporter
-#systemconsole
+
+
+# exporter
+# systemconsole
 # class Toggle_sys_con(bpy.types.Operator):
     # bl_label = "Toggle System Console"
     # bl_idname = "tog_sys.con"
@@ -1111,7 +1236,6 @@ class Add_fkey_frame(bpy.types.Operator):
         # self.report({'INFO'}, message)
         # cbPrint(message)
         # return {'FINISHED'}
-
 
 
 class Export(bpy.types.Operator, ExportHelper):
@@ -1134,16 +1258,16 @@ class Export(bpy.types.Operator, ExportHelper):
             description="For Animated Models, Skeletal",
             default=False,
             )
-    #is_caf = BoolProperty(
-            #name="Caf",
-            #description="For Animated Models, Skeletal,animation",
-            #default=False,
-            #)
-    #fr_start = IntProperty(
-            #name = "First Frame",
-            #default = 1, min = 0, max = 10,
-            #description = "An example integer"
-            #)
+    # is_caf = BoolProperty(
+            # name="Caf",
+            # description="For Animated Models, Skeletal,animation",
+            # default=False,
+            # )
+    # fr_start = IntProperty(
+            # name = "First Frame",
+            # default = 1, min = 0, max = 10,
+            # description = "An example integer"
+            # )
 
     merge_anm = BoolProperty(
             name="Merge anim",
@@ -1157,14 +1281,16 @@ class Export(bpy.types.Operator, ExportHelper):
             )
     avg_pface = BoolProperty(
             name="Average Planar Face normals",
-            description="Help align face normals that have normals that are within 1 degree",
+            description="Help align face normals that have normals"
+                        + "that are within 1 degree",
             default=False,
             )
-    #sh_edge = BoolProperty(
-     #   name="Smooth with sharp edges",
-      #   description="Temp hack to export smooth shaded models with sharp edges",
-       #     default=False,
-        #   )
+    # sh_edge = BoolProperty(
+    #   name="Smooth with sharp edges",
+    #   description="Temp hack to export smooth shaded models"
+    #                + "with sharp edges",
+    #     default=False,
+    #   )
 
     run_rc = BoolProperty(
             name="Run Resource Compiler",
@@ -1179,26 +1305,30 @@ class Export(bpy.types.Operator, ExportHelper):
 
     include_ik = BoolProperty(
             name="Include IK in Character",
-            description="Adds IK from your skeleton to the phys skeleton upon export.",
+            description="Adds IK from your skeleton to the phys skeleton"
+                        + "upon export.",
             default=False,
             )
 
     make_layer = BoolProperty(
             name="Make .lyr file",
-            description="Makes a .lyr to reassemble your scene in the CryEngine 3",
+            description="Makes a .lyr to reassemble your scene"
+                        + "in the CryEngine 3",
             default=False,
             )
 
     def execute(self, context):
         exe = CONFIG['RC_LOCATION']
         cbPrint(CONFIG['RC_LOCATION'])
-        #try:
+        # try:
         temp = export.save(self, context, exe)
         self.filepath = '//'
         return temp
-        #except:
-            #cbPrint("Error while exporting, have you specified a valid rc.exe location?")
+        # except:
+            # cbPrint("Error while exporting,"
+            #    + "have you specified a valid rc.exe location?")
         return {'FINISHED'}
+
 
 ############################### MENU   ################################
 class Mesh_Repair_Tools(bpy.types.Menu):
@@ -1214,6 +1344,7 @@ class Mesh_Repair_Tools(bpy.types.Menu):
         layout.operator("mesh_rep.overweight", icon='MESH_CUBE')
         layout.operator("mesh_rep.weightless", icon='MESH_CUBE')
         layout.operator("mesh_rep.removeall", icon='MESH_CUBE')
+
 
 class Mat_phys_add(bpy.types.Menu):
     bl_idname = "Mat_ph_add"
@@ -1231,6 +1362,7 @@ class Mat_phys_add(bpy.types.Menu):
         layout.operator("mat_phys.obstr", icon='PHYSICS')
         layout.operator("mat_phys.nocol", icon='PHYSICS')
 
+
 class J_Props_Add(bpy.types.Menu):
     bl_idname = "j_props.add"
     bl_label = "Add JOINTED (pre-broken) BREAKABLES Properties"
@@ -1239,28 +1371,34 @@ class J_Props_Add(bpy.types.Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
         layout.label(text="Rendermesh:")
-        layout.operator("add_rm_e.props", icon='SCRIPT', text = "entity")
-        layout.operator("add_rm_m.props", icon='SCRIPT', text = "mass=value")
-        layout.operator("add_rm_d.props", icon='SCRIPT', text = "density=value")
-        layout.operator("add_rm_p.props", icon='SCRIPT', text = "pieces=value")
+        layout.operator("add_rm_e.props", icon='SCRIPT', text="entity")
+        layout.operator("add_rm_m.props", icon='SCRIPT', text="mass=value")
+        layout.operator("add_rm_d.props", icon='SCRIPT', text="density=value")
+        layout.operator("add_rm_p.props", icon='SCRIPT', text="pieces=value")
         layout.separator()
         layout.label(text="Joint Node:")
-        layout.operator("add_j_gpc.props", icon='SCRIPT', text = "gameplay_critical")
-        layout.operator("add_j_pcb.props", icon='SCRIPT', text = "player_can_break")
-        layout.operator("add_j_b.props", icon='SCRIPT', text = "bend")
-        layout.operator("add_j_t.props", icon='SCRIPT', text = "twist")
-        layout.operator("add_j_pull.props", icon='SCRIPT', text = "pull")
-        layout.operator("add_j_push.props", icon='SCRIPT', text = "push")
-        layout.operator("add_j_shift.props", icon='SCRIPT', text = "shift")
-        layout.operator("add_j_climit.props", icon='SCRIPT', text = "constraint_limit")
-        layout.operator("add_j_cminang.props", icon='SCRIPT', text = "constraint_minang")
-        layout.operator("add_j_cmaxang.props", icon='SCRIPT', text = "consrtaint_maxang")
-        layout.operator("add_j_cdamp.props", icon='SCRIPT', text = "constraint_damping")
-        layout.operator("add_j_ccol.props", icon='SCRIPT', text = "constraint_collides")
+        layout.operator("add_j_gpc.props", icon='SCRIPT',
+                        text="gameplay_critical")
+        layout.operator("add_j_pcb.props", icon='SCRIPT',
+                        text="player_can_break")
+        layout.operator("add_j_b.props", icon='SCRIPT', text="bend")
+        layout.operator("add_j_t.props", icon='SCRIPT', text="twist")
+        layout.operator("add_j_pull.props", icon='SCRIPT', text="pull")
+        layout.operator("add_j_push.props", icon='SCRIPT', text="push")
+        layout.operator("add_j_shift.props", icon='SCRIPT', text="shift")
+        layout.operator("add_j_climit.props", icon='SCRIPT',
+                        text="constraint_limit")
+        layout.operator("add_j_cminang.props", icon='SCRIPT',
+                        text="constraint_minang")
+        layout.operator("add_j_cmaxang.props", icon='SCRIPT',
+                        text="consrtaint_maxang")
+        layout.operator("add_j_cdamp.props", icon='SCRIPT',
+                        text="constraint_damping")
+        layout.operator("add_j_ccol.props", icon='SCRIPT',
+                        text="constraint_collides")
 
 
-
-#cgf/cga/chr
+# cgf/cga/chr
 class CFAR_Props_Add(bpy.types.Menu):
     bl_idname = "cfar_props.add"
     bl_label = "Add CGF/CGA/CHR Properties"
@@ -1269,18 +1407,22 @@ class CFAR_Props_Add(bpy.types.Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
         layout.label(text="Phys Proxy:")
-        layout.operator("add_neo.props", icon='SCRIPT', text = "no_explosion_occlusion")
-        layout.operator("add_orm.props", icon='SCRIPT', text = "other_rendermesh")
-        layout.operator("add_colp.props", icon='SCRIPT', text = "colltype_player")
-        layout.operator("add_b.props", icon='SCRIPT', text = "box")
-        layout.operator("add_cyl.props", icon='SCRIPT', text = "cylinder")
-        layout.operator("add_caps.props", icon='SCRIPT', text = "capsule")
-        layout.operator("add_sph.props", icon='SCRIPT', text = "sphere")
-        layout.operator("add_nap.props", icon='SCRIPT', text = "notaprim")
+        layout.operator("add_neo.props", icon='SCRIPT',
+                        text="no_explosion_occlusion")
+        layout.operator("add_orm.props", icon='SCRIPT',
+                        text="other_rendermesh")
+        layout.operator("add_colp.props", icon='SCRIPT',
+                        text="colltype_player")
+        layout.operator("add_b.props", icon='SCRIPT', text="box")
+        layout.operator("add_cyl.props", icon='SCRIPT', text="cylinder")
+        layout.operator("add_caps.props", icon='SCRIPT', text="capsule")
+        layout.operator("add_sph.props", icon='SCRIPT', text="sphere")
+        layout.operator("add_nap.props", icon='SCRIPT', text="notaprim")
         layout.separator()
         layout.label(text="Rendermesh:")
-        layout.operator("add_nhr.props", icon='SCRIPT', text = "no_hit_refinement")
-        layout.operator("add_dyn.props", icon='SCRIPT', text = "dynamic")
+        layout.operator("add_nhr.props", icon='SCRIPT',
+                        text="no_hit_refinement")
+        layout.operator("add_dyn.props", icon='SCRIPT', text="dynamic")
 
 
 class Cust_props_add(bpy.types.Menu):
@@ -1297,31 +1439,32 @@ class Cust_props_add(bpy.types.Menu):
         layout.separator()
         layout.label(text="CGF/CGA/CHR:")
         layout.menu("cfar_props.add", icon='SCRIPT')
-        #layout.operator("add_entity.props", icon='SCRIPT')
+        # layout.operator("add_entity.props", icon='SCRIPT')
         layout.separator()
         layout.label(text="JOINTED (pre-broken) BREAKABLES:")
         layout.menu("j_props.add", icon='SCRIPT')
         layout.separator()
         layout.label(text="DEFORMABLES:")
-        layout.operator("add_skeleton.props", icon='SCRIPT', text = "Add Properties to your deformable mesh skeleton.")
+        layout.operator("add_skeleton.props", icon='SCRIPT',
+                    text="Add Properties to your deformable mesh skeleton.")
         layout.separator()
         layout.label(text="Vehicles:")
-        layout.operator("add_wh.props", icon='SCRIPT', text = "Add Properties to your Vehicle Wheels.")
+        layout.operator("add_wh.props", icon='SCRIPT',
+                        text="Add Properties to your Vehicle Wheels.")
 
 
 class CustomMenu(bpy.types.Menu):
-    #bl_space_type = 'INFO'#testing
+    # bl_space_type = 'INFO'#testing
     bl_label = "CryBlend Menu"
     bl_idname = "OBJECT_MT_custom_menu"
-
 
     def draw(self, context):
         userpref = context.user_preferences
         paths = userpref.filepaths
         layout = self.layout
-
-        layout.label(text='v' + '.'.join(str(n) for n in VERSION))#version number
-        #layout.operator("open_donate.wp", icon='FORCE_DRAG')
+        # version number
+        layout.label(text='v' + '.'.join(str(n) for n in VERSION))
+        # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("add_cryexport.node", icon='VIEW3D_VEC')
         layout.operator("add_bo.joint", icon='META_CUBE')
         layout.separator()
@@ -1336,38 +1479,38 @@ class CustomMenu(bpy.types.Menu):
         layout.operator("make_fb.kfml", icon='KEY_HLT')
         layout.operator("add_fb.kfm", icon='KEY_HLT')
         layout.separator()
-        #layout.operator_context = 'EXEC_AREA'
-        #layout.label(text="Add Material Physics", icon="PHYSICS")
+        # layout.operator_context = 'EXEC_AREA'
+        # layout.label(text="Add Material Physics", icon="PHYSICS")
         layout.menu("Mat_ph_add", icon='PHYSICS')
         layout.separator()
         layout.menu("mesh_rep_tools", icon="MESH_CUBE")
         layout.separator()
         layout.operator("cb.find_no_uvs", icon="UV_FACESEL")
         layout.separator()
-        #layout.label(text="Add Custom Properties", icon="SCRIPT")
+        # layout.label(text="Add Custom Properties", icon="SCRIPT")
         layout.menu("Cust_props.add", icon='SCRIPT')
         layout.separator()
         layout.operator("find_deg.faces", icon='ZOOM_ALL')
         layout.operator("find_multiface.lines", icon='ZOOM_ALL')
         layout.separator()
-        #layout.operator("fix_wh.trans", icon='ZOOM_ALL')
+        # layout.operator("fix_wh.trans", icon='ZOOM_ALL')
         layout.separator()
         layout.operator("f_ind.rc", icon='SCRIPTWIN')
         layout.separator()
         layout.separator()
-        #layout.label(text="Export to CryEngine", icon='GAME')
+        # layout.label(text="Export to CryEngine", icon='GAME')
         layout.operator("export_to.game", icon='GAME')
         layout.separator()
-        #layout.operator("tog_sys.con", icon="CONSOLE")
-        #layout.label(text="rc.exe:")
-        #layout.prop(paths, "r_c", text="")
-        #layout.operator("f_ind.rc", icon='GAME')
-        #layout.operator("save_config.file", icon='GAME')
+        # layout.operator("tog_sys.con", icon="CONSOLE")
+        # layout.label(text="rc.exe:")
+        # layout.prop(paths, "r_c", text="")
+        # layout.operator("f_ind.rc", icon='GAME')
+        # layout.operator("save_config.file", icon='GAME')
         # use an operator enum property to populate a submenu
-        #layout.operator_menu_enum("object.select_by_type",
-                                  #property="type",
-                                  #text="Select All by Type...",
-                                  #)save_config.file
+        # layout.operator_menu_enum("object.select_by_type",
+        #                           property="type",
+        #                           text="Select All by Type...",
+        #                           )save_config.file
 
 
 def draw_item(self, context):
@@ -1453,6 +1596,7 @@ def get_classes_to_register():
 
     return classes
 
+
 def register():
     for classToRegister in get_classes_to_register():
         bpy.utils.register_class(classToRegister)
@@ -1460,14 +1604,16 @@ def register():
     # lets add ourselves to the main headerAdd_rm_e_Prop
     bpy.types.INFO_HT_header.append(draw_item)
 
+
 def unregister():
-    #you guys already know this but for my reference,
-    #unregister your classes or when you do new scene
-    #your script wont import other modules properly.
+    # you guys already know this but for my reference,
+    # unregister your classes or when you do new scene
+    # your script wont import other modules properly.
     for classToRegister in get_classes_to_register():
         bpy.utils.unregister_class(classToRegister)
 
     bpy.types.INFO_HT_header.remove(draw_item)
+
 
 if __name__ == "__main__":
     register()
