@@ -29,30 +29,22 @@
 #------------------------------------------------------------------------------
 
 
-import os
-import subprocess
+from bpy.props import StringProperty, BoolProperty, EnumProperty
+from bpy_extras.io_utils import ExportHelper
+from io_export_cryblend import exceptions, utils
+from io_export_cryblend.outPipe import cbPrint
+from math import *
+from mathutils import *
+from time import clock
+from xml.dom.minidom import * # Document
 import bpy
 import math
 import mathutils
-import time
-from time import clock
-from mathutils import *
-from math import *
+import os
 import random
-
-from bpy_extras.io_utils import ExportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty
-import io_export_cryblend
-# from io_export_cryblend import *
-from io_export_cryblend import utils
-# from io_export_cryblend import hbanim
-# from hbanim import *
-# from io_export_cryblend import vs
+import subprocess
+import time
 import xml.dom.minidom
-from xml.dom.minidom import *  # Document
-
-from io_export_cryblend.outPipe import cbPrint
-from io_export_cryblend import exceptions
 
 
 # the following func is from

@@ -8,13 +8,14 @@
 # Copyright:   (c) Angelo J. Miner 2012
 # License:     GPLv2+
 #------------------------------------------------------------------------------
-import bpy
-from bpy.props import *
-import bpy_extras
-import bpy.ops
-# from add_utils import AddObjectHelper, add_object_data
 
+
+from bpy.props import *
 from bpy_extras.io_utils import ExportHelper
+import bpy
+import bpy.ops
+import bpy_extras
+# from add_utils import AddObjectHelper, add_object_data
 
 
 # animnode for animation name and frame range slection

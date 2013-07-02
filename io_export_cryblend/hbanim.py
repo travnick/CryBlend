@@ -10,8 +10,6 @@
 #------------------------------------------------------------------------------
 #!/usr/bin/env python
 
-from io_export_cryblend.outPipe import cbPrint
-
 
 def convert_time(frx):
     s = ((fps_b * frx) / fps)

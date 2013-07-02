@@ -44,31 +44,30 @@ bl_info = {
 
 VERSION = bl_info["version"]
 
-import bpy
-import bpy_extras
-import bpy.ops
-# from add_utils import AddObjectHelper, add_object_data
+
+from bpy.app import binary_path
 from bpy.props import *
 from bpy_extras.io_utils import ExportHelper
-from bpy.app import binary_path
-import os.path
-import bmesh
-from bpy.props import FloatProperty, BoolProperty, FloatVectorProperty
-
-import io_export_cryblend
-from io_export_cryblend import add
-from io_export_cryblend import export
+from io_export_cryblend import add, export
 from io_export_cryblend.outPipe import cbPrint
+import bmesh
+import bpy
+import bpy.ops
+import bpy_extras
+import configparser
+import io_export_cryblend
+import os
+import os.path
+import pickle
+import webbrowser
+# from add_utils import AddObjectHelper, add_object_data
+
 
 # for help
-import webbrowser
 new = 2  # open in a new tab, if possible
 #
 # for config
 # rc = r'G:\apps\CryENGINE_PC_v3_4_0_3696_freeSDK\Bin32\rc\rc.exe'#temp
-import os
-import configparser
-import pickle
 rc = r''
 CONFIG_PATH = bpy.utils.user_resource('CONFIG', path='scripts', create=True)
 CONFIG_FILENAME = 'cryblend.cfg'
