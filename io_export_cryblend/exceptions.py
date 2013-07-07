@@ -11,7 +11,7 @@
 
 # <pep8-80 compliant>
 
-class CryBlendException(Exception):
+class CryBlendException(RuntimeError):
     def __init__(self, message):
         self._message = message
 
@@ -32,10 +32,10 @@ class BlendNotSavedException(CryBlendException):
 class TextureAndBlendDiskMismatch(CryBlendException):
     def __init__(self, blend_path, texture_path):
         message = """ 
-        Blend file and all textures have to be placed on the same disk.
-        It's impossible to create relative paths if they are not.
-        Blend file: {!s}
-        Texture file: {!s}""".format(blend_path, texture_path)
+Blend file and all textures have to be placed on the same disk.
+It's impossible to create relative paths if they are not.
+Blend file: {!s}
+Texture file: {!s}""".format(blend_path, texture_path)
 
         CryBlendException.__init__(self, message)
 

@@ -88,16 +88,10 @@ def write(self, doc, fname, exe):
     f = open(fname, "w")
     f.write(s)
     mystr = "/createmtl=1 "
-    r = subprocess.Popen
     if self.run_rc:
-        cbPrint(str(exe))  # rc))
-        cbPrint(fname)
-        r([str(exe), str(fname)])
+        run_rc(exe, fname)
     if self.run_rcm:
-        cbPrint(str(exe))  # rc))
-        cbPrint(mystr)
-        cbPrint(fname)
-        r([str(exe), str(mystr), str(fname)])
+        run_rc(exe, fname, mystr)
     if self.make_layer:
         lName = "ExportedLayer"
         layerDoc = Document()
@@ -202,6 +196,22 @@ def write(self, doc, fname, exe):
         f.write(s)
         f.close()
 # doc = Document()
+
+
+def run_rc(rc_path, dae_path, params=None):
+    run = subprocess.Popen
+
+    cbPrint(rc_path)
+    if params is None:
+        params = ""
+    else:
+        cbPrint(params)
+    cbPrint(dae_path)
+
+    try:
+        run([rc_path, params, dae_path])
+    except:
+        raise exceptions.NoRcSelectedException
 
 
 def generateGUID():
@@ -3421,11 +3431,14 @@ def make_relative_path(filepath):
 
 
 def save(self, context, exe):
+    # prevent wasting time for exporting if RC was not found
+    if not os.path.isfile(exe):
+        raise exceptions.NoRcSelectedException
 
-        exp = ExportCrytekDae  # (self,context)
-        exp.execute(self, context, exe)
+    exp = ExportCrytekDae  # (self,context)
+    exp.execute(self, context, exe)
 
-        return {'FINISHED'}  # so the script wont run after we have batch exported.
+    return {'FINISHED'}  # so the script wont run after we have batch exported.
 
 
 def menu_func_export(self, context):
