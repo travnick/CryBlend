@@ -960,7 +960,7 @@ class AddBoneGeometry(bpy.types.Operator):
                     if ((not bone.name + "_boneGeometry" in nameList
                             and not obj.name + "_Phys" in nameList)
                         or (obj.name + "_Phys" in nameList
-                            and bone.name + '_Phys' in physBonesList)
+                            and bone.name + '_Phys' in physBonesList and not bone.name + "_boneGeometry" in nameList)
                         ):
                         mesh = bpy.data.meshes.new(
                                     "{!s}_boneGeometry".format(bone.name)
@@ -990,6 +990,56 @@ class AddBoneGeometry(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class RemoveBoneGeometry(bpy.types.Operator):
+    '''Remove BoneGeometry for bones in selected armatures'''
+    bl_idname = "cb.bone_geom_remove"
+    bl_label = "Remove boneGeometry"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    view_align = BoolProperty(
+            name="Align to View",
+            default=False,
+            )
+    location = FloatVectorProperty(
+            name="Location",
+            subtype='TRANSLATION',
+            )
+    rotation = FloatVectorProperty(
+            name="Rotation",
+            subtype='EULER',
+            )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Remove boneGeometry")
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='OBJECT')
+    
+        armatureList = []#Get list of armatures requiring attention
+        for obj in bpy.context.scene.objects:
+            if obj.type == 'ARMATURE' and obj.select:#Get selected armatures
+                armatureList.append(obj.name)    
+    
+        nameList = []#Get list of objects
+        for obj in bpy.context.scene.objects:
+            nameList.append(obj.name)
+            obj.select = False
+        
+        for name in armatureList:
+            obj = bpy.context.scene.objects[name]
+            physBonesList = []
+            if obj.name + "_Phys" in nameList:#Get list of phys bones in matching phys skel
+                for bone in bpy.data.objects[obj.name + "_Phys"].data.bones:
+                    physBonesList.append(bone.name)
+
+            for bone in obj.data.bones:#For each bone
+                if bone.name + "_boneGeometry" in nameList:
+                    bpy.data.objects[bone.name+"_boneGeometry"].select = True
+            
+            bpy.ops.object.delete()
+
+        return {'FINISHED'}
 
 # verts and faces
 # find bone heads and add at that location
@@ -1473,6 +1523,7 @@ class CustomMenu(bpy.types.Menu):
         layout.operator("cb.fake_bone_remove", icon='BONE_DATA')
         layout.separator()
         layout.operator("cb.bone_geom_add", icon="PHYSICS")
+        layout.operator("cb.bone_geom_remove", icon="PHYSICS")
         layout.operator("cb.phys_bones_rename", icon="PHYSICS")
         layout.separator()
         layout.operator("make_fb.kfml", icon='KEY_HLT')
@@ -1591,6 +1642,7 @@ def get_classes_to_register():
 
         RenamePhysBones,
         AddBoneGeometry,
+        RemoveBoneGeometry,
     )
 
     return classes
