@@ -1212,11 +1212,12 @@ class Export(bpy.types.Operator, ExportHelper):
         
         return {'FINISHED'}
 
+
 class ErrorHandler(bpy.types.Operator):
     WIDTH = 400
     HEIGHT = 200
     bl_idname = "error.message"
-    bl_label = "An error has occured:"
+    bl_label = "Error:"
 
     message = bpy.props.StringProperty()
 
@@ -1231,12 +1232,17 @@ class ErrorHandler(bpy.types.Operator):
     def draw(self, context):
         self.layout.label(self.bl_label, icon = 'ERROR')
         row = self.layout.split()
-        row = self.layout.split()
-        row.prop(self, "message", "")
+        multiline_label(self.layout, self.message)
         row = self.layout.split()
         row = self.layout.split(0.2)
 
-    
+
+def multiline_label(layout, text):
+    for line in text.splitlines():
+        row = layout.split()
+        row.label(line)
+
+
 ############################### MENU   ################################
 class Mesh_Repair_Tools(bpy.types.Menu):
     bl_idname = "mesh_rep_tools"
