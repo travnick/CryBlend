@@ -239,27 +239,27 @@ def run_rc(rc_path, dae_path, params=None):
 
 def fix_normalmap_in_mtls(rc_process, dae_file):
     SUCCESS = 0
-    
+
     return_code = rc_process.wait()
 
     if return_code == SUCCESS:
         export_directory = os.path.dirname(dae_file)
 
         mtl_files = get_mtl_files_in_directory(export_directory)
-                
+
         for mtl_file_name in mtl_files:
             fix_normalmap_in_mtl(mtl_file_name)
 
 
 def get_mtl_files_in_directory(directory):
     MTL_FILE_EXTENSION = "mtl"
-    
+
     mtl_files = []
     for file in os.listdir(directory):
         if fnmatch.fnmatch(file, "*.{!s}".format(MTL_FILE_EXTENSION)):
             filepath = "{!s}/{!s}".format(directory, file)
             mtl_files.append(filepath)
-    
+
     return mtl_files
 
 
@@ -267,18 +267,18 @@ def fix_normalmap_in_mtl(mtl_file_name):
     TMP_FILE_SUFFIX = ".tmp"
     BAD_TAG_NAME = "<Texture Map=\"NormalMap\" File=\""
     GOOD_TAG_NAME = "<Texture Map=\"Bumpmap\" File=\""
-    
+
     tmp_mtl_file_name = mtl_file_name + TMP_FILE_SUFFIX
     mtl_old_file = open(mtl_file_name, "r")
     mtl_new_file = open(tmp_mtl_file_name, "w")
-            
+
     for line in mtl_old_file:
         line = line.replace(BAD_TAG_NAME, GOOD_TAG_NAME)
         mtl_new_file.write(line)
-        
+
     mtl_old_file.close()
     mtl_new_file.close()
-    
+
     os.remove(mtl_file_name)
     os.rename(tmp_mtl_file_name, mtl_file_name)
 
