@@ -34,8 +34,8 @@ class TextureAndBlendDiskMismatch(CryBlendException):
         message = """ 
 Blend file and all textures have to be placed on the same disk.
 It's impossible to create relative paths if they are not.
-Blend file: {!s}
-Texture file: {!s}""".format(blend_path, texture_path)
+Blend file: {!r}
+Texture file: {!r}""".format(blend_path, texture_path)
 
         CryBlendException.__init__(self, message)
 

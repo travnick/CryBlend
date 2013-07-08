@@ -379,7 +379,7 @@ class ExportCrytekDae:
 # library images
         libima = doc.createElement("library_images")
         for image in bpy.data.images:
-            if image.has_data:
+            if image.has_data and image.filepath:
                 imaname = image.name
                 image_path = get_relative_path(image.filepath)
                 imaid = doc.createElement("image")
