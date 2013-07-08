@@ -1355,7 +1355,7 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Generally a Good Idea",
             default=True,
             )
-    run_rcm = BoolProperty(
+    run_rc_and_do_materials = BoolProperty(
             name="Run RC and Do Materials",
             description="Generally a Good Idea",
             default=False,
