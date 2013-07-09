@@ -38,11 +38,14 @@ from mathutils import *
 from time import clock
 from xml.dom.minidom import * # Document
 import bpy
+import fnmatch
 import math
 import mathutils
 import os
 import random
 import subprocess
+import sys
+import threading
 import time
 import xml.dom.minidom
 
@@ -87,17 +90,18 @@ def write(self, doc, fname, exe):
     s = doc.toprettyxml(indent="  ")
     f = open(fname, "w")
     f.write(s)
+
+    dae_file_for_rc = get_dae_path_for_rc(fname)
     mystr = "/createmtl=1 "
-    r = subprocess.Popen
     if self.run_rc:
-        cbPrint(str(exe))  # rc))
-        cbPrint(fname)
-        r([str(exe), str(fname)])
-    if self.run_rcm:
-        cbPrint(str(exe))  # rc))
-        cbPrint(mystr)
-        cbPrint(fname)
-        r([str(exe), str(mystr), str(fname)])
+        run_rc(exe, dae_file_for_rc)
+    if self.run_rc_and_do_materials:
+        mtl_creating_process = run_rc(exe, dae_file_for_rc, mystr)
+        mtl_fix_thread = threading.Thread(
+            target=fix_normalmap_in_mtls,
+            args=(mtl_creating_process, fname)
+        )
+        mtl_fix_thread.start()
     if self.make_layer:
         lName = "ExportedLayer"
         layerDoc = Document()
@@ -204,6 +208,81 @@ def write(self, doc, fname, exe):
 # doc = Document()
 
 
+def get_dae_path_for_rc(daeFilePath):
+    # 'z:' is for wine (linux, max) path
+    # there should be better way to determine it
+    WINE_DEFAULT_DRIVE_LETTER = "z:"
+
+    if not sys.platform == 'win32':
+        daeFilePath = WINE_DEFAULT_DRIVE_LETTER + daeFilePath
+
+    return daeFilePath
+
+
+def run_rc(rc_path, dae_path, params=None):
+    run = subprocess.Popen
+
+    cbPrint(rc_path)
+    if params is None:
+        params = ""
+    else:
+        cbPrint(params)
+    cbPrint(dae_path)
+
+    try:
+        run_object = subprocess.Popen([rc_path, params, dae_path])
+    except:
+        raise exceptions.NoRcSelectedException
+
+    return run_object
+
+
+def fix_normalmap_in_mtls(rc_process, dae_file):
+    SUCCESS = 0
+
+    return_code = rc_process.wait()
+
+    if return_code == SUCCESS:
+        export_directory = os.path.dirname(dae_file)
+
+        mtl_files = get_mtl_files_in_directory(export_directory)
+
+        for mtl_file_name in mtl_files:
+            fix_normalmap_in_mtl(mtl_file_name)
+
+
+def get_mtl_files_in_directory(directory):
+    MTL_FILE_EXTENSION = "mtl"
+
+    mtl_files = []
+    for file in os.listdir(directory):
+        if fnmatch.fnmatch(file, "*.{!s}".format(MTL_FILE_EXTENSION)):
+            filepath = "{!s}/{!s}".format(directory, file)
+            mtl_files.append(filepath)
+
+    return mtl_files
+
+
+def fix_normalmap_in_mtl(mtl_file_name):
+    TMP_FILE_SUFFIX = ".tmp"
+    BAD_TAG_NAME = "<Texture Map=\"NormalMap\" File=\""
+    GOOD_TAG_NAME = "<Texture Map=\"Bumpmap\" File=\""
+
+    tmp_mtl_file_name = mtl_file_name + TMP_FILE_SUFFIX
+    mtl_old_file = open(mtl_file_name, "r")
+    mtl_new_file = open(tmp_mtl_file_name, "w")
+
+    for line in mtl_old_file:
+        line = line.replace(BAD_TAG_NAME, GOOD_TAG_NAME)
+        mtl_new_file.write(line)
+
+    mtl_old_file.close()
+    mtl_new_file.close()
+
+    os.remove(mtl_file_name)
+    os.rename(tmp_mtl_file_name, mtl_file_name)
+
+
 def generateGUID():
     GUID = '{'
     GUID += randomSector(8)
@@ -300,7 +379,7 @@ class ExportCrytekDae:
 # library images
         libima = doc.createElement("library_images")
         for image in bpy.data.images:
-            if image.has_data:
+            if image.has_data and image.filepath:
                 imaname = image.name
                 image_path = get_relative_path(image.filepath)
                 imaid = doc.createElement("image")
@@ -3421,11 +3500,14 @@ def make_relative_path(filepath):
 
 
 def save(self, context, exe):
+    # prevent wasting time for exporting if RC was not found
+    if not os.path.isfile(exe):
+        raise exceptions.NoRcSelectedException
 
-        exp = ExportCrytekDae  # (self,context)
-        exp.execute(self, context, exe)
+    exp = ExportCrytekDae  # (self,context)
+    exp.execute(self, context, exe)
 
-        return {'FINISHED'}  # so the script wont run after we have batch exported.
+    return {'FINISHED'}  # so the script wont run after we have batch exported.
 
 
 def menu_func_export(self, context):

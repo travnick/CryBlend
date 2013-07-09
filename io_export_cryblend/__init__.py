@@ -32,7 +32,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 7),
-    "version": (4, 9, 2, 1),
+    "version": (4, 9, 3),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -44,23 +44,32 @@ bl_info = {
 
 VERSION = bl_info["version"]
 
+if "bpy" in locals():
+    import imp
+    if "add" in locals():
+        imp.reload(add)
+    if "export" in locals():
+        imp.reload(export)
+    if "exceptions" in locals():
+        imp.reload(exceptions)
+else:
+    import bpy
+    from io_export_cryblend import add
+    from io_export_cryblend import export
+    from io_export_cryblend import exceptions
 
 from bpy.app import binary_path
 from bpy.props import *
 from bpy_extras.io_utils import ExportHelper
-from io_export_cryblend import add, export
 from io_export_cryblend.outPipe import cbPrint
 import bmesh
-import bpy
 import bpy.ops
 import bpy_extras
 import configparser
-import io_export_cryblend
 import os
 import os.path
 import pickle
 import webbrowser
-# from add_utils import AddObjectHelper, add_object_data
 
 
 # for help
@@ -1015,17 +1024,17 @@ class RemoveBoneGeometry(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.object.mode_set(mode='OBJECT')
-    
+
         armatureList = []#Get list of armatures requiring attention
         for obj in bpy.context.scene.objects:
             if obj.type == 'ARMATURE' and obj.select:#Get selected armatures
-                armatureList.append(obj.name)    
-    
+                armatureList.append(obj.name)
+
         nameList = []#Get list of objects
         for obj in bpy.context.scene.objects:
             nameList.append(obj.name)
             obj.select = False
-        
+
         for name in armatureList:
             obj = bpy.context.scene.objects[name]
             physBonesList = []
@@ -1036,7 +1045,7 @@ class RemoveBoneGeometry(bpy.types.Operator):
             for bone in obj.data.bones:#For each bone
                 if bone.name + "_boneGeometry" in nameList:
                     bpy.data.objects[bone.name+"_boneGeometry"].select = True
-            
+
             bpy.ops.object.delete()
 
         return {'FINISHED'}
@@ -1346,7 +1355,7 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Generally a Good Idea",
             default=True,
             )
-    run_rcm = BoolProperty(
+    run_rc_and_do_materials = BoolProperty(
             name="Run RC and Do Materials",
             description="Generally a Good Idea",
             default=False,
@@ -1369,14 +1378,45 @@ class Export(bpy.types.Operator, ExportHelper):
     def execute(self, context):
         exe = CONFIG['RC_LOCATION']
         cbPrint(CONFIG['RC_LOCATION'])
-        # try:
-        temp = export.save(self, context, exe)
-        self.filepath = '//'
-        return temp
-        # except:
-            # cbPrint("Error while exporting,"
-            #    + "have you specified a valid rc.exe location?")
+        try:
+            temp = export.save(self, context, exe)
+            self.filepath = '//'
+            return temp
+        except exceptions.CryBlendException as exception:
+            cbPrint(exception.what(), 'error')
+            bpy.ops.error.message('INVOKE_DEFAULT', message=exception.what())
+
         return {'FINISHED'}
+
+
+class ErrorHandler(bpy.types.Operator):
+    WIDTH = 400
+    HEIGHT = 200
+    bl_idname = "error.message"
+    bl_label = "Error:"
+
+    message = bpy.props.StringProperty()
+
+    def execute(self, context):
+        self.report({'ERROR'}, self.message)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_popup(self, self.WIDTH, self.HEIGHT)
+
+    def draw(self, context):
+        self.layout.label(self.bl_label, icon='ERROR')
+        row = self.layout.split()
+        multiline_label(self.layout, self.message)
+        row = self.layout.split()
+        row = self.layout.split(0.2)
+
+
+def multiline_label(layout, text):
+    for line in text.splitlines():
+        row = layout.split()
+        row.label(line)
 
 
 ############################### MENU   ################################
@@ -1642,6 +1682,7 @@ def get_classes_to_register():
 
         RenamePhysBones,
         AddBoneGeometry,
+        ErrorHandler,
         RemoveBoneGeometry,
     )
 
