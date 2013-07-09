@@ -15,6 +15,16 @@ Your_Blender_path\scripts\addons\
 Changelog:
 --------
 
+**4.9.3**
+Features:
+* Added remove bone geometry tool and fixed minor glitch with add bone geometry tool
+* Error handling improved.
+* It works on wine (Linux/Mac OS).
+
+Fixes:
+* Normal maps are now properly exported into mtl file.
+* Fixed bug if image path is empty
+
 **4.9.2.1**
 Features:
 * Code formatted to match PEP-8.

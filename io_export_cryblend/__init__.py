@@ -32,7 +32,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 7),
-    "version": (4, 9, 2, 1),
+    "version": (4, 9, 3),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -1024,17 +1024,17 @@ class RemoveBoneGeometry(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.object.mode_set(mode='OBJECT')
-    
+
         armatureList = []#Get list of armatures requiring attention
         for obj in bpy.context.scene.objects:
             if obj.type == 'ARMATURE' and obj.select:#Get selected armatures
-                armatureList.append(obj.name)    
-    
+                armatureList.append(obj.name)
+
         nameList = []#Get list of objects
         for obj in bpy.context.scene.objects:
             nameList.append(obj.name)
             obj.select = False
-        
+
         for name in armatureList:
             obj = bpy.context.scene.objects[name]
             physBonesList = []
@@ -1045,7 +1045,7 @@ class RemoveBoneGeometry(bpy.types.Operator):
             for bone in obj.data.bones:#For each bone
                 if bone.name + "_boneGeometry" in nameList:
                     bpy.data.objects[bone.name+"_boneGeometry"].select = True
-            
+
             bpy.ops.object.delete()
 
         return {'FINISHED'}
