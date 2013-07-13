@@ -29,18 +29,15 @@
 #------------------------------------------------------------------------------
 
 
-from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend import exceptions, utils
 from io_export_cryblend.outPipe import cbPrint
-from math import *
-from mathutils import *
+from mathutils import Matrix, Vector
 from time import clock
-from xml.dom.minidom import * # Document
+from xml.dom.minidom import Document
 import bpy
 import fnmatch
 import math
-import mathutils
 import os
 import random
 import subprocess
@@ -220,8 +217,6 @@ def get_dae_path_for_rc(daeFilePath):
 
 
 def run_rc(rc_path, dae_path, params=None):
-    run = subprocess.Popen
-
     cbPrint(rc_path)
     if params is None:
         params = ""
