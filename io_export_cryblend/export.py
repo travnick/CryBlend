@@ -307,7 +307,12 @@ def randomSector(length):
 
 
 class ExportCrytekDae:
+    def __init__(self):
+        self.__dae_doc = Document()
+
     def execute(self, context, exe):
+        # TODO: split it up! 3k+ lines ...
+
         # Ensure the correct extension for chosen path
         filepath = bpy.path.ensure_ext(self.filepath, ".dae")
         # make sure everything in our cryexportnode is selected
@@ -1152,295 +1157,9 @@ class ExportCrytekDae:
 # library controllers aka skining info
         libcont = doc.createElement("library_controllers")
         start_time = clock()
-        for i in bpy.context.selected_objects:
-            bonelist = []
-            blist = ""
-            mtx = ""
-            mtx4_xneg90 = Matrix.Rotation(-math.pi / 2.0, 4, 'X')
-            mtx4_x90 = Matrix.Rotation(math.pi / 2.0, 4, 'X')
-            mtx4_y90 = Matrix.Rotation(math.pi / 2.0, 4, 'Y')
-            mtx4_z90 = Matrix.Rotation(math.pi / 2.0, 4, 'Z')
-            mtx4_z180 = Matrix.Rotation((2 * math.pi) / 2.0, 4, 'Z')
-            mtx4_y180 = Matrix.Rotation((2 * math.pi) / 2.0, 4, 'Y')
-            smtx = Matrix()
-            if i and not "_boneGeometry" in i.name:
-                # "some" code borrowed from dx exporter
-                ArmatureList = [Modifier
-                                for Modifier in i.modifiers
-                                if Modifier.type == "ARMATURE"]
-                if ArmatureList:
-                    bonenum = 0
-                    ArmatureObject = ArmatureList[0].object
-                    ArmatureBones = GetBones(ArmatureObject)
-                    PoseBones = ArmatureObject.pose.bones
-                    contr = doc.createElement("controller")
-                    contr.setAttribute("id", "%s_%s"
-                                       % (ArmatureList[0].object.name, i.name))
-                    libcont.appendChild(contr)
-                    sknsrc = doc.createElement("skin")
-                    sknsrc.setAttribute("source", "#%s" % i.name)
-                    contr.appendChild(sknsrc)
-                    mtx += ("%s " % smtx[0][0])
-                    mtx += ("%s " % smtx[1][0])
-                    mtx += ("%s " % smtx[2][0])
-                    mtx += ("%s " % smtx[3][0])
-                    mtx += ("%s " % smtx[0][1])
-                    mtx += ("%s " % smtx[1][1])
-                    mtx += ("%s " % smtx[2][1])
-                    mtx += ("%s " % smtx[3][1])
-                    mtx += ("%s " % smtx[0][2])
-                    mtx += ("%s " % smtx[1][2])
-                    mtx += ("%s " % smtx[2][2])
-                    mtx += ("%s " % smtx[3][2])
-                    mtx += ("%s " % smtx[0][3])
-                    mtx += ("%s " % smtx[1][3])
-                    mtx += ("%s " % smtx[2][3])
-                    mtx += ("%s " % smtx[3][3])
-                    bsm = doc.createElement("bind_shape_matrix")
-                    bsmv = doc.createTextNode("%s" % mtx)
-                    bsm.appendChild(bsmv)
-                    sknsrc.appendChild(bsm)
-                    src = doc.createElement("source")
-                    src.setAttribute("id", "%s_%s_joints"
-                                     % (ArmatureList[0].object.name, i.name))
 
-                    idar = doc.createElement("IDREF_array")
-                    idar.setAttribute("id", "%s_%s_joints_array"
-                                      % (ArmatureList[0].object.name, i.name))
-                    idar.setAttribute("count", "%s" % len(ArmatureBones))
-                    # blist += ("%s "%ArmatureList[0].object.name)
-                    for Bone in ArmatureBones:
-                        blist += ("%s " % Bone.name)
-                    cbPrint(blist)
-                    jnl = doc.createTextNode("%s" % blist)
-                    idar.appendChild(jnl)
-                    src.appendChild(idar)
-                    tcom = doc.createElement("technique_common")
-                    acc = doc.createElement("accessor")
-                    acc.setAttribute("source", "#%s_%s_joints_array"
-                                     % (ArmatureList[0].object.name, i.name))
-                    acc.setAttribute("count", "%s" % len(ArmatureBones))
-                    acc.setAttribute("stride", "1")
-                    paran = doc.createElement("param")
-                    # paran.setAttribute("name", "JOINT")
-                    paran.setAttribute("type", "IDREF")
-                    acc.appendChild(paran)
-                    tcom.appendChild(acc)
-                    src.appendChild(tcom)
-                    sknsrc.appendChild(src)
-                    srcm = doc.createElement("source")
-                    srcm.setAttribute("id", "%s_%s_matrices"
-                                      % (ArmatureList[0].object.name, i.name))
-                    flar = doc.createElement("float_array")
-                    flar.setAttribute("id", "%s_%s_matrices_array"
-                                      % (ArmatureList[0].object.name, i.name))
-                    flar.setAttribute("count", "%s"
-                                      % (len(ArmatureBones) * 16))
-                    armRot = ArmatureObject.matrix_world.to_quaternion()
-
-                    def blistbn(bonename, num):
-                        return bonename, num
-                    for Bone in ArmatureBones:
-                        tmp = blistbn(Bone.name, bonenum)
-                        bonelist.append(tmp)
-                        bonenum += 1
-                        lmtx1 = ""
-                        lmtx2 = ""
-                        lmtx3 = ""
-                        lmtx4 = ""
-                        '''
-                        sx ry rz lx
-                        rx sy rz ly
-                        rx ry sz lz
-                        0  0  0  1
-                        sx, sy, sz == 1 when writen out
-                        lx, ly, lz == location
-                        before sx, sy, sz == 1,
-                        ry == sx * ry * 10
-                        rz == sx * rz * 10
-                        eg:
-                            sx ,(ry == sx * ry * 10),(rz == sx * rz * 10), lx
-                        continue through y , z
-                        '''
-                        PoseBone = PoseBones[Bone.name]
-                        for sb in bpy.context.scene.objects:
-                            if sb.name == Bone.name:
-                                bmatrix = sb.matrix_local
-
-                        # if PoseBone.parent:
-                            # for sb in bpy.context.scene.objects:
-                                # if sb.name == Bone.parent.name:
-                                    # pbmatrix = sb.matrix_local# * mtx4_y180
-                            # pbmatrix = PoseBones[Bone.name].bone.parent.matrix_local
-                            # rmatrix = pbmatrix.inverted() * bmatrix
-                            # rmatrix = rmatrix * mtx4_z90
-                            # rmatrix = bmatrix#.inverted()
-                        # else:
-                            # rmatrix = bmatrix#.inverted()
-
-                        # if not PoseBone.parent:
-                            # rmatrix = mtx4_xneg90 * armRot.to_matrix().to_4x4() * bmatrix
-                        # else:
-                        # rmatrix = ArmatureObject.matrix_world * PoseBone.bone.head_local
-
-                        # cbPrint(bmatrix)
-                        # bmatrix = bmatrix * mtx4_xneg90
-                        # bmatrix = bmatrix * -1
-                        # cbPrint(bmatrix)
-                        # bmatrix = bmatrix * mtx4_xneg90
-                        # b_loc, b_rot, b_scale = bmatrix.decompose()
-                        # b_loc = b_loc * -1
-                        # rmatrix = b_rot.to_matrix()
-                        # rmatrix = rmatrix.to_4x4()
-                        rmatrix = bmatrix
-                        cbPrint("rmatrix%s" % rmatrix)
-                        # rmatrix = rmatrix * mtx4_xneg90
-                        '''
-                        if PoseBone.parent:
-                            lmtx1 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[0][0], rmatrix[0][1],
-                                rmatrix[0][2], -rmatrix[0][3]))
-                            lmtx2 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[1][0], rmatrix[1][1],
-                                rmatrix[1][2], -rmatrix[2][3]))
-                            lmtx3 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[2][0], rmatrix[2][1],
-                                rmatrix[2][2], (rmatrix[1][3]*-1)))
-                            lmtx4 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[3][0], rmatrix[3][1],
-                                rmatrix[3][2], rmatrix[3][3]))
-
-
-                        else:
-                            lmtx1 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[0][0], rmatrix[0][1],
-                                rmatrix[0][2], -rmatrix[0][3]))
-                            lmtx2 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[1][0], rmatrix[1][1],
-                                rmatrix[1][2], (rmatrix[1][3]*-1)))
-                            lmtx3 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[2][0], rmatrix[2][1],
-                                rmatrix[2][2], -rmatrix[2][3]))
-                            lmtx4 += ("%.6f %.6f %.6f %.6f "
-                                %(rmatrix[3][0], rmatrix[3][1],
-                                rmatrix[3][2], rmatrix[3][3]))
-                        '''
-                        lmtx1 += ("%.6f %.6f %.6f %.6f "
-                                  % (rmatrix[0][0], rmatrix[0][1],
-                                     rmatrix[0][2], -rmatrix[0][3]))
-                        lmtx2 += ("%.6f %.6f %.6f %.6f "
-                                  % (rmatrix[1][0], rmatrix[1][1],
-                                     rmatrix[1][2], (rmatrix[1][3] * -1)))
-                        lmtx3 += ("%.6f %.6f %.6f %.6f "
-                                  % (rmatrix[2][0], rmatrix[2][1],
-                                     rmatrix[2][2], -rmatrix[2][3]))
-                        lmtx4 += ("%.6f %.6f %.6f %.6f "
-                                  % (rmatrix[3][0], rmatrix[3][1],
-                                     rmatrix[3][2], rmatrix[3][3]))
-                        flarm1 = doc.createTextNode("%s" % lmtx1)
-                        flar.appendChild(flarm1)
-                        flarm2 = doc.createTextNode("%s" % lmtx2)
-                        flar.appendChild(flarm2)
-                        flarm3 = doc.createTextNode("%s" % lmtx3)
-                        flar.appendChild(flarm3)
-                        flarm4 = doc.createTextNode("%s" % lmtx4)
-                        flar.appendChild(flarm4)
-                    srcm.appendChild(flar)
-                    tcommat = doc.createElement("technique_common")
-                    accm = doc.createElement("accessor")
-                    accm.setAttribute("source", "#%s_%s_matrices_array"
-                                      % (ArmatureList[0].object.name, i.name))
-                    accm.setAttribute("count", "%s" % (len(ArmatureBones)))
-                    accm.setAttribute("stride", "16")
-                    paranm = doc.createElement("param")
-                    # paran.setAttribute("name", "JOINT")
-                    paranm.setAttribute("type", "float4x4")
-                    accm.appendChild(paranm)
-                    tcommat.appendChild(accm)
-                    srcm.appendChild(tcommat)
-                    sknsrc.appendChild(srcm)
-                    srcw = doc.createElement("source")
-                    srcw.setAttribute("id", "%s_%s_weights"
-                                      % (ArmatureList[0].object.name, i.name))
-                    flarw = doc.createElement("float_array")
-                    flarw.setAttribute("id", "%s_%s_weights_array"
-                                       % (ArmatureList[0].object.name, i.name))
-
-                    wa = ""
-                    vw = ""
-                    me = i.data
-                    vcntr = ""
-                    vcount = 0
-                    # for Bone in ArmatureBones:
-                        # for vg in i.vertex_groups:
-
-                    for v in me.vertices:
-                        if v.groups:
-                            # wa += ("%.6f "%v.groups[0].weight)
-                            for g in v.groups:
-                                wa += ("%.6f " % g.weight)  # ("%.6f "%g.weight)
-                                for gr in i.vertex_groups:
-                                    if gr.index == g.group:
-                                        for bn in bonelist:
-                                            if bn[0] == gr.name:
-                                                vw += ("%s " % bn[1])
-                                # vw += ("%s "%g.group)#v.groups.name)#[0])#.group[0])#g.group)#
-                                vw += ("%s " % str(vcount))
-                                vcount += 1
-                                cbPrint("Doing weights.")
-                        vcntr += ("%s " % len(v.groups))
-                    flarw.setAttribute("count", "%s" % vcount)  # len(me.vertices))
-                    lfarwa = doc.createTextNode("%s" % wa)
-                    flarw.appendChild(lfarwa)
-                    tcomw = doc.createElement("technique_common")
-                    accw = doc.createElement("accessor")
-                    accw.setAttribute("source", "#%s_%s_weights_array"
-                                      % (ArmatureList[0].object.name, i.name))
-                    accw.setAttribute("count", "%s" % vcount)  # len(me.vertices))
-                    accw.setAttribute("stride", "1")
-                    paranw = doc.createElement("param")
-                    paranw.setAttribute("type", "float")
-                    accw.appendChild(paranw)
-                    tcomw.appendChild(accw)
-                    srcw.appendChild(flarw)
-                    srcw.appendChild(tcomw)
-                    sknsrc.appendChild(srcw)
-                    # cbPrint(vw)
-                    jnts = doc.createElement("joints")
-                    is1 = doc.createElement("input")
-                    is1.setAttribute("semantic", "JOINT")
-                    is1.setAttribute("source", "#%s_%s_joints"
-                                     % (ArmatureList[0].object.name, i.name))
-                    jnts.appendChild(is1)
-                    is2 = doc.createElement("input")
-                    is2.setAttribute("semantic", "INV_BIND_MATRIX")
-                    is2.setAttribute("source", "#%s_%s_matrices"
-                                     % (ArmatureList[0].object.name, i.name))
-                    jnts.appendChild(is2)
-                    sknsrc.appendChild(jnts)
-                    vertw = doc.createElement("vertex_weights")
-                    vertw.setAttribute("count", "%s" % len(me.vertices))
-                    is3 = doc.createElement("input")
-                    is3.setAttribute("semantic", "JOINT")
-                    is3.setAttribute("offset", "0")
-                    is3.setAttribute("source", "#%s_%s_joints"
-                                     % (ArmatureList[0].object.name, i.name))
-                    vertw.appendChild(is3)
-                    is4 = doc.createElement("input")
-                    is4.setAttribute("semantic", "WEIGHT")
-                    is4.setAttribute("offset", "1")
-                    is4.setAttribute("source", "#%s_%s_weights"
-                                     % (ArmatureList[0].object.name, i.name))
-                    vertw.appendChild(is4)
-                    vcnt = doc.createElement("vcount")
-                    vcnt1 = doc.createTextNode("%s" % vcntr)
-                    vcnt.appendChild(vcnt1)
-                    vertw.appendChild(vcnt)
-                    vlst = doc.createElement("v")
-                    vlst1 = doc.createTextNode("%s" % vw)
-                    vlst.appendChild(vlst1)
-                    vertw.appendChild(vlst)
-                    sknsrc.appendChild(vertw)
+        self.__dae_doc = doc
+        self.__export_library_controllers(me, v, acc, tcom, tmp, libcont)
 
         col.appendChild(libcont)
 # end library controllers aka skining info
@@ -3458,6 +3177,317 @@ class ExportCrytekDae:
 #  <scene>
         # write to file
         write(self, doc, filepath, exe)
+
+    def __export_library_controllers(self, me, v, acc, tcom, tmp, libcont):
+        for i in bpy.context.selected_objects:
+            bonelist = []
+            blist = ""
+            mtx = ""
+            mtx4_xneg90 = Matrix.Rotation(-math.pi / 2.0, 4, 'X')
+            mtx4_x90 = Matrix.Rotation(math.pi / 2.0, 4, 'X')
+            mtx4_y90 = Matrix.Rotation(math.pi / 2.0, 4, 'Y')
+            mtx4_z90 = Matrix.Rotation(math.pi / 2.0, 4, 'Z')
+            mtx4_z180 = Matrix.Rotation((2 * math.pi) / 2.0, 4, 'Z')
+            mtx4_y180 = Matrix.Rotation((2 * math.pi) / 2.0, 4, 'Y')
+            smtx = Matrix()
+            if i and not "_boneGeometry" in i.name:
+                # "some" code borrowed from dx exporter
+                ArmatureList = [Modifier for
+                    Modifier in i.modifiers if
+                    Modifier.type == "ARMATURE"]
+                if ArmatureList:
+                    bonenum = 0
+                    ArmatureObject = ArmatureList[0].object
+                    ArmatureBones = GetBones(ArmatureObject)
+                    PoseBones = ArmatureObject.pose.bones
+                    contr = self.__dae_doc.createElement("controller")
+                    contr.setAttribute("id", "%s_%s" % (ArmatureList[0].object.name, i.name))
+                    libcont.appendChild(contr)
+                    sknsrc = self.__dae_doc.createElement("skin")
+                    sknsrc.setAttribute("source", "#%s" % i.name)
+                    contr.appendChild(sknsrc)
+                    mtx += "%s " % smtx[0][0]
+                    mtx += "%s " % smtx[1][0]
+                    mtx += "%s " % smtx[2][0]
+                    mtx += "%s " % smtx[3][0]
+                    mtx += "%s " % smtx[0][1]
+                    mtx += "%s " % smtx[1][1]
+                    mtx += "%s " % smtx[2][1]
+                    mtx += "%s " % smtx[3][1]
+                    mtx += "%s " % smtx[0][2]
+                    mtx += "%s " % smtx[1][2]
+                    mtx += "%s " % smtx[2][2]
+                    mtx += "%s " % smtx[3][2]
+                    mtx += "%s " % smtx[0][3]
+                    mtx += "%s " % smtx[1][3]
+                    mtx += "%s " % smtx[2][3]
+                    mtx += "%s " % smtx[3][3]
+                    bsm = self.__dae_doc.createElement("bind_shape_matrix")
+                    bsmv = self.__dae_doc.createTextNode("%s" % mtx)
+                    bsm.appendChild(bsmv)
+                    sknsrc.appendChild(bsm)
+                    src = self.__dae_doc.createElement("source")
+                    src.setAttribute("id", "%s_%s_joints" % (ArmatureList[0].object.name, i.name))
+                    idar = self.__dae_doc.createElement("IDREF_array")
+                    idar.setAttribute("id", "%s_%s_joints_array" % (ArmatureList[0].object.name, i.name))
+                    idar.setAttribute("count", "%s" % len(ArmatureBones))
+                    # blist += ("%s "%ArmatureList[0].object.name)
+                    for Bone in ArmatureBones:
+                        blist += "%s " % Bone.name
+
+                    cbPrint(blist)
+                    jnl = self.__dae_doc.createTextNode("%s" % blist)
+                    idar.appendChild(jnl)
+                    src.appendChild(idar)
+                    tcom = self.__dae_doc.createElement("technique_common")
+                    acc = self.__dae_doc.createElement("accessor")
+                    acc.setAttribute("source", "#%s_%s_joints_array" % (ArmatureList[0].object.name, i.name))
+                    acc.setAttribute("count", "%s" % len(ArmatureBones))
+                    acc.setAttribute("stride", "1")
+                    paran = self.__dae_doc.createElement("param")
+                    # paran.setAttribute("name", "JOINT")
+                    paran.setAttribute("type", "IDREF")
+                    acc.appendChild(paran)
+                    tcom.appendChild(acc)
+                    src.appendChild(tcom)
+                    sknsrc.appendChild(src)
+                    srcm = self.__dae_doc.createElement("source")
+                    srcm.setAttribute("id", "%s_%s_matrices" % (ArmatureList[0].object.name, i.name))
+                    flar = self.__dae_doc.createElement("float_array")
+                    flar.setAttribute("id", "%s_%s_matrices_array" % (ArmatureList[0].object.name, i.name))
+                    flar.setAttribute("count", "%s" % (len(ArmatureBones) * 16))
+                    armRot = ArmatureObject.matrix_world.to_quaternion()
+                    for Bone in ArmatureBones:
+                        tmp = [Bone.name, bonenum]
+                        bonelist.append(tmp)
+                        bonenum += 1
+                        lmtx1 = ""
+                        lmtx2 = ""
+                        lmtx3 = ""
+                        lmtx4 = ""
+                        '''
+
+                    sx ry rz lx
+
+                    rx sy rz ly
+
+                    rx ry sz lz
+
+                    0  0  0  1
+
+                    sx, sy, sz == 1 when writen out
+
+                    lx, ly, lz == location
+
+                    before sx, sy, sz == 1,
+
+                    ry == sx * ry * 10
+
+                    rz == sx * rz * 10
+
+                    eg:
+
+                        sx ,(ry == sx * ry * 10),(rz == sx * rz * 10), lx
+
+                    continue through y , z
+
+                    '''
+                        PoseBone = PoseBones[Bone.name]
+                        for sb in bpy.context.scene.objects:
+                            if sb.name == Bone.name:
+                                bmatrix = sb.matrix_local
+
+                        # if PoseBone.parent:
+                            # for sb in bpy.context.scene.objects:
+                        # if sb.name == Bone.parent.name:
+                        # pbmatrix = sb.matrix_local# * mtx4_y180
+                            # pbmatrix = PoseBones[Bone.name].bone.parent.matrix_local
+                            # rmatrix = pbmatrix.inverted() * bmatrix
+                            # rmatrix = rmatrix * mtx4_z90
+                            # rmatrix = bmatrix#.inverted()
+                        # else:
+                            # rmatrix = bmatrix#.inverted()
+                        # if not PoseBone.parent:
+                            # rmatrix = mtx4_xneg90 * armRot.to_matrix().to_4x4() * bmatrix
+                        # else:
+                        # rmatrix = ArmatureObject.matrix_world * PoseBone.bone.head_local
+                        # cbPrint(bmatrix)
+                        # bmatrix = bmatrix * mtx4_xneg90
+                        # bmatrix = bmatrix * -1
+                        # cbPrint(bmatrix)
+                        # bmatrix = bmatrix * mtx4_xneg90
+                        # b_loc, b_rot, b_scale = bmatrix.decompose()
+                        # b_loc = b_loc * -1
+                        # rmatrix = b_rot.to_matrix()
+                        # rmatrix = rmatrix.to_4x4()
+                        rmatrix = bmatrix
+                        cbPrint("rmatrix%s" % rmatrix)
+                        # rmatrix = rmatrix * mtx4_xneg90
+                        '''
+
+                    if PoseBone.parent:
+
+                        lmtx1 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[0][0], rmatrix[0][1],
+
+                            rmatrix[0][2], -rmatrix[0][3]))
+
+                        lmtx2 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[1][0], rmatrix[1][1],
+
+                            rmatrix[1][2], -rmatrix[2][3]))
+
+                        lmtx3 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[2][0], rmatrix[2][1],
+
+                            rmatrix[2][2], (rmatrix[1][3]*-1)))
+
+                        lmtx4 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[3][0], rmatrix[3][1],
+
+                            rmatrix[3][2], rmatrix[3][3]))
+
+
+
+
+
+                    else:
+
+                        lmtx1 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[0][0], rmatrix[0][1],
+
+                            rmatrix[0][2], -rmatrix[0][3]))
+
+                        lmtx2 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[1][0], rmatrix[1][1],
+
+                            rmatrix[1][2], (rmatrix[1][3]*-1)))
+
+                        lmtx3 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[2][0], rmatrix[2][1],
+
+                            rmatrix[2][2], -rmatrix[2][3]))
+
+                        lmtx4 += ("%.6f %.6f %.6f %.6f "
+
+                            %(rmatrix[3][0], rmatrix[3][1],
+
+                            rmatrix[3][2], rmatrix[3][3]))
+
+                    '''
+                        lmtx1 += "%.6f %.6f %.6f %.6f " % (rmatrix[0][0], rmatrix[0][1],
+                            rmatrix[0][2], -rmatrix[0][3])
+                        lmtx2 += "%.6f %.6f %.6f %.6f " % (rmatrix[1][0], rmatrix[1][1],
+                            rmatrix[1][2], (rmatrix[1][3] * -1))
+                        lmtx3 += "%.6f %.6f %.6f %.6f " % (rmatrix[2][0], rmatrix[2][1],
+                            rmatrix[2][2], -rmatrix[2][3])
+                        lmtx4 += "%.6f %.6f %.6f %.6f " % (rmatrix[3][0], rmatrix[3][1],
+                            rmatrix[3][2], rmatrix[3][3])
+                        flarm1 = self.__dae_doc.createTextNode("%s" % lmtx1)
+                        flar.appendChild(flarm1)
+                        flarm2 = self.__dae_doc.createTextNode("%s" % lmtx2)
+                        flar.appendChild(flarm2)
+                        flarm3 = self.__dae_doc.createTextNode("%s" % lmtx3)
+                        flar.appendChild(flarm3)
+                        flarm4 = self.__dae_doc.createTextNode("%s" % lmtx4)
+                        flar.appendChild(flarm4)
+
+                    srcm.appendChild(flar)
+                    tcommat = self.__dae_doc.createElement("technique_common")
+                    accm = self.__dae_doc.createElement("accessor")
+                    accm.setAttribute("source", "#%s_%s_matrices_array" % (ArmatureList[0].object.name, i.name))
+                    accm.setAttribute("count", "%s" % (len(ArmatureBones)))
+                    accm.setAttribute("stride", "16")
+                    paranm = self.__dae_doc.createElement("param")
+                    # paran.setAttribute("name", "JOINT")
+                    paranm.setAttribute("type", "float4x4")
+                    accm.appendChild(paranm)
+                    tcommat.appendChild(accm)
+                    srcm.appendChild(tcommat)
+                    sknsrc.appendChild(srcm)
+                    srcw = self.__dae_doc.createElement("source")
+                    srcw.setAttribute("id", "%s_%s_weights" % (ArmatureList[0].object.name, i.name))
+                    flarw = self.__dae_doc.createElement("float_array")
+                    flarw.setAttribute("id", "%s_%s_weights_array" % (ArmatureList[0].object.name, i.name))
+                    wa = ""
+                    vw = ""
+                    me = i.data
+                    vcntr = ""
+                    vcount = 0
+                    # for Bone in ArmatureBones:
+                    # for vg in i.vertex_groups:
+                    for v in me.vertices:
+                        if v.groups:
+                    # wa += ("%.6f "%v.groups[0].weight)
+                            for g in v.groups:
+                                wa += "%.6f " % g.weight  # ("%.6f "%g.weight)
+                                for gr in i.vertex_groups:
+                                    if gr.index == g.group:
+                                        for bn in bonelist:
+                                            if bn[0] == gr.name:
+                                                vw += "%s " % bn[1]
+
+                                # vw += ("%s "%g.group)#v.groups.name)#[0])#.group[0])#g.group)#
+                                vw += "%s " % str(vcount)
+                                vcount += 1
+                                cbPrint("Doing weights.")
+
+                        vcntr += "%s " % len(v.groups)
+
+                    flarw.setAttribute("count", "%s" % vcount)  # len(me.vertices))
+                    lfarwa = self.__dae_doc.createTextNode("%s" % wa)
+                    flarw.appendChild(lfarwa)
+                    tcomw = self.__dae_doc.createElement("technique_common")
+                    accw = self.__dae_doc.createElement("accessor")
+                    accw.setAttribute("source", "#%s_%s_weights_array" % (ArmatureList[0].object.name, i.name))
+                    accw.setAttribute("count", "%s" % vcount)  # len(me.vertices))
+                    accw.setAttribute("stride", "1")
+                    paranw = self.__dae_doc.createElement("param")
+                    paranw.setAttribute("type", "float")
+                    accw.appendChild(paranw)
+                    tcomw.appendChild(accw)
+                    srcw.appendChild(flarw)
+                    srcw.appendChild(tcomw)
+                    sknsrc.appendChild(srcw)
+                    # cbPrint(vw)
+                    jnts = self.__dae_doc.createElement("joints")
+                    is1 = self.__dae_doc.createElement("input")
+                    is1.setAttribute("semantic", "JOINT")
+                    is1.setAttribute("source", "#%s_%s_joints" % (ArmatureList[0].object.name, i.name))
+                    jnts.appendChild(is1)
+                    is2 = self.__dae_doc.createElement("input")
+                    is2.setAttribute("semantic", "INV_BIND_MATRIX")
+                    is2.setAttribute("source", "#%s_%s_matrices" % (ArmatureList[0].object.name, i.name))
+                    jnts.appendChild(is2)
+                    sknsrc.appendChild(jnts)
+                    vertw = self.__dae_doc.createElement("vertex_weights")
+                    vertw.setAttribute("count", "%s" % len(me.vertices))
+                    is3 = self.__dae_doc.createElement("input")
+                    is3.setAttribute("semantic", "JOINT")
+                    is3.setAttribute("offset", "0")
+                    is3.setAttribute("source", "#%s_%s_joints" % (ArmatureList[0].object.name, i.name))
+                    vertw.appendChild(is3)
+                    is4 = self.__dae_doc.createElement("input")
+                    is4.setAttribute("semantic", "WEIGHT")
+                    is4.setAttribute("offset", "1")
+                    is4.setAttribute("source", "#%s_%s_weights" % (ArmatureList[0].object.name, i.name))
+                    vertw.appendChild(is4)
+                    vcnt = self.__dae_doc.createElement("vcount")
+                    vcnt1 = self.__dae_doc.createTextNode("%s" % vcntr)
+                    vcnt.appendChild(vcnt1)
+                    vertw.appendChild(vcnt)
+                    vlst = self.__dae_doc.createElement("v")
+                    vlst1 = self.__dae_doc.createTextNode("%s" % vw)
+                    vlst.appendChild(vlst1)
+                    vertw.appendChild(vlst)
+                    sknsrc.appendChild(vertw)
 
 
 def get_relative_path(filepath):
