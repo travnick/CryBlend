@@ -17,15 +17,15 @@
 # ##### END GPL LICENSE BLOCK #####
 
 #------------------------------------------------------------------------------
-# Name:  __init__.py
-# Purpose:   primary python file for cryblend addon
+# Name:        __init__.py
+# Purpose:     primary python file for cryblend addon
 #
-# Author:    Angelo J. Miner
+# Author:      Angelo J. Miner
 # Extended by: Duo Oratar
 #
-# Created:   23/02/2012
+# Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012
-# License:   GPLv2+
+# License:     GPLv2+
 #------------------------------------------------------------------------------
 
 bl_info = {
@@ -58,8 +58,8 @@ else:
     from io_export_cryblend import export
     from io_export_cryblend import exceptions
 
-from bpy.app import binary_path
-from bpy.props import *
+from bpy.props import BoolProperty, FloatVectorProperty, FloatProperty, \
+    StringProperty
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.outPipe import cbPrint
 import bmesh
@@ -201,8 +201,8 @@ class Open_UDP_Wp(bpy.types.Operator):
     def execute(self, context):
         url = "http://freesdk.crydev.net/display/SDKDOC3/UDP+Settings"
         webbrowser.open(url, new=new)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -288,8 +288,8 @@ class Add_BO_Joint(bpy.types.Operator):  # , AddObjectHelper):
     def execute(self, context):
         # from . import helper
         return add.add_joint(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -350,8 +350,8 @@ class Add_wh_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_w_phl(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -380,8 +380,8 @@ class Add_rm_e_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_e_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -391,8 +391,8 @@ class Add_rm_m_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_m_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -402,8 +402,8 @@ class Add_rm_d_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_d_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -413,8 +413,8 @@ class Add_rm_p_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_p_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -425,8 +425,8 @@ class Add_j_gpc_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_gpc_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -436,8 +436,8 @@ class Add_j_pcb_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_pcb_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -447,8 +447,8 @@ class Add_j_b_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_b_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -458,8 +458,8 @@ class Add_j_t_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_t_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -469,8 +469,8 @@ class Add_j_pull_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_pull_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -480,8 +480,8 @@ class Add_j_push_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_push_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -491,8 +491,8 @@ class Add_j_shift_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_shift_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -502,8 +502,8 @@ class Add_j_climit_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_climit_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -513,8 +513,8 @@ class Add_j_cminang_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_cminang_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -524,8 +524,8 @@ class Add_j_cmaxang_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_cmaxang_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -535,8 +535,8 @@ class Add_j_cdamp_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_cdamp_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -546,8 +546,8 @@ class Add_j_ccol_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_ccol_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -672,8 +672,8 @@ class Add_Def_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_skel_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -684,8 +684,8 @@ class Add_M_Pd(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_default(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -695,8 +695,8 @@ class Add_M_PND(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_pnd(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -706,8 +706,8 @@ class Add_M_None(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_none(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -717,8 +717,8 @@ class Add_M_Obstr(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_obstr(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -728,8 +728,8 @@ class Add_M_NoCol(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_nocol(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -740,8 +740,8 @@ class Add_neo_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_neo_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -751,8 +751,8 @@ class Add_orm_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_orm_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -762,8 +762,8 @@ class Add_colp_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_colp_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -773,8 +773,8 @@ class Add_b_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_b_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -784,8 +784,8 @@ class Add_cyl_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_cyl_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -795,8 +795,8 @@ class Add_caps_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_caps_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -806,8 +806,8 @@ class Add_sph_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_sph_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -817,8 +817,8 @@ class Add_nap_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_nap_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -828,8 +828,8 @@ class Add_nhr_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_nhr_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -839,8 +839,8 @@ class Add_dyn_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_dyn_p(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 # fakebones
@@ -1268,8 +1268,8 @@ class Make_key_framelist(bpy.types.Operator):
 
     def execute(self, context):
         return add_kfl(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -1279,8 +1279,8 @@ class Add_fkey_frame(bpy.types.Operator):
 
     def execute(self, context):
         return add_kf(self, context)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        self.report({'INFO'}, self.message)
+        cbPrint(self.message)
         return {'FINISHED'}
 
 
@@ -1407,10 +1407,10 @@ class ErrorHandler(bpy.types.Operator):
 
     def draw(self, context):
         self.layout.label(self.bl_label, icon='ERROR')
-        row = self.layout.split()
+        self.layout.split()
         multiline_label(self.layout, self.message)
-        row = self.layout.split()
-        row = self.layout.split(0.2)
+        self.layout.split()
+        self.layout.split(0.2)
 
 
 def multiline_label(layout, text):
