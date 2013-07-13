@@ -3231,7 +3231,6 @@ class ExportCrytekDae:
                     idar = self.__dae_doc.createElement("IDREF_array")
                     idar.setAttribute("id", "%s_%s_joints_array" % (ArmatureList[0].object.name, i.name))
                     idar.setAttribute("count", "%s" % len(ArmatureBones))
-                    # blist += ("%s "%ArmatureList[0].object.name)
                     for Bone in ArmatureBones:
                         blist += "%s " % Bone.name
 
@@ -3245,7 +3244,6 @@ class ExportCrytekDae:
                     acc.setAttribute("count", "%s" % len(ArmatureBones))
                     acc.setAttribute("stride", "1")
                     paran = self.__dae_doc.createElement("param")
-                    # paran.setAttribute("name", "JOINT")
                     paran.setAttribute("type", "IDREF")
                     acc.appendChild(paran)
                     tcom.appendChild(acc)
@@ -3265,123 +3263,15 @@ class ExportCrytekDae:
                         lmtx2 = ""
                         lmtx3 = ""
                         lmtx4 = ""
-                        '''
 
-                    sx ry rz lx
-
-                    rx sy rz ly
-
-                    rx ry sz lz
-
-                    0  0  0  1
-
-                    sx, sy, sz == 1 when writen out
-
-                    lx, ly, lz == location
-
-                    before sx, sy, sz == 1,
-
-                    ry == sx * ry * 10
-
-                    rz == sx * rz * 10
-
-                    eg:
-
-                        sx ,(ry == sx * ry * 10),(rz == sx * rz * 10), lx
-
-                    continue through y , z
-
-                    '''
                         PoseBone = PoseBones[Bone.name]
                         for sb in bpy.context.scene.objects:
                             if sb.name == Bone.name:
                                 bmatrix = sb.matrix_local
 
-                        # if PoseBone.parent:
-                            # for sb in bpy.context.scene.objects:
-                        # if sb.name == Bone.parent.name:
-                        # pbmatrix = sb.matrix_local# * mtx4_y180
-                            # pbmatrix = PoseBones[Bone.name].bone.parent.matrix_local
-                            # rmatrix = pbmatrix.inverted() * bmatrix
-                            # rmatrix = rmatrix * mtx4_z90
-                            # rmatrix = bmatrix#.inverted()
-                        # else:
-                            # rmatrix = bmatrix#.inverted()
-                        # if not PoseBone.parent:
-                            # rmatrix = mtx4_xneg90 * armRot.to_matrix().to_4x4() * bmatrix
-                        # else:
-                        # rmatrix = ArmatureObject.matrix_world * PoseBone.bone.head_local
-                        # cbPrint(bmatrix)
-                        # bmatrix = bmatrix * mtx4_xneg90
-                        # bmatrix = bmatrix * -1
-                        # cbPrint(bmatrix)
-                        # bmatrix = bmatrix * mtx4_xneg90
-                        # b_loc, b_rot, b_scale = bmatrix.decompose()
-                        # b_loc = b_loc * -1
-                        # rmatrix = b_rot.to_matrix()
-                        # rmatrix = rmatrix.to_4x4()
                         rmatrix = bmatrix
                         cbPrint("rmatrix%s" % rmatrix)
-                        # rmatrix = rmatrix * mtx4_xneg90
-                        '''
 
-                    if PoseBone.parent:
-
-                        lmtx1 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[0][0], rmatrix[0][1],
-
-                            rmatrix[0][2], -rmatrix[0][3]))
-
-                        lmtx2 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[1][0], rmatrix[1][1],
-
-                            rmatrix[1][2], -rmatrix[2][3]))
-
-                        lmtx3 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[2][0], rmatrix[2][1],
-
-                            rmatrix[2][2], (rmatrix[1][3]*-1)))
-
-                        lmtx4 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[3][0], rmatrix[3][1],
-
-                            rmatrix[3][2], rmatrix[3][3]))
-
-
-
-
-
-                    else:
-
-                        lmtx1 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[0][0], rmatrix[0][1],
-
-                            rmatrix[0][2], -rmatrix[0][3]))
-
-                        lmtx2 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[1][0], rmatrix[1][1],
-
-                            rmatrix[1][2], (rmatrix[1][3]*-1)))
-
-                        lmtx3 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[2][0], rmatrix[2][1],
-
-                            rmatrix[2][2], -rmatrix[2][3]))
-
-                        lmtx4 += ("%.6f %.6f %.6f %.6f "
-
-                            %(rmatrix[3][0], rmatrix[3][1],
-
-                            rmatrix[3][2], rmatrix[3][3]))
-
-                    '''
                         lmtx1 += "%.6f %.6f %.6f %.6f " % (rmatrix[0][0], rmatrix[0][1],
                             rmatrix[0][2], -rmatrix[0][3])
                         lmtx2 += "%.6f %.6f %.6f %.6f " % (rmatrix[1][0], rmatrix[1][1],
@@ -3406,7 +3296,6 @@ class ExportCrytekDae:
                     accm.setAttribute("count", "%s" % (len(ArmatureBones)))
                     accm.setAttribute("stride", "16")
                     paranm = self.__dae_doc.createElement("param")
-                    # paran.setAttribute("name", "JOINT")
                     paranm.setAttribute("type", "float4x4")
                     accm.appendChild(paranm)
                     tcommat.appendChild(accm)
@@ -3421,33 +3310,30 @@ class ExportCrytekDae:
                     me = i.data
                     vcntr = ""
                     vcount = 0
-                    # for Bone in ArmatureBones:
-                    # for vg in i.vertex_groups:
+
                     for v in me.vertices:
                         if v.groups:
-                    # wa += ("%.6f "%v.groups[0].weight)
                             for g in v.groups:
-                                wa += "%.6f " % g.weight  # ("%.6f "%g.weight)
+                                wa += "%.6f " % g.weight
                                 for gr in i.vertex_groups:
                                     if gr.index == g.group:
                                         for bn in bonelist:
                                             if bn[0] == gr.name:
                                                 vw += "%s " % bn[1]
 
-                                # vw += ("%s "%g.group)#v.groups.name)#[0])#.group[0])#g.group)#
                                 vw += "%s " % str(vcount)
                                 vcount += 1
                                 cbPrint("Doing weights.")
 
                         vcntr += "%s " % len(v.groups)
 
-                    flarw.setAttribute("count", "%s" % vcount)  # len(me.vertices))
+                    flarw.setAttribute("count", "%s" % vcount)
                     lfarwa = self.__dae_doc.createTextNode("%s" % wa)
                     flarw.appendChild(lfarwa)
                     tcomw = self.__dae_doc.createElement("technique_common")
                     accw = self.__dae_doc.createElement("accessor")
                     accw.setAttribute("source", "#%s_%s_weights_array" % (ArmatureList[0].object.name, i.name))
-                    accw.setAttribute("count", "%s" % vcount)  # len(me.vertices))
+                    accw.setAttribute("count", "%s" % vcount)
                     accw.setAttribute("stride", "1")
                     paranw = self.__dae_doc.createElement("param")
                     paranw.setAttribute("type", "float")
@@ -3456,7 +3342,7 @@ class ExportCrytekDae:
                     srcw.appendChild(flarw)
                     srcw.appendChild(tcomw)
                     sknsrc.appendChild(srcw)
-                    # cbPrint(vw)
+
                     jnts = self.__dae_doc.createElement("joints")
                     is1 = self.__dae_doc.createElement("input")
                     is1.setAttribute("semantic", "JOINT")
