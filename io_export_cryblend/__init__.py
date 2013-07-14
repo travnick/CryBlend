@@ -1025,12 +1025,12 @@ class RemoveBoneGeometry(bpy.types.Operator):
     def execute(self, context):
         bpy.ops.object.mode_set(mode='OBJECT')
 
-        armatureList = []#Get list of armatures requiring attention
+        armatureList = []  # Get list of armatures requiring attention
         for obj in bpy.context.scene.objects:
-            if obj.type == 'ARMATURE' and obj.select:#Get selected armatures
+            if obj.type == 'ARMATURE' and obj.select:  # Get selected armatures
                 armatureList.append(obj.name)
 
-        nameList = []#Get list of objects
+        nameList = []  # Get list of objects
         for obj in bpy.context.scene.objects:
             nameList.append(obj.name)
             obj.select = False
@@ -1038,13 +1038,13 @@ class RemoveBoneGeometry(bpy.types.Operator):
         for name in armatureList:
             obj = bpy.context.scene.objects[name]
             physBonesList = []
-            if obj.name + "_Phys" in nameList:#Get list of phys bones in matching phys skel
+            if obj.name + "_Phys" in nameList:  # Get list of phys bones in matching phys skel
                 for bone in bpy.data.objects[obj.name + "_Phys"].data.bones:
                     physBonesList.append(bone.name)
 
-            for bone in obj.data.bones:#For each bone
+            for bone in obj.data.bones:  # For each bone
                 if bone.name + "_boneGeometry" in nameList:
-                    bpy.data.objects[bone.name+"_boneGeometry"].select = True
+                    bpy.data.objects[bone.name + "_boneGeometry"].select = True
 
             bpy.ops.object.delete()
 
@@ -1375,13 +1375,33 @@ class Export(bpy.types.Operator, ExportHelper):
             default=False,
             )
 
+    class Config:
+        def __init__(self, config):
+            attributes = (
+                'filepath',
+                'is_cgf',
+                'is_cga',
+                'is_chrcaf',
+                'merge_anm',
+                'donot_merge',
+                'avg_pface',
+                'run_rc',
+                'run_rc_and_do_materials',
+                'include_ik',
+                'make_layer'
+            )
+
+            for attribute in attributes:
+                setattr(self, attribute, getattr(config, attribute))
+
     def execute(self, context):
         exe = CONFIG['RC_LOCATION']
         cbPrint(CONFIG['RC_LOCATION'])
         try:
-            temp = export.save(self, context, exe)
+            config = Export.Config(config=self)
+
+            export.save(config, context, exe)
             self.filepath = '//'
-            return temp
         except exceptions.CryBlendException as exception:
             cbPrint(exception.what(), 'error')
             bpy.ops.error.message('INVOKE_DEFAULT', message=exception.what())
