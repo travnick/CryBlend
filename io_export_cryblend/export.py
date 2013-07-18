@@ -1445,46 +1445,9 @@ class ExportCrytekDae:
 
 # test
         vs = self.__doc.createElement("visual_scene")
-        # doesnt matter what name we have here as long as it is
-        # the same for <scene>
-        vs.setAttribute("id", "scene")
-        vs.setAttribute("name", "scene")
         libvs.appendChild(vs)
         col.appendChild(libvs)
-        for item in bpy.context.blend_data.groups:
-            mesh = i.data
-            if (i.type == "MESH"):
-                mat = mesh.materials[:]
-            if item:
-                ename = str(item.id_data.name)
-                node1 = self.__doc.createElement("node")
-                node1.setAttribute("id", "%s" % (ename))
-                node1.setIdAttribute('id')
-            vs.appendChild(node1)
-            objectl = []
-            objectl = item.objects
-
-            node1 = self.vsp(config, objectl, node1)
-            # exportnode settings
-            ext1 = self.__doc.createElement("extra")
-            tc3 = self.__doc.createElement("technique")
-            tc3.setAttribute("profile", "CryEngine")
-            prop1 = self.__doc.createElement("properties")
-            if config.is_cgf:
-                pcgf = self.__doc.createTextNode("fileType=cgf")
-                prop1.appendChild(pcgf)
-            if config.is_cga:
-                pcga = self.__doc.createTextNode("fileType=cgaanm")
-                prop1.appendChild(pcga)
-            if config.is_chrcaf:
-                pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
-                prop1.appendChild(pchrcaf)
-            if config.donot_merge:
-                pdnm = self.__doc.createTextNode("DoNotMerge")
-                prop1.appendChild(pdnm)
-            tc3.appendChild(prop1)
-            ext1.appendChild(tc3)
-            node1.appendChild(ext1)
+        self.__export_library_visual_scenes(config, i, vs)
 # end library_visual_scenes
 #  <scene> nothing really changes here or rather it doesnt need to.
         scene = self.__doc.createElement("scene")
@@ -3358,6 +3321,47 @@ class ExportCrytekDae:
             for col in row:
                 result += "{!s} ".format(col)
         return result.strip()
+
+    def __export_library_visual_scenes(self, config, i, vs):
+        # doesnt matter what name we have here as long as it is
+    # the same for <scene>
+        vs.setAttribute("id", "scene")
+        vs.setAttribute("name", "scene")
+        for item in bpy.context.blend_data.groups:
+            # TODO: remove - unused code.
+#             mesh = i.data
+#             if (i.type == "MESH"):
+#                 mat = mesh.materials[:]
+            if item:
+                ename = str(item.id_data.name)
+                node1 = self.__doc.createElement("node")
+                node1.setAttribute("id", "%s" % (ename))
+                node1.setIdAttribute('id')
+            vs.appendChild(node1)
+            objectl = []
+            objectl = item.objects
+            node1 = self.vsp(config, objectl, node1)
+            # exportnode settings
+            ext1 = self.__doc.createElement("extra")
+            tc3 = self.__doc.createElement("technique")
+            tc3.setAttribute("profile", "CryEngine")
+            prop1 = self.__doc.createElement("properties")
+            if config.is_cgf:
+                pcgf = self.__doc.createTextNode("fileType=cgf")
+                prop1.appendChild(pcgf)
+            if config.is_cga:
+                pcga = self.__doc.createTextNode("fileType=cgaanm")
+                prop1.appendChild(pcga)
+            if config.is_chrcaf:
+                pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
+                prop1.appendChild(pchrcaf)
+            if config.donot_merge:
+                pdnm = self.__doc.createTextNode("DoNotMerge")
+                prop1.appendChild(pdnm)
+            tc3.appendChild(prop1)
+            ext1.appendChild(tc3)
+            node1.appendChild(ext1)
+
 
 
 def get_relative_path(filepath):
