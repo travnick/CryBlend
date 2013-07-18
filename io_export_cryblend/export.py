@@ -347,18 +347,9 @@ class ExportCrytekDae:
         return [bone for bone in armature.data.bones]
 
     def export(self, context):
-        # TODO: split it up! 500+ lines ...
-
         # Ensure the correct extension for chosen path
         filepath = bpy.path.ensure_ext(self.__confg.filepath, ".dae")
-        # make sure everything in our cryexportnode is selected
-        #        for item in bpy.context.blend_data.groups:
-        for i in bpy.context.selectable_objects:
-            for group in bpy.context.blend_data.groups:  # bpy.data.groups:
-                for item in group.objects:
-                    if item.name == i.name:  # If item in group is selectable
-                        bpy.data.objects[i.name].select = True
-                        cbPrint(i.name)
+        self.__select_all_export_nodes()
 
         # Duo Oratar
         # This is a small bit risky (I don't know if including more things
@@ -371,67 +362,19 @@ class ExportCrytekDae:
                 cbPrint("Bone Geometry found: " + i.name)
 
         root_node = self.__doc.createElement('collada')  # Top level element
-# asset
-        # Attributes are x=y values inside a tag
-        root_node.setAttribute("xmlns",
-                         "http://www.collada.org/2005/11/COLLADASchema")
-        root_node.setAttribute("version", "1.4.1")
-        self.__doc.appendChild(root_node)
-        asset = self.__doc.createElement("asset")
-        root_node.appendChild(asset)
-        contrib = self.__doc.createElement("contributor")
-        asset.appendChild(contrib)
-        auth = self.__doc.createElement("author")
-        contrib.appendChild(auth)
-        authname = self.__doc.createTextNode("Blender User")
-        auth.appendChild(authname)
-        authtool = self.__doc.createElement("authoring_tool")
-        authtname = self.__doc.createTextNode("CryENGINE exporter for Blender"
-            + "v%s by angjminer, extended by Duo Oratar"
-            % (bpy.app.version_string))
-        authtool.appendChild(authtname)
-        contrib.appendChild(authtool)
-        created = self.__doc.createElement("created")
-        asset.appendChild(created)
-        modified = self.__doc.createElement("modified")
-        asset.appendChild(modified)
-        unit = self.__doc.createElement("unit")
-        unit.setAttribute("name", "meter")
-        unit.setAttribute("meter", "1")
-        asset.appendChild(unit)
-        uax = self.__doc.createElement("up_axis")
-        zup = self.__doc.createTextNode("Z_UP")
-        uax.appendChild(zup)
-        asset.appendChild(uax)
 
-# end asset
-# just here for future use
+        self.__export_asset(root_node)
+
+        # just here for future use
         libcam = self.__doc.createElement("library_cameras")
         root_node.appendChild(libcam)
         liblights = self.__doc.createElement("library_lights")
         root_node.appendChild(liblights)
-# just here for future use
-# library images
-        libima = self.__doc.createElement("library_images")
-        for image in bpy.data.images:
-            if image.has_data and image.filepath:
-                imaname = image.name
-                image_path = get_relative_path(image.filepath)
-                imaid = self.__doc.createElement("image")
-                imaid.setAttribute("id", "%s" % imaname)
-                imaid.setAttribute("name", "%s" % imaname)
-                infrom = self.__doc.createElement("init_from")
-                fpath = self.__doc.createTextNode("%s" % image_path)
-                infrom.appendChild(fpath)
-                imaid.appendChild(infrom)
-                libima.appendChild(imaid)
-        root_node.appendChild(libima)
-# end library images
 
-        self.__export_library_effects(root_node, image)
+        self.__export_library_images(root_node)
+        self.__export_library_effects(root_node)
         self.__export_library_materials(root_node)
         self.__export_library_geometries(context, i, root_node)
-
 
         # Duo Oratar
         # Remove the boneGeometry from the selection so we can get on
@@ -440,23 +383,22 @@ class ExportCrytekDae:
             if '_boneGeometry' in i.name:
                 bpy.data.objects[i.name].select = False
 
-# library controllers aka skining info
-        libcont = self.__doc.createElement("library_controllers")
-        start_time = clock()
-
-        self.__export_library_controllers(libcont)
-
-        root_node.appendChild(libcont)
-# end library controllers aka skining info
-# library_animations
-
+        self.__export_library_controllers(root_node)
         self.__export_library_animation_clips_and_animations(root_node)
-
         self.__export_library_visual_scenes(root_node)
-
         self.__export_scene(root_node)
 
         write_to_file(self.__confg, self.__doc, filepath, self.__exe)
+
+    def __select_all_export_nodes(self):
+    # make sure everything in our cryexportnode is selected
+    #        for item in bpy.context.blend_data.groups:
+        for i in bpy.context.selectable_objects:
+            for group in bpy.context.blend_data.groups:  # bpy.data.groups:
+                for item in group.objects:
+                    if item.name == i.name:  # If item in group is selectable
+                        bpy.data.objects[i.name].select = True
+                        cbPrint(i.name)
 
     def GetObjectChildren(self, Parent):
         return [Object for Object in Parent.children
@@ -2134,15 +2076,6 @@ class ExportCrytekDae:
                 cbPrint("donerotz")
         return anmrz
 
-    def __export_library_controllers(self, libcont):
-        for selected_object in bpy.context.selected_objects:
-            if not "_boneGeometry" in selected_object.name:
-                # "some" code borrowed from dx exporter
-                armatures = self.__get_armatures(selected_object)
-
-                if armatures:
-                    self.__process_bones(libcont, selected_object, armatures)
-
     def __get_armatures(self, entity):
         return [modifier for modifier in entity.modifiers
                 if modifier.type == "ARMATURE"]
@@ -2320,6 +2253,55 @@ class ExportCrytekDae:
             for col in row:
                 result += "{!s} ".format(col)
         return result.strip()
+
+    def __export_asset(self, root_node):
+        # Attributes are x=y values inside a tag
+        root_node.setAttribute("xmlns", "http://www.collada.org/2005/11/COLLADASchema")
+        root_node.setAttribute("version", "1.4.1")
+        self.__doc.appendChild(root_node)
+        asset = self.__doc.createElement("asset")
+        root_node.appendChild(asset)
+        contrib = self.__doc.createElement("contributor")
+        asset.appendChild(contrib)
+        auth = self.__doc.createElement("author")
+        contrib.appendChild(auth)
+        authname = self.__doc.createTextNode("Blender User")
+        auth.appendChild(authname)
+        authtool = self.__doc.createElement("authoring_tool")
+        authtname = self.__doc.createTextNode(
+            "CryENGINE exporter for Blender" +
+            "v%s by angjminer, extended by Duo Oratar" % (bpy.app.version_string))
+        authtool.appendChild(authtname)
+        contrib.appendChild(authtool)
+        created = self.__doc.createElement("created")
+        asset.appendChild(created)
+        modified = self.__doc.createElement("modified")
+        asset.appendChild(modified)
+        unit = self.__doc.createElement("unit")
+        unit.setAttribute("name", "meter")
+        unit.setAttribute("meter", "1")
+        asset.appendChild(unit)
+        uax = self.__doc.createElement("up_axis")
+        zup = self.__doc.createTextNode("Z_UP")
+        uax.appendChild(zup)
+        asset.appendChild(uax)
+
+    def __export_library_images(self, root_node):
+        libima = self.__doc.createElement("library_images")
+        for image in bpy.data.images:
+            if image.has_data and image.filepath:
+                imaname = image.name
+                image_path = get_relative_path(image.filepath)
+                imaid = self.__doc.createElement("image")
+                imaid.setAttribute("id", "%s" % imaname)
+                imaid.setAttribute("name", "%s" % imaname)
+                infrom = self.__doc.createElement("init_from")
+                fpath = self.__doc.createTextNode("%s" % image_path)
+                infrom.appendChild(fpath)
+                imaid.appendChild(infrom)
+                libima.appendChild(imaid)
+
+        root_node.appendChild(libima)
 
     def __export_library_effects(self, root_node):
         libeff = self.__doc.createElement("library_effects")
@@ -3004,6 +2986,19 @@ class ExportCrytekDae:
 
                         # bpy.data.meshes.remove(mesh)
         root_node.appendChild(libgeo)
+
+    def __export_library_controllers(self, root_node):
+        libcont = self.__doc.createElement("library_controllers")
+
+        for selected_object in bpy.context.selected_objects:
+            if not "_boneGeometry" in selected_object.name:
+                # "some" code borrowed from dx exporter
+                armatures = self.__get_armatures(selected_object)
+
+                if armatures:
+                    self.__process_bones(libcont, selected_object, armatures)
+
+        root_node.appendChild(libcont)
 
     def __export_library_animation_clips_and_animations(self, root_node):
         libanmcl = self.__doc.createElement("library_animation_clips")
