@@ -82,7 +82,7 @@ xml.dom.minidom.Element.writexml = fixed_writexml
 
 # end http://ronrothman.com/
 #    public/leftbraned/xml-dom-minidom-toprettyxml-and-silly-whitespace/
-def write(config, doc, fname, exe):
+def write_to_file(config, doc, fname, exe):
     s = doc
     s = doc.toprettyxml(indent="  ")
     f = open(fname, "w")
@@ -343,15 +343,15 @@ class ExportCrytekDae:
                 bpy.data.objects[i.name].select = True
                 cbPrint("Bone Geometry found: " + i.name)
 
-        col = self.__doc.createElement('collada')  # Top level element
+        root_node = self.__doc.createElement('collada')  # Top level element
 # asset
         # Attributes are x=y values inside a tag
-        col.setAttribute("xmlns",
+        root_node.setAttribute("xmlns",
                          "http://www.collada.org/2005/11/COLLADASchema")
-        col.setAttribute("version", "1.4.1")
-        self.__doc.appendChild(col)
+        root_node.setAttribute("version", "1.4.1")
+        self.__doc.appendChild(root_node)
         asset = self.__doc.createElement("asset")
-        col.appendChild(asset)
+        root_node.appendChild(asset)
         contrib = self.__doc.createElement("contributor")
         asset.appendChild(contrib)
         auth = self.__doc.createElement("author")
@@ -380,9 +380,9 @@ class ExportCrytekDae:
 # end asset
 # just here for future use
         libcam = self.__doc.createElement("library_cameras")
-        col.appendChild(libcam)
+        root_node.appendChild(libcam)
         liblights = self.__doc.createElement("library_lights")
-        col.appendChild(liblights)
+        root_node.appendChild(liblights)
 # just here for future use
 # library images
         libima = self.__doc.createElement("library_images")
@@ -398,7 +398,7 @@ class ExportCrytekDae:
                 infrom.appendChild(fpath)
                 imaid.appendChild(infrom)
                 libima.appendChild(imaid)
-        col.appendChild(libima)
+        root_node.appendChild(libima)
 # end library images
 # library effects
         libeff = self.__doc.createElement("library_effects")
@@ -592,7 +592,7 @@ class ExportCrytekDae:
                 extra.appendChild(techn)
                 effid.appendChild(extra)
                 libeff.appendChild(effid)
-        col.appendChild(libeff)
+        root_node.appendChild(libeff)
 # end library effects
 # library materials
         libmat = self.__doc.createElement("library_materials")
@@ -604,7 +604,7 @@ class ExportCrytekDae:
                 ie.setAttribute("url", "#%s_fx" % (mat.name))
                 matt.appendChild(ie)
                 libmat.appendChild(matt)
-        col.appendChild(libmat)
+        root_node.appendChild(libmat)
 # end library materials
 # library geometries
         libgeo = self.__doc.createElement("library_geometries")
@@ -1146,7 +1146,7 @@ class ExportCrytekDae:
                         geo.appendChild(me)
                         libgeo.appendChild(geo)
                         # bpy.data.meshes.remove(mesh)
-        col.appendChild(libgeo)
+        root_node.appendChild(libgeo)
 
         # Duo Oratar
         # Remove the boneGeometry from the selection so we can get on
@@ -1163,7 +1163,7 @@ class ExportCrytekDae:
 
         self.__export_library_controllers(libcont)
 
-        col.appendChild(libcont)
+        root_node.appendChild(libcont)
 # end library controllers aka skining info
 # library_animations
 
@@ -1430,34 +1430,19 @@ class ExportCrytekDae:
 
             if asw == 1:
                 libanmcl.appendChild(anicl)
-        col.appendChild(libanmcl)
-        col.appendChild(libanm)
-        asw = 0
-        ande2 = 0
+        root_node.appendChild(libanmcl)
+        root_node.appendChild(libanm)
 
-# library_visual_scenes
-        libvs = self.__doc.createElement("library_visual_scenes")
-        # cprop = ""
-# try group for cryexportnode?----Yes It Is Good :)
-#        for item in bpy.context.blend_data.groups:
+        self.__export_library_visual_scenes(config, root_node)
 
-# test
-
-# test
-        vs = self.__doc.createElement("visual_scene")
-        libvs.appendChild(vs)
-        col.appendChild(libvs)
-        self.__export_library_visual_scenes(config, i, vs)
-# end library_visual_scenes
-#  <scene> nothing really changes here or rather it doesnt need to.
+        # <scene> nothing really changes here or rather it doesnt need to.
         scene = self.__doc.createElement("scene")
         ivs = self.__doc.createElement("instance_visual_scene")
         ivs.setAttribute("url", "#scene")
         scene.appendChild(ivs)
-        col.appendChild(scene)
-#  <scene>
-        # write to file
-        write(config, self.__doc, filepath, exe)
+        root_node.appendChild(scene)
+
+        write_to_file(config, self.__doc, filepath, exe)
 
     def GetObjectChildren(self, Parent):
         return [Object for Object in Parent.children
@@ -3322,22 +3307,23 @@ class ExportCrytekDae:
                 result += "{!s} ".format(col)
         return result.strip()
 
-    def __export_library_visual_scenes(self, config, i, vs):
+    def __export_library_visual_scenes(self, config, root_node):
+        libvs = self.__doc.createElement("library_visual_scenes")
+        visual_scenes_node = self.__doc.createElement("visual_scene")
+        libvs.appendChild(visual_scenes_node)
+        root_node.appendChild(libvs)
+        
         # doesnt matter what name we have here as long as it is
-    # the same for <scene>
-        vs.setAttribute("id", "scene")
-        vs.setAttribute("name", "scene")
+        # the same for <scene>
+        visual_scenes_node.setAttribute("id", "scene")
+        visual_scenes_node.setAttribute("name", "scene")
         for item in bpy.context.blend_data.groups:
-            # TODO: remove - unused code.
-#             mesh = i.data
-#             if (i.type == "MESH"):
-#                 mat = mesh.materials[:]
             if item:
                 ename = str(item.id_data.name)
                 node1 = self.__doc.createElement("node")
                 node1.setAttribute("id", "%s" % (ename))
                 node1.setIdAttribute('id')
-            vs.appendChild(node1)
+            visual_scenes_node.appendChild(node1)
             objectl = []
             objectl = item.objects
             node1 = self.vsp(config, objectl, node1)
@@ -3361,7 +3347,6 @@ class ExportCrytekDae:
             tc3.appendChild(prop1)
             ext1.appendChild(tc3)
             node1.appendChild(ext1)
-
 
 
 def get_relative_path(filepath):
