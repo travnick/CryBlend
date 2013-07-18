@@ -314,16 +314,19 @@ def convert_time(frx):
 
 
 class ExportCrytekDae:
+    def __init__(self, config, exe):
+        self.__confg = config
+        self.__doc = Document()
+        setf.__exe = exe
+    
     def __get_bones(self, armature):
         return [bone for bone in armature.data.bones]
 
-    def execute(self, config, context, exe):
-        # TODO: split it up! 3k+ lines ...
-
-        self.__doc = Document()
+    def export(self, context):
+        # TODO: split it up! 500+ lines ...
 
         # Ensure the correct extension for chosen path
-        filepath = bpy.path.ensure_ext(config.filepath, ".dae")
+        filepath = bpy.path.ensure_ext(self.__confg.filepath, ".dae")
         # make sure everything in our cryexportnode is selected
         #        for item in bpy.context.blend_data.groups:
         for i in bpy.context.selectable_objects:
@@ -746,7 +749,7 @@ class ExportCrytekDae:
                                 fnlx = 0
                                 fnly = 0
                                 fnlz = 0
-                                if config.avg_pface:
+                                if self.__confg.avg_pface:
                                     if fns == 0:
                                         fnlx = f.normal.x
                                         fnly = f.normal.y
@@ -1167,273 +1170,9 @@ class ExportCrytekDae:
 # end library controllers aka skining info
 # library_animations
 
-        libanmcl = self.__doc.createElement("library_animation_clips")
-        libanm = self.__doc.createElement("library_animations")
-        asw = 0
-        ande = 0
-        ande2 = 0
-        for i in bpy.context.selected_objects:
-            idat = i.data
-            lnname = str(i.name)
-            for item in bpy.context.blend_data.groups:
-                if item:
-                    ename = str(item.id_data.name)
-            if lnname[:8] == "animnode":
-                ande2 = 1
-                cbPrint(i["animname"])
-                cbPrint(i["startframe"])
-                cbPrint(i["endframe"])
-                actname = i["animname"]
-                sf = i["startframe"]
-                ef = i["endframe"]
-                anicl = self.__doc.createElement("animation_clip")
-                anicl.setAttribute("id", "%s-%s" % (actname, ename[14:]))
-                anicl.setAttribute("start", "%s" % (convert_time(sf)))
-                anicl.setAttribute("end", "%s" % (convert_time(ef)))
-                for i in bpy.context.selected_objects:
-                    if i.animation_data:
-                        if i.type == 'ARMATURE':
-                            cbPrint(
-                            "Object is armature, cannot process animations.")
-                        else:
-                            if i.animation_data.action:
-                                act = i.animation_data.action
-                                curves = act.fcurves
-                                frstrt = curves.data.frame_range[0]
-                                frend = curves.data.frame_range[1]
-                                anmlx = self.extract_anilx(i)
-                                anmly = self.extract_anily(i)
-                                anmlz = self.extract_anilz(i)
-                                anmrx = self.extract_anirx(i)
-                                anmry = self.extract_aniry(i)
-                                anmrz = self.extract_anirz(i)
-                                instlx = self.__doc.createElement(
-                                                        "instance_animation")
-                                instlx.setAttribute("url", "#%s_location_X"
-                                                    % (i.name))
-                                anicl.appendChild(instlx)
-                                instly = self.__doc.createElement(
-                                                        "instance_animation")
-                                instly.setAttribute("url", "#%s_location_Y"
-                                                    % (i.name))
-                                anicl.appendChild(instly)
-                                instlz = self.__doc.createElement(
-                                                        "instance_animation")
-                                instlz.setAttribute("url", "#%s_location_Z"
-                                                    % (i.name))
-                                anicl.appendChild(instlz)
-                                instrx = self.__doc.createElement(
-                                                        "instance_animation")
-                                instrx.setAttribute("url",
-                                                    "#%s_rotation_euler_X"
-                                                    % (i.name))
-                                anicl.appendChild(instrx)
-                                instry = self.__doc.createElement(
-                                                        "instance_animation")
-                                instry.setAttribute("url",
-                                                    "#%s_rotation_euler_Y"
-                                                    % (i.name))
-                                anicl.appendChild(instry)
-                                instrz = self.__doc.createElement(
-                                                        "instance_animation")
-                                instrz.setAttribute("url",
-                                                    "#%s_rotation_euler_Z"
-                                                    % (i.name))
-                                anicl.appendChild(instrz)
-                                libanm.appendChild(anmlx)
-                                libanm.appendChild(anmly)
-                                libanm.appendChild(anmlz)
-                                libanm.appendChild(anmrx)
-                                libanm.appendChild(anmry)
-                                libanm.appendChild(anmrz)
-                libanmcl.appendChild(anicl)
+        self.__export_library_animation_clips_and_animations(root_node)
 
-        if ande2 == 0:
-            for i in bpy.context.selected_objects:
-                if i.animation_data:
-                    if i.type == 'ARMATURE':
-                        cbPrint(
-                            "Object is armature, cannot process animations.")
-                    else:
-                        if i.animation_data.action:
-                            for item in bpy.context.blend_data.groups:
-                                if item:
-                                    ename = str(item.id_data.name)
-
-                            act = i.animation_data.action
-                            curves = act.fcurves
-                            frstrt = curves.data.frame_range[0]
-                            frend = curves.data.frame_range[1]
-                            anmlx = self.extract_anilx(i)
-                            anmly = self.extract_anily(i)
-                            anmlz = self.extract_anilz(i)
-                            anmrx = self.extract_anirx(i)
-                            anmry = self.extract_aniry(i)
-                            anmrz = self.extract_anirz(i)
-                            # animationclip name and framerange
-                            for ai in i.children:
-                                aname = str(ai.name)
-                                if aname[:8] == "animnode":
-
-                                    ande = 1
-                                    cbPrint(ai["animname"])
-                                    cbPrint(ai["startframe"])
-                                    cbPrint(ai["endframe"])
-                                    actname = ai["animname"]
-                                    sf = ai["startframe"]
-                                    ef = ai["endframe"]
-                                    anicl = self.__doc.createElement("animation_clip")
-                                    anicl.setAttribute("id", "%s-%s"
-                                                       % (actname, ename[14:]))
-                                    anicl.setAttribute("start", "%s"
-                                                       % (convert_time(sf)))
-                                    anicl.setAttribute("end", "%s"
-                                                       % (convert_time(ef)))
-                                    instlx = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instlx.setAttribute("url", "#%s_location_X"
-                                                        % (i.name))
-                                    anicl.appendChild(instlx)
-                                    instly = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instly.setAttribute("url", "#%s_location_Y"
-                                                        % (i.name))
-                                    anicl.appendChild(instly)
-                                    instlz = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instlz.setAttribute("url", "#%s_location_Z"
-                                                        % (i.name))
-                                    anicl.appendChild(instlz)
-                                    instrx = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instrx.setAttribute("url",
-                                                        "#%s_rotation_euler_X"
-                                                        % (i.name))
-                                    anicl.appendChild(instrx)
-                                    instry = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instry.setAttribute("url",
-                                                        "#%s_rotation_euler_Y"
-                                                        % (i.name))
-                                    anicl.appendChild(instry)
-                                    instrz = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instrz.setAttribute("url",
-                                                        "#%s_rotation_euler_Z"
-                                                        % (i.name))
-                                    anicl.appendChild(instrz)
-                                    libanmcl.appendChild(anicl)
-
-                            if ande == 0:
-                                if config.merge_anm:
-                                    if asw == 0:
-                                        anicl = self.__doc.createElement(
-                                                            "animation_clip")
-                                        anicl.setAttribute("id", "%s-%s"
-                                                    % (act.name, ename[14:]))
-                                        anicl.setAttribute("start", "%s"
-                                                    % (convert_time(frstrt)))
-                                        anicl.setAttribute("end", "%s"
-                                                    % (convert_time(frend)))
-                                        instlx = self.__doc.createElement(
-                                                        "instance_animation")
-                                        instlx.setAttribute("url",
-                                                            "#%s_location_X"
-                                                            % (i.name))
-                                        anicl.appendChild(instlx)
-                                        instly = self.__doc.createElement(
-                                                        "instance_animation")
-                                        instly.setAttribute("url",
-                                                            "#%s_location_Y"
-                                                            % (i.name))
-                                        anicl.appendChild(instly)
-                                        instlz = self.__doc.createElement(
-                                                        "instance_animation")
-                                        instlz.setAttribute("url",
-                                                            "#%s_location_Z"
-                                                            % (i.name))
-                                        anicl.appendChild(instlz)
-                                        instrx = self.__doc.createElement(
-                                                        "instance_animation")
-                                        instrx.setAttribute("url",
-                                                        "#%s_rotation_euler_X"
-                                                        % (i.name))
-                                        anicl.appendChild(instrx)
-                                        instry = self.__doc.createElement(
-                                                        "instance_animation")
-                                        instry.setAttribute("url",
-                                                        "#%s_rotation_euler_Y"
-                                                        % (i.name))
-                                        anicl.appendChild(instry)
-                                        instrz = self.__doc.createElement(
-                                                        "instance_animation")
-                                        instrz.setAttribute("url",
-                                                        "#%s_rotation_euler_Z"
-                                                        % (i.name))
-                                        anicl.appendChild(instrz)
-
-                                        asw = 1
-                                    else:
-                                        cbPrint("Merging clips.")
-                                else:
-                                    anicl = self.__doc.createElement("animation_clip")
-                                    anicl.setAttribute("id", "%s-%s"
-                                                    % (act.name, ename[14:]))
-                                    anicl.setAttribute("start", "%s"
-                                                    % (convert_time(frstrt)))
-                                    anicl.setAttribute("end", "%s"
-                                                    % (convert_time(frend)))
-
-                                    instlx = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instlx.setAttribute("url", "#%s_location_X"
-                                                        % (i.name))
-                                    anicl.appendChild(instlx)
-                                    instly = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instly.setAttribute("url", "#%s_location_Y"
-                                                        % (i.name))
-                                    anicl.appendChild(instly)
-                                    instlz = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instlz.setAttribute("url", "#%s_location_Z"
-                                                        % (i.name))
-                                    anicl.appendChild(instlz)
-                                    instrx = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instrx.setAttribute("url",
-                                                        "#%s_rotation_euler_X"
-                                                        % (i.name))
-                                    anicl.appendChild(instrx)
-                                    instry = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instry.setAttribute("url",
-                                                        "#%s_rotation_euler_Y"
-                                                        % (i.name))
-                                    anicl.appendChild(instry)
-                                    instrz = self.__doc.createElement(
-                                                        "instance_animation")
-                                    instrz.setAttribute("url",
-                                                        "#%s_rotation_euler_Z"
-                                                        % (i.name))
-                                    anicl.appendChild(instrz)
-
-                        if asw == 0:
-                            libanmcl.appendChild(anicl)
-
-                        libanm.appendChild(anmlx)
-                        libanm.appendChild(anmly)
-                        libanm.appendChild(anmlz)
-                        libanm.appendChild(anmrx)
-                        libanm.appendChild(anmry)
-                        libanm.appendChild(anmrz)
-
-            if asw == 1:
-                libanmcl.appendChild(anicl)
-        root_node.appendChild(libanmcl)
-        root_node.appendChild(libanm)
-
-        self.__export_library_visual_scenes(config, root_node)
+        self.__export_library_visual_scenes(root_node)
 
         # <scene> nothing really changes here or rather it doesnt need to.
         scene = self.__doc.createElement("scene")
@@ -1442,7 +1181,7 @@ class ExportCrytekDae:
         scene.appendChild(ivs)
         root_node.appendChild(scene)
 
-        write_to_file(config, self.__doc, filepath, exe)
+        write_to_file(self.__confg, self.__doc, filepath, self.__exe)
 
     def GetObjectChildren(self, Parent):
         return [Object for Object in Parent.children
@@ -3307,7 +3046,220 @@ class ExportCrytekDae:
                 result += "{!s} ".format(col)
         return result.strip()
 
-    def __export_library_visual_scenes(self, config, root_node):
+    def __export_library_animation_clips_and_animations(self, root_node):
+        libanmcl = self.__doc.createElement("library_animation_clips")
+        libanm = self.__doc.createElement("library_animations")
+        asw = 0
+        ande = 0
+        ande2 = 0
+        for i in bpy.context.selected_objects:
+            idat = i.data
+            lnname = str(i.name)
+            for item in bpy.context.blend_data.groups:
+                if item:
+                    ename = str(item.id_data.name)
+            
+            if lnname[:8] == "animnode":
+                ande2 = 1
+                cbPrint(i["animname"])
+                cbPrint(i["startframe"])
+                cbPrint(i["endframe"])
+                actname = i["animname"]
+                sf = i["startframe"]
+                ef = i["endframe"]
+                anicl = self.__doc.createElement("animation_clip")
+                anicl.setAttribute("id", "%s-%s" % (actname, ename[14:]))
+                anicl.setAttribute("start", "%s" % (convert_time(sf)))
+                anicl.setAttribute("end", "%s" % (convert_time(ef)))
+                for i in bpy.context.selected_objects:
+                    if i.animation_data:
+                        if i.type == 'ARMATURE':
+                            cbPrint("Object is armature, cannot process animations.")
+                        elif i.animation_data.action:
+                            act = i.animation_data.action
+                            curves = act.fcurves
+                            frstrt = curves.data.frame_range[0]
+                            frend = curves.data.frame_range[1]
+                            anmlx = self.extract_anilx(i)
+                            anmly = self.extract_anily(i)
+                            anmlz = self.extract_anilz(i)
+                            anmrx = self.extract_anirx(i)
+                            anmry = self.extract_aniry(i)
+                            anmrz = self.extract_anirz(i)
+                            instlx = self.__doc.createElement(
+                                "instance_animation")
+                            instlx.setAttribute("url", "#%s_location_X" % (i.name))
+                            anicl.appendChild(instlx)
+                            instly = self.__doc.createElement(
+                                "instance_animation")
+                            instly.setAttribute("url", "#%s_location_Y" % (i.name))
+                            anicl.appendChild(instly)
+                            instlz = self.__doc.createElement(
+                                "instance_animation")
+                            instlz.setAttribute("url", "#%s_location_Z" % (i.name))
+                            anicl.appendChild(instlz)
+                            instrx = self.__doc.createElement(
+                                "instance_animation")
+                            instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
+                            anicl.appendChild(instrx)
+                            instry = self.__doc.createElement(
+                                "instance_animation")
+                            instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
+                            anicl.appendChild(instry)
+                            instrz = self.__doc.createElement(
+                                "instance_animation")
+                            instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
+                            anicl.appendChild(instrz)
+                            libanm.appendChild(anmlx)
+                            libanm.appendChild(anmly)
+                            libanm.appendChild(anmlz)
+                            libanm.appendChild(anmrx)
+                            libanm.appendChild(anmry)
+                            libanm.appendChild(anmrz)
+                
+                libanmcl.appendChild(anicl)
+        
+        if ande2 == 0:
+            for i in bpy.context.selected_objects:
+                if i.animation_data:
+                    if i.type == 'ARMATURE':
+                        cbPrint("Object is armature, cannot process animations.")
+                    else:
+                        if i.animation_data.action:
+                            for item in bpy.context.blend_data.groups:
+                                if item:
+                                    ename = str(item.id_data.name)
+                            
+                            act = i.animation_data.action
+                            curves = act.fcurves
+                            frstrt = curves.data.frame_range[0]
+                            frend = curves.data.frame_range[1]
+                            anmlx = self.extract_anilx(i)
+                            anmly = self.extract_anily(i)
+                            anmlz = self.extract_anilz(i)
+                            anmrx = self.extract_anirx(i)
+                            anmry = self.extract_aniry(i)
+                            anmrz = self.extract_anirz(i)
+                            # animationclip name and framerange
+                            for ai in i.children:
+                                aname = str(ai.name)
+                                if aname[:8] == "animnode":
+                                    ande = 1
+                                    cbPrint(ai["animname"])
+                                    cbPrint(ai["startframe"])
+                                    cbPrint(ai["endframe"])
+                                    actname = ai["animname"]
+                                    sf = ai["startframe"]
+                                    ef = ai["endframe"]
+                                    anicl = self.__doc.createElement("animation_clip")
+                                    anicl.setAttribute("id", "%s-%s" % (actname, ename[14:]))
+                                    anicl.setAttribute("start", "%s" % (convert_time(sf)))
+                                    anicl.setAttribute("end", "%s" % (convert_time(ef)))
+                                    instlx = self.__doc.createElement(
+                                        "instance_animation")
+                                    instlx.setAttribute("url", "#%s_location_X" % (i.name))
+                                    anicl.appendChild(instlx)
+                                    instly = self.__doc.createElement(
+                                        "instance_animation")
+                                    instly.setAttribute("url", "#%s_location_Y" % (i.name))
+                                    anicl.appendChild(instly)
+                                    instlz = self.__doc.createElement(
+                                        "instance_animation")
+                                    instlz.setAttribute("url", "#%s_location_Z" % (i.name))
+                                    anicl.appendChild(instlz)
+                                    instrx = self.__doc.createElement(
+                                        "instance_animation")
+                                    instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
+                                    anicl.appendChild(instrx)
+                                    instry = self.__doc.createElement(
+                                        "instance_animation")
+                                    instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
+                                    anicl.appendChild(instry)
+                                    instrz = self.__doc.createElement(
+                                        "instance_animation")
+                                    instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
+                                    anicl.appendChild(instrz)
+                                    libanmcl.appendChild(anicl)
+                            
+                            if ande == 0:
+                                if self.__confg.merge_anm:
+                                    if asw == 0:
+                                        anicl = self.__doc.createElement(
+                                            "animation_clip")
+                                        anicl.setAttribute("id", "%s-%s" % (act.name, ename[14:]))
+                                        anicl.setAttribute("start", "%s" % (convert_time(frstrt)))
+                                        anicl.setAttribute("end", "%s" % (convert_time(frend)))
+                                        instlx = self.__doc.createElement(
+                                            "instance_animation")
+                                        instlx.setAttribute("url", "#%s_location_X" % (i.name))
+                                        anicl.appendChild(instlx)
+                                        instly = self.__doc.createElement(
+                                            "instance_animation")
+                                        instly.setAttribute("url", "#%s_location_Y" % (i.name))
+                                        anicl.appendChild(instly)
+                                        instlz = self.__doc.createElement(
+                                            "instance_animation")
+                                        instlz.setAttribute("url", "#%s_location_Z" % (i.name))
+                                        anicl.appendChild(instlz)
+                                        instrx = self.__doc.createElement(
+                                            "instance_animation")
+                                        instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
+                                        anicl.appendChild(instrx)
+                                        instry = self.__doc.createElement(
+                                            "instance_animation")
+                                        instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
+                                        anicl.appendChild(instry)
+                                        instrz = self.__doc.createElement(
+                                            "instance_animation")
+                                        instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
+                                        anicl.appendChild(instrz)
+                                        asw = 1
+                                    else:
+                                        cbPrint("Merging clips.")
+                                else:
+                                    anicl = self.__doc.createElement("animation_clip")
+                                    anicl.setAttribute("id", "%s-%s" % (act.name, ename[14:]))
+                                    anicl.setAttribute("start", "%s" % (convert_time(frstrt)))
+                                    anicl.setAttribute("end", "%s" % (convert_time(frend)))
+                                    instlx = self.__doc.createElement(
+                                        "instance_animation")
+                                    instlx.setAttribute("url", "#%s_location_X" % (i.name))
+                                    anicl.appendChild(instlx)
+                                    instly = self.__doc.createElement(
+                                        "instance_animation")
+                                    instly.setAttribute("url", "#%s_location_Y" % (i.name))
+                                    anicl.appendChild(instly)
+                                    instlz = self.__doc.createElement(
+                                        "instance_animation")
+                                    instlz.setAttribute("url", "#%s_location_Z" % (i.name))
+                                    anicl.appendChild(instlz)
+                                    instrx = self.__doc.createElement(
+                                        "instance_animation")
+                                    instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
+                                    anicl.appendChild(instrx)
+                                    instry = self.__doc.createElement(
+                                        "instance_animation")
+                                    instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
+                                    anicl.appendChild(instry)
+                                    instrz = self.__doc.createElement(
+                                        "instance_animation")
+                                    instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
+                                    anicl.appendChild(instrz)
+                        if asw == 0:
+                            libanmcl.appendChild(anicl)
+                        libanm.appendChild(anmlx)
+                        libanm.appendChild(anmly)
+                        libanm.appendChild(anmlz)
+                        libanm.appendChild(anmrx)
+                        libanm.appendChild(anmry)
+                        libanm.appendChild(anmrz)
+            
+            if asw == 1:
+                libanmcl.appendChild(anicl)
+        root_node.appendChild(libanmcl)
+        root_node.appendChild(libanm)
+
+    def __export_library_visual_scenes(self, root_node):
         libvs = self.__doc.createElement("library_visual_scenes")
         visual_scenes_node = self.__doc.createElement("visual_scene")
         libvs.appendChild(visual_scenes_node)
@@ -3326,28 +3278,27 @@ class ExportCrytekDae:
             visual_scenes_node.appendChild(node1)
             objectl = []
             objectl = item.objects
-            node1 = self.vsp(config, objectl, node1)
+            node1 = self.vsp(self.__confg, objectl, node1)
             # exportnode settings
             ext1 = self.__doc.createElement("extra")
             tc3 = self.__doc.createElement("technique")
             tc3.setAttribute("profile", "CryEngine")
             prop1 = self.__doc.createElement("properties")
-            if config.is_cgf:
+            if self.__confg.is_cgf:
                 pcgf = self.__doc.createTextNode("fileType=cgf")
                 prop1.appendChild(pcgf)
-            if config.is_cga:
+            if self.__confg.is_cga:
                 pcga = self.__doc.createTextNode("fileType=cgaanm")
                 prop1.appendChild(pcga)
-            if config.is_chrcaf:
+            if self.__confg.is_chrcaf:
                 pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
                 prop1.appendChild(pchrcaf)
-            if config.donot_merge:
+            if self.__confg.donot_merge:
                 pdnm = self.__doc.createTextNode("DoNotMerge")
                 prop1.appendChild(pdnm)
             tc3.appendChild(prop1)
             ext1.appendChild(tc3)
             node1.appendChild(ext1)
-
 
 def get_relative_path(filepath):
     [is_relative, filepath] = strip_blender_path_prefix(filepath)
@@ -3388,8 +3339,8 @@ def save(config, context, exe):
     if not os.path.isfile(exe):
         raise exceptions.NoRcSelectedException
 
-    exp = ExportCrytekDae()
-    exp.execute(config, context, exe)
+    exporter = ExportCrytekDae(config, exe)
+    exporter.export(context)
 
 
 def menu_func_export(self, context):
