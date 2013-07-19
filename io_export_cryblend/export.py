@@ -564,14 +564,12 @@ class CrytekDaeExporter:
                 if ai:
                     if ai[1] == "fakebone":
                         fby = 1
+                        break
             if fby == 1:  # object_.parent_bone:
                 pass
             else:
-                if object_.type == 'ARMATURE':
-                    cname = (object_.name)
-                else:
-                    cname = (object_.name)
-                nodename = cname
+                cname = object_.name
+
                 nodename = self.__doc.createElement("node")
                 nodename.setAttribute("id", "%s" % (cname))
                 nodename.setIdAttribute('id')
