@@ -405,39 +405,29 @@ class CrytekDaeExporter:
         return [Object for Object in Parent.children
                 if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
 
-    def wbl(self, pname, bonelist, obj, node1):
-        cbPrint(len(bonelist), "bones")
+    def wbl(self, pname, bones, obj, node1):
+        cbPrint(len(bones), "bones")
         boneExtendedNames = []
-        for Bone in bonelist:
-            bprnt = Bone.parent
+        for bone in bones:
+            bprnt = bone.parent
             if bprnt:
-                cbPrint(Bone.name, Bone.parent.name)
-            bname = Bone.name
-            nodename = bname
+                cbPrint(bone.name, bone.parent.name)
+            bname = bone.name
             nodename = self.__doc.createElement("node")
 
             pExtension = ''
 
             # Name Extension
-            extend = False
-            if (extend
-                or self.__config.include_ik
-                and "_Phys" == Bone.name[-5:]):
+            if (self.__config.include_ik and "_Phys" == bone.name[-5:]):
                 exportNodeName = node1.getAttribute('id')[14:]
-                boneName = Bone.name
-                starredBoneName = ''
-                for char in boneName:
-                    if char == '_':
-                        char = '*'
-                    starredBoneName += char
+                starredBoneName = bone.name.replace("_", "*")
                 pExtension += '%' + exportNodeName + '%'
                 pExtension += '--PRprops_name=' + starredBoneName + '_'
 
             # IK
-            if ("_Phys" == Bone.name[-5:]
-                and self.__config.include_ik):
+            if ("_Phys" == bone.name[-5:] and self.__config.include_ik):
                 poseBone = (bpy.data.objects[obj.name[:-5]]
-                    ).pose.bones[Bone.name[:-5]]
+                    ).pose.bones[bone.name[:-5]]
 
                 # Start IK props
                 pExtension += 'xmax={!s}_'.format(poseBone.ik_max_x)
@@ -462,21 +452,18 @@ class CrytekDaeExporter:
                 pExtension += 'zspringtension={!s}_'.format(1.0)
                 # End IK props
 
-            if extend:
-                pExtension += '_'
-
             nodename.setAttribute("id", "%s" % (bname + pExtension))
             nodename.setAttribute("name", "%s" % (bname + pExtension))
             boneExtendedNames.append(bname + pExtension)
             nodename.setIdAttribute('id')
 
             for object in bpy.context.selectable_objects:
-                if (object.name == Bone.name
-                    or (object.name == Bone.name[:-5]
-                        and "_Phys" == Bone.name[-5:])
+                if (object.name == bone.name
+                    or (object.name == bone.name[:-5]
+                        and "_Phys" == bone.name[-5:])
                     ):
                     bpy.data.objects[object.name].select = True
-                    cbPrint("FakeBone found for " + Bone.name)
+                    cbPrint("FakeBone found for " + bone.name)
                     # <translate sid="translation">
                     trans = self.__doc.createElement("translate")
                     trans.setAttribute("sid", "translation")
@@ -520,10 +507,10 @@ class CrytekDaeExporter:
                     nodename.appendChild(sc)
                     # Find the boneGeometry object
                     for i in bpy.context.selectable_objects:
-                        if i.name == Bone.name + "_boneGeometry":
+                        if i.name == bone.name + "_boneGeometry":
                             ig = self.__doc.createElement("instance_geometry")
                             ig.setAttribute("url", "#%s"
-                                            % (Bone.name
+                                            % (bone.name
                                                + "_boneGeometry"))
                             bm = self.__doc.createElement("bind_material")
                             tc = self.__doc.createElement("technique_common")
