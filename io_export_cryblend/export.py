@@ -37,7 +37,6 @@ from time import clock
 from xml.dom.minidom import Document
 import bpy
 import fnmatch
-import math
 import os
 import random
 import subprocess
@@ -364,7 +363,7 @@ class CrytekDaeExporter:
                                "http://www.collada.org/2005/11/COLLADASchema")
         root_node.setAttribute("version", "1.4.1")
         self.__doc.appendChild(root_node)
-        
+
         self.__export_asset(root_node)
 
         # just here for future use
@@ -477,7 +476,6 @@ class CrytekDaeExporter:
                         and "_Phys" == Bone.name[len(Bone.name) - 5:])
                     ):
                     bpy.data.objects[object.name].select = True
-                    # fbone = object
                     cbPrint("FakeBone found for " + Bone.name)
                     # <translate sid="translation">
                     trans = self.__doc.createElement("translate")
@@ -531,22 +529,21 @@ class CrytekDaeExporter:
                             tc = self.__doc.createElement("technique_common")
                             # mat = mesh.materials[:]
                             for mat in i.material_slots:
-                                if mat:
                                 # yes lets go through them 1 at a time
-                                    im = self.__doc.createElement(
-                                                    "instance_material")
-                                    im.setAttribute("symbol", "%s"
-                                                    % (mat.name))
-                                    im.setAttribute("target", "#%s"
-                                                    % (mat.name))
-                                    bvi = self.__doc.createElement(
-                                                    "bind_vertex_input")
-                                    bvi.setAttribute("semantic", "UVMap")
-                                    bvi.setAttribute("input_semantic",
-                                                     "TEXCOORD")
-                                    bvi.setAttribute("input_set", "0")
-                                    im.appendChild(bvi)
-                                    tc.appendChild(im)
+                                im = self.__doc.createElement(
+                                                "instance_material")
+                                im.setAttribute("symbol", "%s"
+                                                % (mat.name))
+                                im.setAttribute("target", "#%s"
+                                                % (mat.name))
+                                bvi = self.__doc.createElement(
+                                                "bind_vertex_input")
+                                bvi.setAttribute("semantic", "UVMap")
+                                bvi.setAttribute("input_semantic",
+                                                 "TEXCOORD")
+                                bvi.setAttribute("input_set", "0")
+                                im.appendChild(bvi)
+                                tc.appendChild(im)
                             bm.appendChild(tc)
                             ig.appendChild(bm)
                             nodename.appendChild(ig)
@@ -557,10 +554,8 @@ class CrytekDaeExporter:
                         nodeparent = self.__doc.getElementById(name)
                         cbPrint(bprnt.name)
                         nodeparent.appendChild(nodename)
-            else:  # Root bone (of any armature type)
-                # nodeparent = doc.getElementById("%s"%pname)
-                # nodeparent.appendChild(nodename)
-                node1.appendChild(nodename)  # nodeparent)
+            else:
+                node1.appendChild(nodename)
 
     def vsp(self, objects, node1):
         for object_ in objects:
@@ -626,8 +621,6 @@ class CrytekDaeExporter:
                                 for Modifier in object_.modifiers
                                 if Modifier.type == "ARMATURE"]
                 if ArmatureList:
-                    # PoseBones = ArmatureObject.pose.bones
-                    ArmatureObject = ArmatureList[0].object
                     ic = self.__doc.createElement("instance_controller")
                     # This binds the meshObject to the armature
                     # in control of it
@@ -642,23 +635,22 @@ class CrytekDaeExporter:
                         ig.setAttribute("url", "#%s" % (cname))
                         bm = self.__doc.createElement("bind_material")
                         tc = self.__doc.createElement("technique_common")
-                        # mat = mesh.materials[:]
+
                         for mat in object_.material_slots:
-                            if mat:
                             # yes lets go through them 1 at a time
-                                im = self.__doc.createElement("instance_material")
-                                im.setAttribute("symbol", "%s"
-                                                % (mat.name))
-                                im.setAttribute("target", "#%s"
-                                                % (mat.name))
-                                bvi = self.__doc.createElement(
-                                                    "bind_vertex_input")
-                                bvi.setAttribute("semantic", "UVMap")
-                                bvi.setAttribute("input_semantic",
-                                                 "TEXCOORD")
-                                bvi.setAttribute("input_set", "0")
-                                im.appendChild(bvi)
-                                tc.appendChild(im)
+                            im = self.__doc.createElement("instance_material")
+                            im.setAttribute("symbol", "%s"
+                                            % (mat.name))
+                            im.setAttribute("target", "#%s"
+                                            % (mat.name))
+                            bvi = self.__doc.createElement(
+                                                "bind_vertex_input")
+                            bvi.setAttribute("semantic", "UVMap")
+                            bvi.setAttribute("input_semantic",
+                                             "TEXCOORD")
+                            bvi.setAttribute("input_set", "0")
+                            im.appendChild(bvi)
+                            tc.appendChild(im)
                         bm.appendChild(tc)
                         if ArmatureList:
                             ic.appendChild(bm)
@@ -667,7 +659,6 @@ class CrytekDaeExporter:
                             ig.appendChild(bm)
                             nodename.appendChild(ig)
 
-                        # nodename.appendChild(ig)
                 ex = self.__doc.createElement("extra")
                 techcry = self.__doc.createElement("technique")
                 techcry.setAttribute("profile", "CryEngine")
@@ -676,7 +667,6 @@ class CrytekDaeExporter:
                 # Tagging properties onto the end of the item, I think.
                 for ai in object_.rna_type.id_data.items():
                     if ai:
-                        # cprop +=("%s=%s"%(i[0],i[1]))
                         cprop = ("%s" % (ai[1]))
                         cryprops = self.__doc.createTextNode("%s" % (cprop))
                         prop2.appendChild(cryprops)
@@ -691,7 +681,6 @@ class CrytekDaeExporter:
                     vmin0 = str(vmin[0])
                     vmin1 = str(vmin[1])
                     vmin2 = str(vmin[2])
-                    # bbmnval=doc.createTextNode("%s %s %s"%(vmin[0],vmin[1],vmin[2]))
                     bbmnval = self.__doc.createTextNode("%s %s %s" % (vmin0[:6],
                                                                vmin1[:6],
                                                                vmin2[:6]))
@@ -700,7 +689,6 @@ class CrytekDaeExporter:
                     vmax0 = str(vmax[0])
                     vmax1 = str(vmax[1])
                     vmax2 = str(vmax[2])
-                    # bbmxval=doc.createTextNode("%s %s %s"%(vmax[0],vmax[1],vmax[2]))
                     bbmxval = self.__doc.createTextNode("%s %s %s" % (vmax0[:6],
                                                                vmax1[:6],
                                                                vmax2[:6]))
@@ -711,11 +699,10 @@ class CrytekDaeExporter:
                 ex.appendChild(techcry)
                 nodename.appendChild(ex)
                 if object_.type == 'ARMATURE':
-                    # node1.appendChild(nodename)
                     cbPrint("Armature appended.")
                     bonelist = self.__get_bones(object_)
                     self.wbl(cname, bonelist, object_, node1)
-                    # return node1
+
                 if object_.children:
                     if object_.parent:
                         if object_.parent.type != 'ARMATURE':
@@ -739,7 +726,6 @@ class CrytekDaeExporter:
                             node1.appendChild(nodename)
                             ChildList = self.GetObjectChildren(object_)
                             self.vsp(ChildList, node1)
-                    # return node1
 
                 else:
                     if object_.parent:
@@ -758,7 +744,6 @@ class CrytekDaeExporter:
                                 else:
                                     nodeparent.appendChild(nodename)
 
-                            # return node1
                             cbPrint("Armparent.")
                         else:
                             node1.appendChild(nodename)
@@ -767,7 +752,6 @@ class CrytekDaeExporter:
                             cbPrint("Animnode.")
                         else:
                             node1.appendChild(nodename)
-                    # return node1
         return node1
 
     def extract_anilx(self, i):
@@ -788,7 +772,6 @@ class CrytekDaeExporter:
                 intx = ""
                 temp = fcus[0].keyframe_points
                 ii = 0
-                pvalue = 0
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
                     khly = keyx.handle_left[1]
@@ -962,8 +945,6 @@ class CrytekDaeExporter:
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
-                # samx.appendChild(semintang)
-                # samx.appendChild(semoutang)
                 chanx = self.__doc.createElement("channel")
                 chanx.setAttribute("source", "#%s_location_X-sampler"
                                    % (i.name))
@@ -975,7 +956,6 @@ class CrytekDaeExporter:
                 anmlx.appendChild(soutangpx)
                 anmlx.appendChild(samx)
                 anmlx.appendChild(chanx)
-                # libanm.appendChild(anmlx)
                 cbPrint(ii)
                 cbPrint(inpx)
                 cbPrint(outpx)
@@ -1174,8 +1154,6 @@ class CrytekDaeExporter:
                 samy.appendChild(semip)
                 samy.appendChild(semop)
                 samy.appendChild(seminter)
-                # samy.appendChild(semintang)
-                # samy.appendChild(semoutang)
                 chany = self.__doc.createElement("channel")
                 chany.setAttribute("source", "#%s_location_Y-sampler"
                                    % (i.name))
@@ -1187,7 +1165,6 @@ class CrytekDaeExporter:
                 anmly.appendChild(soutangpy)
                 anmly.appendChild(samy)
                 anmly.appendChild(chany)
-                # libanm.appendChild(anmly)
                 cbPrint(ii)
                 cbPrint(inpy)
                 cbPrint(outpy)
@@ -1387,8 +1364,6 @@ class CrytekDaeExporter:
                 samz.appendChild(semip)
                 samz.appendChild(semop)
                 samz.appendChild(seminter)
-                # samz.appendChild(semintang)
-                # samz.appendChild(semoutang)
                 chanz = self.__doc.createElement("channel")
                 chanz.setAttribute("source", "#%s_location_Z-sampler"
                                    % (i.name))
@@ -1400,7 +1375,6 @@ class CrytekDaeExporter:
                 anmlz.appendChild(soutangpz)
                 anmlz.appendChild(samz)
                 anmlz.appendChild(chanz)
-                # libanm.appendChild(anmlz)
                 cbPrint(ii)
                 cbPrint(inpz)
                 cbPrint(outpz)
@@ -1608,8 +1582,6 @@ class CrytekDaeExporter:
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
-                # samx.appendChild(semintang)
-                # samx.appendChild(semoutang)
                 chanx = self.__doc.createElement("channel")
                 chanx.setAttribute("source", "#%s_rotation_euler_X-sampler"
                                     % (i.name))
@@ -1622,7 +1594,6 @@ class CrytekDaeExporter:
                 anmrx.appendChild(soutangpx)
                 anmrx.appendChild(samx)
                 anmrx.appendChild(chanx)
-                # libanm.appendChild(anmrx)
                 cbPrint(ii)
                 cbPrint(inpx)
                 cbPrint(outpx)
@@ -1830,8 +1801,6 @@ class CrytekDaeExporter:
                 samy.appendChild(semip)
                 samy.appendChild(semop)
                 samy.appendChild(seminter)
-                # samy.appendChild(semintang)
-                # samy.appendChild(semoutang)
                 chany = self.__doc.createElement("channel")
                 chany.setAttribute("source", "#%s_rotation_euler_Y-sampler"
                                    % (i.name))
@@ -1844,7 +1813,6 @@ class CrytekDaeExporter:
                 anmry.appendChild(soutangpy)
                 anmry.appendChild(samy)
                 anmry.appendChild(chany)
-                # libanm.appendChild(anmry)
                 cbPrint(ii)
                 cbPrint(inpy)
                 cbPrint(outpy)
@@ -2052,8 +2020,6 @@ class CrytekDaeExporter:
                 samz.appendChild(semip)
                 samz.appendChild(semop)
                 samz.appendChild(seminter)
-                # samz.appendChild(semintang)
-                # samz.appendChild(semoutang)
                 chanz = self.__doc.createElement("channel")
                 chanz.setAttribute("source", "#%s_rotation_euler_Z-sampler"
                                     % (i.name))
@@ -2066,7 +2032,6 @@ class CrytekDaeExporter:
                 anmrz.appendChild(soutangpz)
                 anmrz.appendChild(samz)
                 anmrz.appendChild(chanz)
-                # libanm.appendChild(anmrz)
                 cbPrint(ii)
                 cbPrint(inpz)
                 cbPrint(outpz)
@@ -2081,8 +2046,6 @@ class CrytekDaeExporter:
                 if modifier.type == "ARMATURE"]
 
     def __process_bones(self, libcont, object_, armatures):
-        blist = ""
-        mtx = ""
         armature = armatures[0].object
 
         contr = self.__doc.createElement("controller")
@@ -2152,18 +2115,17 @@ class CrytekDaeExporter:
         vcount = 0
 
         for v in me.vertices:
-            if v.groups:
-                for g in v.groups:
-                    wa += "%.6f " % g.weight
-                    for gr in object_.vertex_groups:
-                        if gr.index == g.group:
-                            for bone_id, bone in enumerate(armature_bones):
-                                if bone.name == gr.name:
-                                    vw += "%s " % bone_id
+            for g in v.groups:
+                wa += "%.6f " % g.weight
+                for gr in object_.vertex_groups:
+                    if gr.index == g.group:
+                        for bone_id, bone in enumerate(armature_bones):
+                            if bone.name == gr.name:
+                                vw += "%s " % bone_id
 
-                    vw += "%s " % str(vcount)
-                    vcount += 1
-                    cbPrint("Doing weights.")
+                vw += "%s " % str(vcount)
+                vcount += 1
+                cbPrint("Doing weights.")
 
             vcntr += "%s " % len(v.groups)
 
@@ -2521,7 +2483,6 @@ class CrytekDaeExporter:
                         i.data.update(calc_tessface=1)
                         mesh = i.data
                         me_verts = mesh.vertices[:]
-                        uv_layer_count = len(mesh.uv_textures)
                         mname = i.name
                         geo = self.__doc.createElement("geometry")
                         geo.setAttribute("id", "%s" % (mname))
@@ -2571,21 +2532,17 @@ class CrytekDaeExporter:
                         # positions
                         # normals
                         float_normals = ""
-                        tfloat_normals = ""
                         float_normals_count = ""
-                        float_faces = ""
-                        float_vnorm = ""
                         iin = 0
                         iin = ""
                         start_time = clock()
                         # mesh.sort_faces()
                         # mesh.calc_normals()
-                        face_index_pairs = [(face, index) for
-                            index, face in enumerate(mesh.tessfaces)]
+                        face_index_pairs = mesh.tessfaces
                         ush = 0
                         has_sharp_edges = 0
                         # for f in mesh.tessfaces:
-                        for f, f_index in face_index_pairs:
+                        for f in face_index_pairs:
                             if f.use_smooth:
                                 for v_idx in f.vertices:
                                     for e_idx in mesh.edges:
@@ -2622,7 +2579,7 @@ class CrytekDaeExporter:
                                         fnlz = f.normal.z
                                         fnc += "1"
                                         cbPrint("face%s" % fnlx)
-                                    for fn, f_index in face_index_pairs:
+                                    for fn in face_index_pairs:
                                         if (f.normal.angle(fn.normal) <
                                             .052):
                                             if (f.normal.angle(fn.normal) >
@@ -2684,7 +2641,6 @@ class CrytekDaeExporter:
                         # be a uv set
                         uvs = self.__doc.createElement("source")
             # thankyou fbx exporter
-                        tempc = ""
                         uvlay = []
                         # lay = i.data.uv_textures.active
                         # if lay:
@@ -2702,7 +2658,6 @@ class CrytekDaeExporter:
                             i_n = -1
                             ii = 0  # Count how many UVs we write
                             test = ""
-                            uvc = ""
                             for uf in uvlayer.data:
                             # workaround, since uf.uv iteration
                             # is wrong atm
@@ -2774,20 +2729,13 @@ class CrytekDaeExporter:
 
                                         alpha_list.append(tmp)
 
-                        # if ni == -1:
-                        #   alpha_list.append(tmp)
-                        #  ni = 0
-                        # else:
-                        #   if ni == 7:
-                        #      ni = 0
-                        #     alpha_list.append(tmp)
                                     for vca in alpha_list:
                                         cbPrint(str(vca))
 
                         if len(i.data.tessface_vertex_colors):
                             # vcols= doc.createElement("source")
                             collayers = i.data.tessface_vertex_colors
-                            for colindex, collayer in enumerate(collayers):
+                            for collayer in collayers:
                                 ni = -1
                                 ii = 0  # Count how many Colors we write
                                 vcol = ""
@@ -2880,7 +2828,6 @@ class CrytekDaeExporter:
                         # end vertices
                         # polylist
                         mat = mesh.materials[:]
-                        me_faces = mesh.tessfaces[:]
                         start_time = clock()
                         if mat:
                             # yes lets go through them 1 at a time
@@ -2891,12 +2838,9 @@ class CrytekDaeExporter:
                                 face_count = ""
                                 face_counter = 0
                                 ni = 0
-                                vi = 0
-                                totfaces = len(mesh.tessfaces)
                                 texindex = 0
-                                matn = ""
                                 nverts = ""
-                                for f, f_index in face_index_pairs:
+                                for f in face_index_pairs:
                                     fi = f.vertices[:]
                                     if f.material_index == im[0]:
                                         nverts += str(len(f.vertices)) + " "
@@ -2920,11 +2864,8 @@ class CrytekDaeExporter:
                                                     "%s " % (texindex))
                                             texindex += 1
 
-                                        matn = im[0]
                                     if f.use_smooth:
-                                        if has_sharp_edges == 1:
-                                            vi = 2
-                                        else:
+                                        if has_sharp_edges != 1:
                                             ni += len(f.vertices)
                                     else:
                                         ni += 1  # #<--naughty naughty
@@ -3008,7 +2949,6 @@ class CrytekDaeExporter:
         ande = 0
         ande2 = 0
         for i in bpy.context.selected_objects:
-            idat = i.data
             lnname = str(i.name)
             for item in bpy.context.blend_data.groups:
                 if item:
