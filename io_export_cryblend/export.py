@@ -194,7 +194,7 @@ def write_to_file(config, doc, fname, exe):
         objLayer.appendChild(layer)
         layerDoc.appendChild(objLayer)
         s = layerDoc.toprettyxml(indent="  ")
-        f = open(fname[:len(fname) - 4] + '.lyr', 'w')
+        f = open(fname[:-4] + '.lyr', 'w')
         f.write(s)
         f.close()
 
@@ -422,7 +422,7 @@ class CrytekDaeExporter:
             extend = False
             if (extend
                 or self.__config.include_ik
-                and "_Phys" == Bone.name[len(Bone.name) - 5:]):
+                and "_Phys" == Bone.name[-5:]):
                 exportNodeName = node1.getAttribute('id')[14:]
                 boneName = Bone.name
                 starredBoneName = ''
@@ -434,10 +434,10 @@ class CrytekDaeExporter:
                 pExtension += '--PRprops_name=' + starredBoneName + '_'
 
             # IK
-            if ("_Phys" == Bone.name[len(Bone.name) - 5:]
+            if ("_Phys" == Bone.name[-5:]
                 and self.__config.include_ik):
-                poseBone = (bpy.data.objects[obj.name[:len(obj.name) - 5]]
-                    ).pose.bones[Bone.name[:len(Bone.name) - 5]]
+                poseBone = (bpy.data.objects[obj.name[:-5]]
+                    ).pose.bones[Bone.name[:-5]]
 
                 # Start IK props
                 pExtension += 'xmax={!s}_'.format(poseBone.ik_max_x)
@@ -472,8 +472,8 @@ class CrytekDaeExporter:
 
             for object in bpy.context.selectable_objects:
                 if (object.name == Bone.name
-                    or (object.name == Bone.name[:len(Bone.name) - 5]
-                        and "_Phys" == Bone.name[len(Bone.name) - 5:])
+                    or (object.name == Bone.name[:-5]
+                        and "_Phys" == Bone.name[-5:])
                     ):
                     bpy.data.objects[object.name].select = True
                     cbPrint("FakeBone found for " + Bone.name)
@@ -2708,7 +2708,7 @@ class CrytekDaeExporter:
                         # list for vert alpha if found
                         alpha_found = 0
                         alpha_list = []
-                        if len(i.data.tessface_vertex_colors):
+                        if i.data.tessface_vertex_colors:
                             collayers = i.data.tessface_vertex_colors
                             for colindex, collayer in enumerate(collayers):
                                 ni = -1
@@ -2730,7 +2730,7 @@ class CrytekDaeExporter:
                                     for vca in alpha_list:
                                         cbPrint(str(vca))
 
-                        if len(i.data.tessface_vertex_colors):
+                        if i.data.tessface_vertex_colors:
                             # vcols= doc.createElement("source")
                             collayers = i.data.tessface_vertex_colors
                             for collayer in collayers:
@@ -2857,7 +2857,7 @@ class CrytekDaeExporter:
                                             else:
                                                 verts += str("%s " % (ni))
                                             verts += str("%s " % (texindex))
-                                            if len(mesh.vertex_colors):
+                                            if mesh.vertex_colors:
                                                 verts += str(
                                                     "%s " % (texindex))
                                             texindex += 1
@@ -2893,7 +2893,7 @@ class CrytekDaeExporter:
                                 inpuv.setAttribute("offset", "2")
                                 inpuv.setAttribute("set", "%s" % (mapslot))
                                 polyl.appendChild(inpuv)
-                                if len(mesh.vertex_colors):
+                                if mesh.vertex_colors:
                                     inpvcol = self.__doc.createElement("input")
                                     inpvcol.setAttribute("semantic", "COLOR")
                                     inpvcol.setAttribute("source", "#%s-colors" % (mname))

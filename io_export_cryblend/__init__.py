@@ -918,7 +918,7 @@ class RenamePhysBones(bpy.types.Operator):
 
     def execute(self, context):
         for obj in bpy.context.scene.objects:
-            if ('_Phys' == obj.name[len(obj.name) - 5:]
+            if ('_Phys' == obj.name[-5:]
                 and obj.type == 'ARMATURE'):
                 for bone in obj.data.bones:
                     oldName = bone.name
