@@ -2026,142 +2026,6 @@ class CrytekDaeExporter:
                 cbPrint("donerotz")
         return anmrz
 
-    def __get_armatures(self, object_):
-        return [modifier for modifier in object_.modifiers
-                if modifier.type == "ARMATURE"]
-
-    def __process_bones(self, libcont, object_, armatures):
-        armature = armatures[0].object
-
-        contr = self.__doc.createElement("controller")
-        contr.setAttribute("id", "%s_%s" % (armature.name, object_.name))
-        libcont.appendChild(contr)
-        skin_node = self.__doc.createElement("skin")
-        skin_node.setAttribute("source", "#%s" % object_.name)
-        contr.appendChild(skin_node)
-        mtx = self.__matrix_to_string(Matrix())
-        bsm = self.__doc.createElement("bind_shape_matrix")
-        bsmv = self.__doc.createTextNode("%s" % mtx)
-        bsm.appendChild(bsmv)
-        skin_node.appendChild(bsm)
-        src = self.__doc.createElement("source")
-        src.setAttribute("id", "%s_%s_joints" % (armature.name, object_.name))
-
-        armature_bones = self.__get_bones(armature)
-        idar = self.__doc.createElement("IDREF_array")
-        idar.setAttribute("id", "%s_%s_joints_array" % (armature.name, object_.name))
-        idar.setAttribute("count", "%s" % len(armature_bones))
-        blist = self.__get_bone_names_for_idref(armature_bones)
-
-        cbPrint(blist)
-        jnl = self.__doc.createTextNode("%s" % blist)
-        idar.appendChild(jnl)
-        src.appendChild(idar)
-        tcom = self.__doc.createElement("technique_common")
-        acc = self.__doc.createElement("accessor")
-        acc.setAttribute("source", "#%s_%s_joints_array" % (armature.name, object_.name))
-        acc.setAttribute("count", "%s" % len(armature_bones))
-        acc.setAttribute("stride", "1")
-        paran = self.__doc.createElement("param")
-        paran.setAttribute("type", "IDREF")
-        acc.appendChild(paran)
-        tcom.appendChild(acc)
-        src.appendChild(tcom)
-        skin_node.appendChild(src)
-        source_node = self.__doc.createElement("source")
-        source_node.setAttribute("id", "%s_%s_matrices" % (armature.name, object_.name))
-
-        float_array_node = self.__doc.createElement("float_array")
-        float_array_node.setAttribute("id", "%s_%s_matrices_array" % (armature.name, object_.name))
-        float_array_node.setAttribute("count", "%s" % (len(armature_bones) * 16))
-
-        self.__export_float_array(armature_bones, float_array_node)
-        source_node.appendChild(float_array_node)
-
-        tcommat = self.__doc.createElement("technique_common")
-        accm = self.__doc.createElement("accessor")
-        accm.setAttribute("source", "#%s_%s_matrices_array" % (armature.name, object_.name))
-        accm.setAttribute("count", "%s" % (len(armature_bones)))
-        accm.setAttribute("stride", "16")
-        paranm = self.__doc.createElement("param")
-        paranm.setAttribute("type", "float4x4")
-        accm.appendChild(paranm)
-        tcommat.appendChild(accm)
-        source_node.appendChild(tcommat)
-        skin_node.appendChild(source_node)
-        srcw = self.__doc.createElement("source")
-        srcw.setAttribute("id", "%s_%s_weights" % (armature.name, object_.name))
-        flarw = self.__doc.createElement("float_array")
-        flarw.setAttribute("id", "%s_%s_weights_array" % (armature.name, object_.name))
-        wa = ""
-        vw = ""
-        me = object_.data
-        vcntr = ""
-        vcount = 0
-
-        for v in me.vertices:
-            for g in v.groups:
-                wa += "%.6f " % g.weight
-                for gr in object_.vertex_groups:
-                    if gr.index == g.group:
-                        for bone_id, bone in enumerate(armature_bones):
-                            if bone.name == gr.name:
-                                vw += "%s " % bone_id
-
-                vw += "%s " % str(vcount)
-                vcount += 1
-                cbPrint("Doing weights.")
-
-            vcntr += "%s " % len(v.groups)
-
-        flarw.setAttribute("count", "%s" % vcount)
-        lfarwa = self.__doc.createTextNode("%s" % wa)
-        flarw.appendChild(lfarwa)
-        tcomw = self.__doc.createElement("technique_common")
-        accw = self.__doc.createElement("accessor")
-        accw.setAttribute("source", "#%s_%s_weights_array" % (armature.name, object_.name))
-        accw.setAttribute("count", "%s" % vcount)
-        accw.setAttribute("stride", "1")
-        paranw = self.__doc.createElement("param")
-        paranw.setAttribute("type", "float")
-        accw.appendChild(paranw)
-        tcomw.appendChild(accw)
-        srcw.appendChild(flarw)
-        srcw.appendChild(tcomw)
-        skin_node.appendChild(srcw)
-
-        jnts = self.__doc.createElement("joints")
-        is1 = self.__doc.createElement("input")
-        is1.setAttribute("semantic", "JOINT")
-        is1.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
-        jnts.appendChild(is1)
-        is2 = self.__doc.createElement("input")
-        is2.setAttribute("semantic", "INV_BIND_MATRIX")
-        is2.setAttribute("source", "#%s_%s_matrices" % (armature.name, object_.name))
-        jnts.appendChild(is2)
-        skin_node.appendChild(jnts)
-        vertw = self.__doc.createElement("vertex_weights")
-        vertw.setAttribute("count", "%s" % len(me.vertices))
-        is3 = self.__doc.createElement("input")
-        is3.setAttribute("semantic", "JOINT")
-        is3.setAttribute("offset", "0")
-        is3.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
-        vertw.appendChild(is3)
-        is4 = self.__doc.createElement("input")
-        is4.setAttribute("semantic", "WEIGHT")
-        is4.setAttribute("offset", "1")
-        is4.setAttribute("source", "#%s_%s_weights" % (armature.name, object_.name))
-        vertw.appendChild(is4)
-        vcnt = self.__doc.createElement("vcount")
-        vcnt1 = self.__doc.createTextNode("%s" % vcntr)
-        vcnt.appendChild(vcnt1)
-        vertw.appendChild(vcnt)
-        vlst = self.__doc.createElement("v")
-        vlst1 = self.__doc.createTextNode("%s" % vw)
-        vlst.appendChild(vlst1)
-        vertw.appendChild(vlst)
-        skin_node.appendChild(vertw)
-
     def __get_bone_names_for_idref(self, bones):
         bones_for_idref = ""
 
@@ -2926,6 +2790,142 @@ class CrytekDaeExporter:
                     self.__process_bones(libcont, selected_object, armatures)
 
         root_node.appendChild(libcont)
+
+    def __get_armatures(self, object_):
+        return [modifier for modifier in object_.modifiers
+                if modifier.type == "ARMATURE"]
+
+    def __process_bones(self, libcont, object_, armatures):
+        armature = armatures[0].object
+
+        contr = self.__doc.createElement("controller")
+        contr.setAttribute("id", "%s_%s" % (armature.name, object_.name))
+        libcont.appendChild(contr)
+        skin_node = self.__doc.createElement("skin")
+        skin_node.setAttribute("source", "#%s" % object_.name)
+        contr.appendChild(skin_node)
+        mtx = self.__matrix_to_string(Matrix())
+        bsm = self.__doc.createElement("bind_shape_matrix")
+        bsmv = self.__doc.createTextNode("%s" % mtx)
+        bsm.appendChild(bsmv)
+        skin_node.appendChild(bsm)
+        src = self.__doc.createElement("source")
+        src.setAttribute("id", "%s_%s_joints" % (armature.name, object_.name))
+
+        armature_bones = self.__get_bones(armature)
+        idar = self.__doc.createElement("IDREF_array")
+        idar.setAttribute("id", "%s_%s_joints_array" % (armature.name, object_.name))
+        idar.setAttribute("count", "%s" % len(armature_bones))
+        blist = self.__get_bone_names_for_idref(armature_bones)
+
+        cbPrint(blist)
+        jnl = self.__doc.createTextNode("%s" % blist)
+        idar.appendChild(jnl)
+        src.appendChild(idar)
+        tcom = self.__doc.createElement("technique_common")
+        acc = self.__doc.createElement("accessor")
+        acc.setAttribute("source", "#%s_%s_joints_array" % (armature.name, object_.name))
+        acc.setAttribute("count", "%s" % len(armature_bones))
+        acc.setAttribute("stride", "1")
+        paran = self.__doc.createElement("param")
+        paran.setAttribute("type", "IDREF")
+        acc.appendChild(paran)
+        tcom.appendChild(acc)
+        src.appendChild(tcom)
+        skin_node.appendChild(src)
+        source_node = self.__doc.createElement("source")
+        source_node.setAttribute("id", "%s_%s_matrices" % (armature.name, object_.name))
+
+        float_array_node = self.__doc.createElement("float_array")
+        float_array_node.setAttribute("id", "%s_%s_matrices_array" % (armature.name, object_.name))
+        float_array_node.setAttribute("count", "%s" % (len(armature_bones) * 16))
+
+        self.__export_float_array(armature_bones, float_array_node)
+        source_node.appendChild(float_array_node)
+
+        tcommat = self.__doc.createElement("technique_common")
+        accm = self.__doc.createElement("accessor")
+        accm.setAttribute("source", "#%s_%s_matrices_array" % (armature.name, object_.name))
+        accm.setAttribute("count", "%s" % (len(armature_bones)))
+        accm.setAttribute("stride", "16")
+        paranm = self.__doc.createElement("param")
+        paranm.setAttribute("type", "float4x4")
+        accm.appendChild(paranm)
+        tcommat.appendChild(accm)
+        source_node.appendChild(tcommat)
+        skin_node.appendChild(source_node)
+        srcw = self.__doc.createElement("source")
+        srcw.setAttribute("id", "%s_%s_weights" % (armature.name, object_.name))
+        flarw = self.__doc.createElement("float_array")
+        flarw.setAttribute("id", "%s_%s_weights_array" % (armature.name, object_.name))
+        wa = ""
+        vw = ""
+        me = object_.data
+        vcntr = ""
+        vcount = 0
+
+        for v in me.vertices:
+            for g in v.groups:
+                wa += "%.6f " % g.weight
+                for gr in object_.vertex_groups:
+                    if gr.index == g.group:
+                        for bone_id, bone in enumerate(armature_bones):
+                            if bone.name == gr.name:
+                                vw += "%s " % bone_id
+
+                vw += "%s " % str(vcount)
+                vcount += 1
+                cbPrint("Doing weights.")
+
+            vcntr += "%s " % len(v.groups)
+
+        flarw.setAttribute("count", "%s" % vcount)
+        lfarwa = self.__doc.createTextNode("%s" % wa)
+        flarw.appendChild(lfarwa)
+        tcomw = self.__doc.createElement("technique_common")
+        accw = self.__doc.createElement("accessor")
+        accw.setAttribute("source", "#%s_%s_weights_array" % (armature.name, object_.name))
+        accw.setAttribute("count", "%s" % vcount)
+        accw.setAttribute("stride", "1")
+        paranw = self.__doc.createElement("param")
+        paranw.setAttribute("type", "float")
+        accw.appendChild(paranw)
+        tcomw.appendChild(accw)
+        srcw.appendChild(flarw)
+        srcw.appendChild(tcomw)
+        skin_node.appendChild(srcw)
+
+        jnts = self.__doc.createElement("joints")
+        is1 = self.__doc.createElement("input")
+        is1.setAttribute("semantic", "JOINT")
+        is1.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
+        jnts.appendChild(is1)
+        is2 = self.__doc.createElement("input")
+        is2.setAttribute("semantic", "INV_BIND_MATRIX")
+        is2.setAttribute("source", "#%s_%s_matrices" % (armature.name, object_.name))
+        jnts.appendChild(is2)
+        skin_node.appendChild(jnts)
+        vertw = self.__doc.createElement("vertex_weights")
+        vertw.setAttribute("count", "%s" % len(me.vertices))
+        is3 = self.__doc.createElement("input")
+        is3.setAttribute("semantic", "JOINT")
+        is3.setAttribute("offset", "0")
+        is3.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
+        vertw.appendChild(is3)
+        is4 = self.__doc.createElement("input")
+        is4.setAttribute("semantic", "WEIGHT")
+        is4.setAttribute("offset", "1")
+        is4.setAttribute("source", "#%s_%s_weights" % (armature.name, object_.name))
+        vertw.appendChild(is4)
+        vcnt = self.__doc.createElement("vcount")
+        vcnt1 = self.__doc.createTextNode("%s" % vcntr)
+        vcnt.appendChild(vcnt1)
+        vertw.appendChild(vcnt)
+        vlst = self.__doc.createElement("v")
+        vlst1 = self.__doc.createTextNode("%s" % vw)
+        vlst.appendChild(vlst1)
+        vertw.appendChild(vlst)
+        skin_node.appendChild(vertw)
 
     def __export_library_animation_clips_and_animations(self, root_node):
         libanmcl = self.__doc.createElement("library_animation_clips")
