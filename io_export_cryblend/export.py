@@ -83,7 +83,6 @@ xml.dom.minidom.Element.writexml = fixed_writexml
 # end http://ronrothman.com/
 #    public/leftbraned/xml-dom-minidom-toprettyxml-and-silly-whitespace/
 def write_to_file(config, doc, fname, exe):
-    s = doc
     s = doc.toprettyxml(indent="  ")
     f = open(fname, "w")
     f.write(s)
@@ -120,11 +119,7 @@ def write_to_file(config, doc, fname, exe):
         layerObjects = layerDoc.createElement("LayerObjects")
         # Actual Objects
         for group in bpy.context.blend_data.groups:
-            count = 0
-            for item in group.objects:
-                count += 1
-
-            if count > 1:
+            if group.objects > 1:
                 origin = (0, 0, 0)
                 rotation = (1, 0, 0, 0)
             else:
@@ -132,31 +127,32 @@ def write_to_file(config, doc, fname, exe):
                 rotation = group.objects[0].delta_rotation_quaternion
 
             if 'CryExportNode' in group.name:
-                object = layerDoc.createElement("Object")
-                object.setAttribute('name', group.name[14:])
-                object.setAttribute('Type', 'Entity')
-                object.setAttribute('Id', generateGUID())
-                object.setAttribute('LayerGUID', layer.getAttribute('GUID'))
-                object.setAttribute('Layer', lName)
+                object_node = layerDoc.createElement("Object")
+                object_node.setAttribute('name', group.name[14:])
+                object_node.setAttribute('Type', 'Entity')
+                object_node.setAttribute('Id', generateGUID())
+                object_node.setAttribute('LayerGUID',
+                                         layer.getAttribute('GUID'))
+                object_node.setAttribute('Layer', lName)
                 positionString = "{!s}, {!s}, {!s}".format(
                                     origin[0], origin[1], origin[2])
-                object.setAttribute('Pos', positionString)
+                object_node.setAttribute('Pos', positionString)
                 rotationString = "{!s}, {!s}, {!s}, {!s}".format(
                                     rotation[0], rotation[1],
                                     rotation[2], rotation[3])
-                object.setAttribute('Rotate', rotationString)
-                object.setAttribute('EntityClass', 'BasicEntity')
-                object.setAttribute('FloorNumber', '-1')
-                object.setAttribute('RenderNearest', '0')
-                object.setAttribute('NoStaticDecals', '0')
-                object.setAttribute('CreatedThroughPool', '0')
-                object.setAttribute('MatLayersMask', '0')
-                object.setAttribute('OutdoorOnly', '0')
-                object.setAttribute('CastShadow', '1')
-                object.setAttribute('MotionBlurMultiplier', '1')
-                object.setAttribute('LodRatio', '100')
-                object.setAttribute('ViewDistRatio', '100')
-                object.setAttribute('HiddenInGame', '0')
+                object_node.setAttribute('Rotate', rotationString)
+                object_node.setAttribute('EntityClass', 'BasicEntity')
+                object_node.setAttribute('FloorNumber', '-1')
+                object_node.setAttribute('RenderNearest', '0')
+                object_node.setAttribute('NoStaticDecals', '0')
+                object_node.setAttribute('CreatedThroughPool', '0')
+                object_node.setAttribute('MatLayersMask', '0')
+                object_node.setAttribute('OutdoorOnly', '0')
+                object_node.setAttribute('CastShadow', '1')
+                object_node.setAttribute('MotionBlurMultiplier', '1')
+                object_node.setAttribute('LodRatio', '100')
+                object_node.setAttribute('ViewDistRatio', '100')
+                object_node.setAttribute('HiddenInGame', '0')
 
                 properties = layerDoc.createElement("Properties")
                 properties.setAttribute('object_Model', '/Objects/'
@@ -193,8 +189,8 @@ def write_to_file(config, doc, fname, exe):
 
                 properties.appendChild(health)
                 properties.appendChild(interest)
-                object.appendChild(properties)
-                layerObjects.appendChild(object)
+                object_node.appendChild(properties)
+                layerObjects.appendChild(object_node)
         layer.appendChild(layerObjects)
         objLayer.appendChild(layer)
         layerDoc.appendChild(objLayer)
@@ -202,11 +198,10 @@ def write_to_file(config, doc, fname, exe):
         f = open(fname[:len(fname) - 4] + '.lyr', 'w')
         f.write(s)
         f.close()
-# doc = Document()
 
 
 def get_dae_path_for_rc(daeFilePath):
-    # 'z:' is for wine (linux, max) path
+    # 'z:' is for wine (linux, mac) path
     # there should be better way to determine it
     WINE_DEFAULT_DRIVE_LETTER = "z:"
 
@@ -320,15 +315,18 @@ def veckey3d(v):
             round(v.y / 32767.0),
             round(v.z / 32767.0))
 
+
 def veckey3d2(v):
     return (v.x,
             v.y,
             v.z)
 
+
 def veckey3d21(v):
     return (round(v.x, 6),
             round(v.y, 6),
             round(v.z, 6))
+
 
 def veckey3d3(vn, fn):
     facenorm = fn
@@ -337,18 +335,18 @@ def veckey3d3(vn, fn):
             round((facenorm.z * vn.z) / 2))
 
 
-class ExportCrytekDae:
+class CrytekDaeExporter:
     def __init__(self, config, exe):
-        self.__confg = config
+        self.__config = config
         self.__doc = Document()
-        setf.__exe = exe
+        self.__exe = exe
 
     def __get_bones(self, armature):
         return [bone for bone in armature.data.bones]
 
-    def export(self, context):
+    def export(self):
         # Ensure the correct extension for chosen path
-        filepath = bpy.path.ensure_ext(self.__confg.filepath, ".dae")
+        filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
         self.__select_all_export_nodes()
 
         # Duo Oratar
@@ -361,8 +359,12 @@ class ExportCrytekDae:
                 bpy.data.objects[i.name].select = True
                 cbPrint("Bone Geometry found: " + i.name)
 
-        root_node = self.__doc.createElement('collada')  # Top level element
-
+        root_node = self.__doc.createElement('collada')
+        root_node.setAttribute("xmlns",
+                               "http://www.collada.org/2005/11/COLLADASchema")
+        root_node.setAttribute("version", "1.4.1")
+        self.__doc.appendChild(root_node)
+        
         self.__export_asset(root_node)
 
         # just here for future use
@@ -374,7 +376,7 @@ class ExportCrytekDae:
         self.__export_library_images(root_node)
         self.__export_library_effects(root_node)
         self.__export_library_materials(root_node)
-        self.__export_library_geometries(context, i, root_node)
+        self.__export_library_geometries(root_node)
 
         # Duo Oratar
         # Remove the boneGeometry from the selection so we can get on
@@ -388,7 +390,7 @@ class ExportCrytekDae:
         self.__export_library_visual_scenes(root_node)
         self.__export_scene(root_node)
 
-        write_to_file(self.__confg, self.__doc, filepath, self.__exe)
+        write_to_file(self.__config, self.__doc, filepath, self.__exe)
 
     def __select_all_export_nodes(self):
     # make sure everything in our cryexportnode is selected
@@ -404,7 +406,7 @@ class ExportCrytekDae:
         return [Object for Object in Parent.children
                 if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
 
-    def wbl(self, config, pname, bonelist, obj, node1):
+    def wbl(self, pname, bonelist, obj, node1):
         cbPrint(len(bonelist), "bones")
         boneExtendedNames = []
         for Bone in bonelist:
@@ -420,7 +422,7 @@ class ExportCrytekDae:
             # Name Extension
             extend = False
             if (extend
-                or config.include_ik
+                or self.__config.include_ik
                 and "_Phys" == Bone.name[len(Bone.name) - 5:]):
                 exportNodeName = node1.getAttribute('id')[14:]
                 boneName = Bone.name
@@ -434,7 +436,7 @@ class ExportCrytekDae:
 
             # IK
             if ("_Phys" == Bone.name[len(Bone.name) - 5:]
-                and config.include_ik):
+                and self.__config.include_ik):
                 poseBone = (bpy.data.objects[obj.name[:len(obj.name) - 5]]
                     ).pose.bones[Bone.name[:len(Bone.name) - 5]]
 
@@ -560,22 +562,20 @@ class ExportCrytekDae:
                 # nodeparent.appendChild(nodename)
                 node1.appendChild(nodename)  # nodeparent)
 
-    def vsp(self, config, objectl, node1):
-        ol = len(objectl)
-
-        for object in objectl:
+    def vsp(self, objects, node1):
+        for object_ in objects:
             fby = 0
-            for ai in object.rna_type.id_data.items():
+            for ai in object_.rna_type.id_data.items():
                 if ai:
                     if ai[1] == "fakebone":
                         fby = 1
-            if fby == 1:  # object.parent_bone:
+            if fby == 1:  # object_.parent_bone:
                 pass
             else:
-                if object.type == 'ARMATURE':
-                    cname = (object.name)
+                if object_.type == 'ARMATURE':
+                    cname = (object_.name)
                 else:
-                    cname = (object.name)
+                    cname = (object_.name)
                 nodename = cname
                 nodename = self.__doc.createElement("node")
                 nodename.setAttribute("id", "%s" % (cname))
@@ -584,35 +584,35 @@ class ExportCrytekDae:
                 trans = self.__doc.createElement("translate")
                 trans.setAttribute("sid", "translation")
                 transnum = self.__doc.createTextNode("%.4f %.4f %.4f"
-                                              % object.location[:])
+                                              % object_.location[:])
                 trans.appendChild(transnum)
                 # <rotate sid="rotation_Z">
                 rotz = self.__doc.createElement("rotate")
                 rotz.setAttribute("sid", "rotation_Z")
                 rotzn = self.__doc.createTextNode("0 0 1 %s"
-                                           % (object.rotation_euler[2]
+                                           % (object_.rotation_euler[2]
                                               * utils.toD))
                 rotz.appendChild(rotzn)
                 # <rotate sid="rotation_Y">
                 roty = self.__doc.createElement("rotate")
                 roty.setAttribute("sid", "rotation_Y")
                 rotyn = self.__doc.createTextNode("0 1 0 %s"
-                                           % (object.rotation_euler[1]
+                                           % (object_.rotation_euler[1]
                                               * utils.toD))
                 roty.appendChild(rotyn)
                 # <rotate sid="rotation_X">
                 rotx = self.__doc.createElement("rotate")
                 rotx.setAttribute("sid", "rotation_X")
                 rotxn = self.__doc.createTextNode("1 0 0 %s"
-                                           % (object.rotation_euler[0]
+                                           % (object_.rotation_euler[0]
                                               * utils.toD))
                 rotx.appendChild(rotxn)
                 # <scale sid="scale">
                 sc = self.__doc.createElement("scale")
                 sc.setAttribute("sid", "scale")
-                sx = str(object.scale[0])
-                sy = str(object.scale[1])
-                sz = str(object.scale[2])
+                sx = str(object_.scale[0])
+                sy = str(object_.scale[1])
+                sz = str(object_.scale[2])
                 scn = self.__doc.createTextNode("%s" % utils.addthree(sx, sy, sz))
                 sc.appendChild(scn)
                 nodename.appendChild(trans)
@@ -623,7 +623,7 @@ class ExportCrytekDae:
 
                 # List of all the armature deformation modifiers
                 ArmatureList = [Modifier
-                                for Modifier in object.modifiers
+                                for Modifier in object_.modifiers
                                 if Modifier.type == "ARMATURE"]
                 if ArmatureList:
                     # PoseBones = ArmatureObject.pose.bones
@@ -633,17 +633,17 @@ class ExportCrytekDae:
                     # in control of it
                     ic.setAttribute("url", "#%s_%s"
                                     % (ArmatureList[0].object.name,
-                                       object.name))
+                                       object_.name))
 
-                name = str(object.name)
+                name = str(object_.name)
                 if (name[:6] != "_joint"):
-                    if (object.type == "MESH"):
+                    if (object_.type == "MESH"):
                         ig = self.__doc.createElement("instance_geometry")
                         ig.setAttribute("url", "#%s" % (cname))
                         bm = self.__doc.createElement("bind_material")
                         tc = self.__doc.createElement("technique_common")
                         # mat = mesh.materials[:]
-                        for mat in object.material_slots:
+                        for mat in object_.material_slots:
                             if mat:
                             # yes lets go through them 1 at a time
                                 im = self.__doc.createElement("instance_material")
@@ -674,7 +674,7 @@ class ExportCrytekDae:
                 prop2 = self.__doc.createElement("properties")
                 cprop = ""
                 # Tagging properties onto the end of the item, I think.
-                for ai in object.rna_type.id_data.items():
+                for ai in object_.rna_type.id_data.items():
                     if ai:
                         # cprop +=("%s=%s"%(i[0],i[1]))
                         cprop = ("%s" % (ai[1]))
@@ -682,7 +682,7 @@ class ExportCrytekDae:
                         prop2.appendChild(cryprops)
                 techcry.appendChild(prop2)
                 if (name[:6] == "_joint"):
-                    b = object.bound_box
+                    b = object_.bound_box
                     vmin = Vector([b[0][0], b[0][1], b[0][2]])
                     vmax = Vector([b[6][0], b[6][1], b[6][2]])
                     ht = self.__doc.createElement("helper")
@@ -710,48 +710,48 @@ class ExportCrytekDae:
                     techcry.appendChild(ht)
                 ex.appendChild(techcry)
                 nodename.appendChild(ex)
-                if object.type == 'ARMATURE':
+                if object_.type == 'ARMATURE':
                     # node1.appendChild(nodename)
                     cbPrint("Armature appended.")
-                    bonelist = self.__get_bones(object)
-                    self.wbl(config, cname, bonelist, object, node1)
+                    bonelist = self.__get_bones(object_)
+                    self.wbl(cname, bonelist, object_, node1)
                     # return node1
-                if object.children:
-                    if object.parent:
-                        if object.parent.type != 'ARMATURE':
+                if object_.children:
+                    if object_.parent:
+                        if object_.parent.type != 'ARMATURE':
                             nodeparent = self.__doc.getElementById("%s"
-                                                    % object.parent.name)
+                                                    % object_.parent.name)
                             cbPrint(nodeparent)
                             if nodeparent:
-                                cbPrint("Appending object to parent.")
+                                cbPrint("Appending object_ to parent.")
                                 cbPrint(nodename)
                                 chk = self.__doc.getElementById("%s"
-                                                         % object.name)
+                                                         % object_.name)
                                 if chk:
                                     cbPrint(
                                     "Object already appended to parent.")
                                 else:
                                     nodeparent.appendChild(nodename)
-                            ChildList = self.GetObjectChildren(object)
-                            self.vsp(config, ChildList, node1)
+                            ChildList = self.GetObjectChildren(object_)
+                            self.vsp(ChildList, node1)
                     else:
-                        if object.type != 'ARMATURE':
+                        if object_.type != 'ARMATURE':
                             node1.appendChild(nodename)
-                            ChildList = self.GetObjectChildren(object)
-                            self.vsp(config, ChildList, node1)
+                            ChildList = self.GetObjectChildren(object_)
+                            self.vsp(ChildList, node1)
                     # return node1
 
                 else:
-                    if object.parent:
-                        if object.parent.type != 'ARMATURE':
+                    if object_.parent:
+                        if object_.parent.type != 'ARMATURE':
                             nodeparent = self.__doc.getElementById("%s"
-                                                    % object.parent.name)
+                                                    % object_.parent.name)
                             cbPrint(nodeparent)
                             if nodeparent:
-                                cbPrint("Appending object to parent.")
+                                cbPrint("Appending object_ to parent.")
                                 cbPrint(nodename)
                                 chk = self.__doc.getElementById("%s"
-                                                         % object.name)
+                                                         % object_.name)
                                 if chk:
                                     cbPrint(
                                     "Object already appended to parent.")
@@ -763,7 +763,7 @@ class ExportCrytekDae:
                         else:
                             node1.appendChild(nodename)
                     else:
-                        if object.name == "animnode":
+                        if object_.name == "animnode":
                             cbPrint("Animnode.")
                         else:
                             node1.appendChild(nodename)
@@ -2076,20 +2076,20 @@ class ExportCrytekDae:
                 cbPrint("donerotz")
         return anmrz
 
-    def __get_armatures(self, entity):
-        return [modifier for modifier in entity.modifiers
+    def __get_armatures(self, object_):
+        return [modifier for modifier in object_.modifiers
                 if modifier.type == "ARMATURE"]
 
-    def __process_bones(self, libcont, entity, armatures):
+    def __process_bones(self, libcont, object_, armatures):
         blist = ""
         mtx = ""
         armature = armatures[0].object
 
         contr = self.__doc.createElement("controller")
-        contr.setAttribute("id", "%s_%s" % (armature.name, entity.name))
+        contr.setAttribute("id", "%s_%s" % (armature.name, object_.name))
         libcont.appendChild(contr)
         skin_node = self.__doc.createElement("skin")
-        skin_node.setAttribute("source", "#%s" % entity.name)
+        skin_node.setAttribute("source", "#%s" % object_.name)
         contr.appendChild(skin_node)
         mtx = self.__matrix_to_string(Matrix())
         bsm = self.__doc.createElement("bind_shape_matrix")
@@ -2097,14 +2097,13 @@ class ExportCrytekDae:
         bsm.appendChild(bsmv)
         skin_node.appendChild(bsm)
         src = self.__doc.createElement("source")
-        src.setAttribute("id", "%s_%s_joints" % (armature.name, entity.name))
+        src.setAttribute("id", "%s_%s_joints" % (armature.name, object_.name))
 
         armature_bones = self.__get_bones(armature)
         idar = self.__doc.createElement("IDREF_array")
-        idar.setAttribute("id", "%s_%s_joints_array" % (armature.name, entity.name))
+        idar.setAttribute("id", "%s_%s_joints_array" % (armature.name, object_.name))
         idar.setAttribute("count", "%s" % len(armature_bones))
-        for Bone in armature_bones:
-            blist += "%s " % Bone.name
+        blist = self.__get_bone_names_for_idref(armature_bones)
 
         cbPrint(blist)
         jnl = self.__doc.createTextNode("%s" % blist)
@@ -2112,7 +2111,7 @@ class ExportCrytekDae:
         src.appendChild(idar)
         tcom = self.__doc.createElement("technique_common")
         acc = self.__doc.createElement("accessor")
-        acc.setAttribute("source", "#%s_%s_joints_array" % (armature.name, entity.name))
+        acc.setAttribute("source", "#%s_%s_joints_array" % (armature.name, object_.name))
         acc.setAttribute("count", "%s" % len(armature_bones))
         acc.setAttribute("stride", "1")
         paran = self.__doc.createElement("param")
@@ -2121,34 +2120,34 @@ class ExportCrytekDae:
         tcom.appendChild(acc)
         src.appendChild(tcom)
         skin_node.appendChild(src)
-        srcm = self.__doc.createElement("source")
-        srcm.setAttribute("id", "%s_%s_matrices" % (armature.name, entity.name))
+        source_node = self.__doc.createElement("source")
+        source_node.setAttribute("id", "%s_%s_matrices" % (armature.name, object_.name))
 
-        flar = self.__doc.createElement("float_array")
-        flar.setAttribute("id", "%s_%s_matrices_array" % (armature.name, entity.name))
-        flar.setAttribute("count", "%s" % (len(armature_bones) * 16))
+        float_array_node = self.__doc.createElement("float_array")
+        float_array_node.setAttribute("id", "%s_%s_matrices_array" % (armature.name, object_.name))
+        float_array_node.setAttribute("count", "%s" % (len(armature_bones) * 16))
 
-        bonelist = self.__get_bones_from_armature_bones(armature_bones, flar)
-        srcm.appendChild(flar)
+        self.__export_float_array(armature_bones, float_array_node)
+        source_node.appendChild(float_array_node)
 
         tcommat = self.__doc.createElement("technique_common")
         accm = self.__doc.createElement("accessor")
-        accm.setAttribute("source", "#%s_%s_matrices_array" % (armature.name, entity.name))
+        accm.setAttribute("source", "#%s_%s_matrices_array" % (armature.name, object_.name))
         accm.setAttribute("count", "%s" % (len(armature_bones)))
         accm.setAttribute("stride", "16")
         paranm = self.__doc.createElement("param")
         paranm.setAttribute("type", "float4x4")
         accm.appendChild(paranm)
         tcommat.appendChild(accm)
-        srcm.appendChild(tcommat)
-        skin_node.appendChild(srcm)
+        source_node.appendChild(tcommat)
+        skin_node.appendChild(source_node)
         srcw = self.__doc.createElement("source")
-        srcw.setAttribute("id", "%s_%s_weights" % (armature.name, entity.name))
+        srcw.setAttribute("id", "%s_%s_weights" % (armature.name, object_.name))
         flarw = self.__doc.createElement("float_array")
-        flarw.setAttribute("id", "%s_%s_weights_array" % (armature.name, entity.name))
+        flarw.setAttribute("id", "%s_%s_weights_array" % (armature.name, object_.name))
         wa = ""
         vw = ""
-        me = entity.data
+        me = object_.data
         vcntr = ""
         vcount = 0
 
@@ -2156,11 +2155,11 @@ class ExportCrytekDae:
             if v.groups:
                 for g in v.groups:
                     wa += "%.6f " % g.weight
-                    for gr in entity.vertex_groups:
+                    for gr in object_.vertex_groups:
                         if gr.index == g.group:
-                            for bn in bonelist:
-                                if bn[0] == gr.name:
-                                    vw += "%s " % bn[1]
+                            for bone_id, bone in enumerate(armature_bones):
+                                if bone.name == gr.name:
+                                    vw += "%s " % bone_id
 
                     vw += "%s " % str(vcount)
                     vcount += 1
@@ -2173,7 +2172,7 @@ class ExportCrytekDae:
         flarw.appendChild(lfarwa)
         tcomw = self.__doc.createElement("technique_common")
         accw = self.__doc.createElement("accessor")
-        accw.setAttribute("source", "#%s_%s_weights_array" % (armature.name, entity.name))
+        accw.setAttribute("source", "#%s_%s_weights_array" % (armature.name, object_.name))
         accw.setAttribute("count", "%s" % vcount)
         accw.setAttribute("stride", "1")
         paranw = self.__doc.createElement("param")
@@ -2187,11 +2186,11 @@ class ExportCrytekDae:
         jnts = self.__doc.createElement("joints")
         is1 = self.__doc.createElement("input")
         is1.setAttribute("semantic", "JOINT")
-        is1.setAttribute("source", "#%s_%s_joints" % (armature.name, entity.name))
+        is1.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
         jnts.appendChild(is1)
         is2 = self.__doc.createElement("input")
         is2.setAttribute("semantic", "INV_BIND_MATRIX")
-        is2.setAttribute("source", "#%s_%s_matrices" % (armature.name, entity.name))
+        is2.setAttribute("source", "#%s_%s_matrices" % (armature.name, object_.name))
         jnts.appendChild(is2)
         skin_node.appendChild(jnts)
         vertw = self.__doc.createElement("vertex_weights")
@@ -2199,12 +2198,12 @@ class ExportCrytekDae:
         is3 = self.__doc.createElement("input")
         is3.setAttribute("semantic", "JOINT")
         is3.setAttribute("offset", "0")
-        is3.setAttribute("source", "#%s_%s_joints" % (armature.name, entity.name))
+        is3.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
         vertw.appendChild(is3)
         is4 = self.__doc.createElement("input")
         is4.setAttribute("semantic", "WEIGHT")
         is4.setAttribute("offset", "1")
-        is4.setAttribute("source", "#%s_%s_weights" % (armature.name, entity.name))
+        is4.setAttribute("source", "#%s_%s_weights" % (armature.name, object_.name))
         vertw.appendChild(is4)
         vcnt = self.__doc.createElement("vcount")
         vcnt1 = self.__doc.createTextNode("%s" % vcntr)
@@ -2216,17 +2215,25 @@ class ExportCrytekDae:
         vertw.appendChild(vlst)
         skin_node.appendChild(vertw)
 
-    def __get_bones_from_armature_bones(self, armature_bones, flar):
-        bonelist = []
-        bonenum = 0
-        for bone in armature_bones:
-            bonelist.append([bone.name, bonenum])
-            bonenum += 1
-            for sb in bpy.context.scene.objects:
-                if sb.name == bone.name:
-                    bmatrix = sb.matrix_local
+    def __get_bone_names_for_idref(self, bones):
+        bones_for_idref = ""
 
-            rmatrix = bmatrix
+        for bone in bones:
+            bones_for_idref += "{!s} ".format(bone.name)
+
+        return bones_for_idref.strip()
+
+    def __export_float_array(self, armature_bones, flar):
+        for bone in armature_bones:
+            rmatrix = 0
+            for scene_object in bpy.context.scene.objects:
+                if scene_object.name == bone.name:
+                    rmatrix = scene_object.matrix_local
+                    break
+
+            if rmatrix == 0:
+                return
+
             cbPrint("rmatrix%s" % rmatrix)
             lmtx1 = "%.6f %.6f %.6f %.6f " % (rmatrix[0][0], rmatrix[0][1],
                 rmatrix[0][2], -rmatrix[0][3])
@@ -2245,8 +2252,6 @@ class ExportCrytekDae:
             flarm4 = self.__doc.createTextNode("%s" % lmtx4)
             flar.appendChild(flarm4)
 
-        return bonelist
-
     def __matrix_to_string(self, matrix):
         result = ""
         for row in matrix:
@@ -2256,9 +2261,6 @@ class ExportCrytekDae:
 
     def __export_asset(self, root_node):
         # Attributes are x=y values inside a tag
-        root_node.setAttribute("xmlns", "http://www.collada.org/2005/11/COLLADASchema")
-        root_node.setAttribute("version", "1.4.1")
-        self.__doc.appendChild(root_node)
         asset = self.__doc.createElement("asset")
         root_node.appendChild(asset)
         contrib = self.__doc.createElement("contributor")
@@ -2506,7 +2508,7 @@ class ExportCrytekDae:
 
         root_node.appendChild(libmat)
 
-    def __export_library_geometries(self, context, root_node):
+    def __export_library_geometries(self, root_node):
         libgeo = self.__doc.createElement("library_geometries")
         start_time = clock()
         for i in bpy.context.selected_objects:
@@ -2573,7 +2575,6 @@ class ExportCrytekDae:
                         float_normals_count = ""
                         float_faces = ""
                         float_vnorm = ""
-                        ob = context.object
                         iin = 0
                         iin = ""
                         start_time = clock()
@@ -2614,7 +2615,7 @@ class ExportCrytekDae:
                                 fnlx = 0
                                 fnly = 0
                                 fnlz = 0
-                                if self.__confg.avg_pface:
+                                if self.__config.avg_pface:
                                     if fns == 0:
                                         fnlx = f.normal.x
                                         fnly = f.normal.y
@@ -3136,7 +3137,7 @@ class ExportCrytekDae:
                                     libanmcl.appendChild(anicl)
 
                             if ande == 0:
-                                if self.__confg.merge_anm:
+                                if self.__config.merge_anm:
                                     if asw == 0:
                                         anicl = self.__doc.createElement(
                                             "animation_clip")
@@ -3232,22 +3233,22 @@ class ExportCrytekDae:
             visual_scenes_node.appendChild(node1)
             objectl = []
             objectl = item.objects
-            node1 = self.vsp(self.__confg, objectl, node1)
+            node1 = self.vsp(objectl, node1)
             # exportnode settings
             ext1 = self.__doc.createElement("extra")
             tc3 = self.__doc.createElement("technique")
             tc3.setAttribute("profile", "CryEngine")
             prop1 = self.__doc.createElement("properties")
-            if self.__confg.is_cgf:
+            if self.__config.is_cgf:
                 pcgf = self.__doc.createTextNode("fileType=cgf")
                 prop1.appendChild(pcgf)
-            if self.__confg.is_cga:
+            if self.__config.is_cga:
                 pcga = self.__doc.createTextNode("fileType=cgaanm")
                 prop1.appendChild(pcga)
-            if self.__confg.is_chrcaf:
+            if self.__config.is_chrcaf:
                 pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
                 prop1.appendChild(pchrcaf)
-            if self.__confg.donot_merge:
+            if self.__config.donot_merge:
                 pdnm = self.__doc.createTextNode("DoNotMerge")
                 prop1.appendChild(pdnm)
             tc3.appendChild(prop1)
@@ -3302,16 +3303,16 @@ def save(config, context, exe):
     if not os.path.isfile(exe):
         raise exceptions.NoRcSelectedException
 
-    exporter = ExportCrytekDae(config, exe)
-    exporter.export(context)
+    exporter = CrytekDaeExporter(config, exe)
+    exporter.export()
 
 
 def menu_func_export(self, context):
-    self.layout.operator(ExportCrytekDae.bl_idname, text="Export Crytek Dae")
+    self.layout.operator(CrytekDaeExporter.bl_idname, text="Export Crytek Dae")
 
 
 def register():
-    bpy.utils.register_class(ExportCrytekDae)
+    bpy.utils.register_class(CrytekDaeExporter)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
 
     bpy.utils.register_class(TriangulateMeError)
@@ -3319,7 +3320,7 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(ExportCrytekDae)
+    bpy.utils.unregister_class(CrytekDaeExporter)
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
     bpy.utils.unregister_class(TriangulateMeError)
     bpy.utils.unregister_class(Error)
