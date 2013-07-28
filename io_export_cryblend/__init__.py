@@ -58,7 +58,7 @@ else:
     from io_export_cryblend import export
     from io_export_cryblend import exceptions
 
-from bpy.props import BoolProperty, FloatVectorProperty, FloatProperty, \
+from bpy.props import BoolProperty, FloatVectorProperty, FloatProperty, EnumProperty, \
     StringProperty
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.outPipe import cbPrint
@@ -1301,21 +1301,29 @@ class Export(bpy.types.Operator, ExportHelper):
     bl_idname = "export_to.game"
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
-    is_cgf = BoolProperty(
-            name="CGF",
-            description="For Static Models",
-            default=True,
+    # is_cgf = BoolProperty(
+            # name="CGF",
+            # description="For Static Models",
+            # default=True,
+            # )
+    # is_cga = BoolProperty(
+            # name="CGA",
+            # description="For Animated Models--No Bones",
+            # default=False,
+            # )
+    # is_chrcaf = BoolProperty(
+            # name="ChrCaf",
+            # description="For Animated Models, Skeletal",
+            # default=False,
+            # )
+    
+    export_type = EnumProperty(
+            name="File Type:",
+            description="Select a file type to export.",
+			items=(("CGF", "CGF", "Static geometry"), ("CHR & CAF", "CHR", "Flexible animated geometry, i.e. characters."), ("CGA & ANM", "CGA", "Hard body animated geometry.")),
+            default="CGF",
             )
-    is_cga = BoolProperty(
-            name="CGA",
-            description="For Animated Models--No Bones",
-            default=False,
-            )
-    is_chrcaf = BoolProperty(
-            name="ChrCaf",
-            description="For Animated Models, Skeletal",
-            default=False,
-            )
+    
     # is_caf = BoolProperty(
             # name="Caf",
             # description="For Animated Models, Skeletal,animation",

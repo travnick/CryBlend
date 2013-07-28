@@ -3433,13 +3433,13 @@ class ExportCrytekDae:
             tc3 = doc.createElement("technique")
             tc3.setAttribute("profile", "CryEngine")
             prop1 = doc.createElement("properties")
-            if self.is_cgf:
+            if self.export_type == 'CGF':
                 pcgf = doc.createTextNode("fileType=cgf")
                 prop1.appendChild(pcgf)
-            if self.is_cga:
+            if self.export_type == 'CGA':
                 pcga = doc.createTextNode("fileType=cgaanm")
                 prop1.appendChild(pcga)
-            if self.is_chrcaf:
+            if self.export_type == 'CHR':
                 pchrcaf = doc.createTextNode("fileType=chrcaf")
                 prop1.appendChild(pchrcaf)
             if self.donot_merge:
