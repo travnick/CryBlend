@@ -1301,21 +1301,6 @@ class Export(bpy.types.Operator, ExportHelper):
     bl_idname = "export_to.game"
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
-    # is_cgf = BoolProperty(
-            # name="CGF",
-            # description="For Static Models",
-            # default=True,
-            # )
-    # is_cga = BoolProperty(
-            # name="CGA",
-            # description="For Animated Models--No Bones",
-            # default=False,
-            # )
-    # is_chrcaf = BoolProperty(
-            # name="ChrCaf",
-            # description="For Animated Models, Skeletal",
-            # default=False,
-            # )
     
     export_type = EnumProperty(
             name="File Type:",
