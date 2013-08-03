@@ -457,46 +457,46 @@ class CrytekDaeExporter:
             boneExtendedNames.append(bname + pExtension)
             nodename.setIdAttribute('id')
 
-            for object in bpy.context.selectable_objects:
-                if (object.name == bone.name
-                    or (object.name == bone.name[:-5]
+            for object_ in bpy.context.selectable_objects:
+                if (object_.name == bone.name
+                    or (object_.name == bone.name[:-5]
                         and "_Phys" == bone.name[-5:])
                     ):
-                    bpy.data.objects[object.name].select = True
+                    bpy.data.objects[object_.name].select = True
                     cbPrint("FakeBone found for " + bone.name)
                     # <translate sid="translation">
                     trans = self.__doc.createElement("translate")
                     trans.setAttribute("sid", "translation")
                     transnum = self.__doc.createTextNode("%.4f %.4f %.4f"
-                                                  % object.location[:])
+                                                  % object_.location[:])
                     trans.appendChild(transnum)
                     # <rotate sid="rotation_Z">
                     rotz = self.__doc.createElement("rotate")
                     rotz.setAttribute("sid", "rotation_Z")
                     rotzn = self.__doc.createTextNode("0 0 1 %.4f"
-                                               % (object.rotation_euler[2]
+                                               % (object_.rotation_euler[2]
                                                   * utils.toD))
                     rotz.appendChild(rotzn)
                     # <rotate sid="rotation_Y">
                     roty = self.__doc.createElement("rotate")
                     roty.setAttribute("sid", "rotation_Y")
                     rotyn = self.__doc.createTextNode("0 1 0 %.4f"
-                                               % (object.rotation_euler[1]
+                                               % (object_.rotation_euler[1]
                                                   * utils.toD))
                     roty.appendChild(rotyn)
                     # <rotate sid="rotation_X">
                     rotx = self.__doc.createElement("rotate")
                     rotx.setAttribute("sid", "rotation_X")
                     rotxn = self.__doc.createTextNode("1 0 0 %.4f"
-                                               % (object.rotation_euler[0]
+                                               % (object_.rotation_euler[0]
                                                   * utils.toD))
                     rotx.appendChild(rotxn)
                     # <scale sid="scale">
                     sc = self.__doc.createElement("scale")
                     sc.setAttribute("sid", "scale")
-                    sx = str(object.scale[0])
-                    sy = str(object.scale[1])
-                    sz = str(object.scale[2])
+                    sx = str(object_.scale[0])
+                    sy = str(object_.scale[1])
+                    sz = str(object_.scale[2])
                     scn = self.__doc.createTextNode("%s"
                                              % utils.addthree(sx, sy, sz))
                     sc.appendChild(scn)

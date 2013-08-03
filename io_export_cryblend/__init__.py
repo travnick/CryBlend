@@ -58,8 +58,8 @@ else:
     from io_export_cryblend import export
     from io_export_cryblend import exceptions
 
-from bpy.props import BoolProperty, FloatVectorProperty, FloatProperty, EnumProperty, \
-    StringProperty
+from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
+    FloatProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.outPipe import cbPrint
 import bmesh
@@ -969,7 +969,8 @@ class AddBoneGeometry(bpy.types.Operator):
                     if ((not bone.name + "_boneGeometry" in nameList
                             and not obj.name + "_Phys" in nameList)
                         or (obj.name + "_Phys" in nameList
-                            and bone.name + '_Phys' in physBonesList and not bone.name + "_boneGeometry" in nameList)
+                            and bone.name + '_Phys' in physBonesList
+                            and not bone.name + "_boneGeometry" in nameList)
                         ):
                         mesh = bpy.data.meshes.new(
                                     "{!s}_boneGeometry".format(bone.name)
@@ -998,6 +999,7 @@ class AddBoneGeometry(bpy.types.Operator):
                         bpy.ops.mesh.uv_texture_add()
 
         return {'FINISHED'}
+
 
 class RemoveBoneGeometry(bpy.types.Operator):
     '''Remove BoneGeometry for bones in selected armatures'''
@@ -1038,7 +1040,8 @@ class RemoveBoneGeometry(bpy.types.Operator):
         for name in armatureList:
             obj = bpy.context.scene.objects[name]
             physBonesList = []
-            if obj.name + "_Phys" in nameList:  # Get list of phys bones in matching phys skel
+            # Get list of phys bones in matching phys skel
+            if obj.name + "_Phys" in nameList:
                 for bone in bpy.data.objects[obj.name + "_Phys"].data.bones:
                     physBonesList.append(bone.name)
 
@@ -1049,6 +1052,7 @@ class RemoveBoneGeometry(bpy.types.Operator):
             bpy.ops.object.delete()
 
         return {'FINISHED'}
+
 
 # verts and faces
 # find bone heads and add at that location
@@ -1301,14 +1305,21 @@ class Export(bpy.types.Operator, ExportHelper):
     bl_idname = "export_to.game"
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
-    
+
     export_type = EnumProperty(
             name="File Type:",
             description="Select a file type to export.",
-			items=(("CGF", "CGF", "Static geometry"), ("CHR & CAF", "CHR", "Flexible animated geometry, i.e. characters."), ("CGA & ANM", "CGA", "Hard body animated geometry.")),
+            items=(
+                ("CGF", "CGF",
+                 "Static geometry"),
+                ("CHR & CAF", "CHR",
+                 "Flexible animated geometry, i.e. characters."),
+                ("CGA & ANM", "CGA",
+                 "Hard body animated geometry.")
+            ),
             default="CGF",
-            )
-    
+    )
+
     # is_caf = BoolProperty(
             # name="Caf",
             # description="For Animated Models, Skeletal,animation",
