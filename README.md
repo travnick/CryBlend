@@ -15,6 +15,11 @@ Your_Blender_path\scripts\addons\
 Changelog:
 --------
 
+**4.9.4**
+Features:
+* Added a drop-down menu for file type selection at export time
+* Refactored code
+
 **4.9.3**
 Features:
 * Added remove bone geometry tool and fixed minor glitch with add bone geometry tool
