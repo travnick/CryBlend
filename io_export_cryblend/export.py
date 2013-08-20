@@ -2066,10 +2066,10 @@ class CrytekDaeExporter:
                 result += "{!s} ".format(col)
         return result.strip()
 
-    def __export_asset(self, root_element):
+    def __export_asset(self, parent_element):
         # Attributes are x=y values inside a tag
         asset = self.__doc.createElement("asset")
-        root_element.appendChild(asset)
+        parent_element.appendChild(asset)
         contrib = self.__doc.createElement("contributor")
         asset.appendChild(contrib)
         auth = self.__doc.createElement("author")
@@ -2095,7 +2095,7 @@ class CrytekDaeExporter:
         uax.appendChild(zup)
         asset.appendChild(uax)
 
-    def __export_library_images(self, root_element):
+    def __export_library_images(self, parent_element):
         library_images = self.__doc.createElement("library_images")
         images = self.__get_texture_images_for_selected_objects()
 
@@ -2111,7 +2111,7 @@ class CrytekDaeExporter:
             image_element.appendChild(init_from)
             library_images.appendChild(image_element)
 
-        root_element.appendChild(library_images)
+        parent_element.appendChild(library_images)
 
     def __get_texture_images_for_selected_objects(self):
         images = []
@@ -2158,21 +2158,23 @@ class CrytekDaeExporter:
     def is_valid_image(self, image):
         return image.has_data and image.filepath
 
-    def __export_library_effects(self, root_element):
-        libeff = self.__doc.createElement("library_effects")
+    def __export_library_effects(self, parent_element):
+        current_element = self.__doc.createElement("library_effects")
+        parent_element.appendChild(current_element)
+
         materials = self.__get_materials_for_selected_objects()
-        for mat in materials:
+        for material in materials:
             dtex = 0
             stex = 0
             ntex = 0
             dimage = ""
             simage = ""
             nimage = ""
-            for mtex in mat.texture_slots:
-                if mtex and mtex.texture.type == 'IMAGE':
-                    image = mtex.texture.image
+            for texture_slot in material.texture_slots:
+                if texture_slot and texture_slot.texture.type == 'IMAGE':
+                    image = texture_slot.texture.image
                     if image:
-                        if mtex.use_map_color_diffuse:
+                        if texture_slot.use_map_color_diffuse:
                             dtex = 1
                             dimage = image.name
                             dnpsurf = self.__doc.createElement("newparam")
@@ -2187,14 +2189,13 @@ class CrytekDaeExporter:
                             dnpsamp = self.__doc.createElement("newparam")
                             dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
                             dsamp = self.__doc.createElement("sampler2D")
-                            # dsamp.setAttribute("type","2D")
                             if2 = self.__doc.createElement("source")
                             if2tn = self.__doc.createTextNode(
                                 "%s-surface" % (image.name))
                             if2.appendChild(if2tn)
                             dsamp.appendChild(if2)
                             dnpsamp.appendChild(dsamp)
-                        if mtex.use_map_color_spec:
+                        if texture_slot.use_map_color_spec:
                             stex = 1
                             simage = image.name
                             snpsurf = self.__doc.createElement("newparam")
@@ -2216,7 +2217,7 @@ class CrytekDaeExporter:
                             sif2.appendChild(sif2tn)
                             ssamp.appendChild(sif2)
                             snpsamp.appendChild(ssamp)
-                        if mtex.use_map_normal:
+                        if texture_slot.use_map_normal:
                             ntex = 1
                             nimage = image.name
                             nnpsurf = self.__doc.createElement("newparam")
@@ -2240,7 +2241,7 @@ class CrytekDaeExporter:
                             nnpsamp.appendChild(nsamp)
 
             effid = self.__doc.createElement("effect")
-            effid.setAttribute("id", "%s_fx" % (mat.name))
+            effid.setAttribute("id", "%s_fx" % (material.name))
             prof_com = self.__doc.createElement("profile_COMMON")
             if dtex == 1:
                 prof_com.appendChild(dnpsurf)
@@ -2257,14 +2258,14 @@ class CrytekDaeExporter:
             emis = self.__doc.createElement("emission")
             color = self.__doc.createElement("color")
             color.setAttribute("sid", "emission")
-            cot = utils.getcol(mat.emit, mat.emit, mat.emit, 1.0)
+            cot = utils.getcol(material.emit, material.emit, material.emit, 1.0)
             emit = self.__doc.createTextNode("%s" % (cot))
             color.appendChild(emit)
             emis.appendChild(color)
             amb = self.__doc.createElement("ambient")
             color = self.__doc.createElement("color")
             color.setAttribute("sid", "ambient")
-            cot = utils.getcol(mat.ambient, mat.ambient, mat.ambient, 1.0)
+            cot = utils.getcol(material.ambient, material.ambient, material.ambient, 1.0)
             ambcol = self.__doc.createTextNode("%s" % (cot))
             color.appendChild(ambcol)
             amb.appendChild(color)
@@ -2276,9 +2277,9 @@ class CrytekDaeExporter:
             else:
                 color = self.__doc.createElement("color")
                 color.setAttribute("sid", "diffuse")
-                cot = utils.getcol(mat.diffuse_color.r,
-                    mat.diffuse_color.g,
-                    mat.diffuse_color.b, 1.0)
+                cot = utils.getcol(material.diffuse_color.r,
+                    material.diffuse_color.g,
+                    material.diffuse_color.b, 1.0)
                 difcol = self.__doc.createTextNode("%s" % (cot))
                 color.appendChild(difcol)
                 dif.appendChild(color)
@@ -2290,23 +2291,23 @@ class CrytekDaeExporter:
             else:
                 color = self.__doc.createElement("color")
                 color.setAttribute("sid", "specular")
-                cot = utils.getcol(mat.specular_color.r,
-                    mat.specular_color.g,
-                    mat.specular_color.b, 1.0)
+                cot = utils.getcol(material.specular_color.r,
+                    material.specular_color.g,
+                    material.specular_color.b, 1.0)
                 speccol = self.__doc.createTextNode("%s" % (cot))
                 color.appendChild(speccol)
                 spec.appendChild(color)
             shin = self.__doc.createElement("shininess")
             flo = self.__doc.createElement("float")
             flo.setAttribute("sid", "shininess")
-            cot = mat.specular_hardness
+            cot = material.specular_hardness
             shinval = self.__doc.createTextNode("%s" % (cot))
             flo.appendChild(shinval)
             shin.appendChild(flo)
             ioref = self.__doc.createElement("index_of_refraction")
             flo = self.__doc.createElement("float")
             flo.setAttribute("sid", "index_of_refraction")
-            cot = mat.alpha
+            cot = material.alpha
             iorval = self.__doc.createTextNode("%s" % (cot))
             flo.appendChild(iorval)
             ioref.appendChild(flo)
@@ -2343,24 +2344,24 @@ class CrytekDaeExporter:
             techn.appendChild(ds)
             extra.appendChild(techn)
             effid.appendChild(extra)
-            libeff.appendChild(effid)
+            current_element.appendChild(effid)
 
-        root_element.appendChild(libeff)
+    def __export_library_materials(self, parent_element):
+        library_materials = self.__doc.createElement("library_materials")
+        materials = self.__get_materials_for_selected_objects()
 
-    def __export_library_materials(self, root_element):
-        libmat = self.__doc.createElement("library_materials")
-        for mat in bpy.data.materials:
-            matt = self.__doc.createElement("material")
-            matt.setAttribute("id", "%s" % (mat.name))
-            matt.setAttribute("name", "%s" % (mat.name))
-            ie = self.__doc.createElement("instance_effect")
-            ie.setAttribute("url", "#%s_fx" % (mat.name))
-            matt.appendChild(ie)
-            libmat.appendChild(matt)
+        for material in materials:
+            material_element = self.__doc.createElement("material")
+            material_element.setAttribute("id", "%s" % (material.name))
+            material_element.setAttribute("name", "%s" % (material.name))
+            instance_effect = self.__doc.createElement("instance_effect")
+            instance_effect.setAttribute("url", "#%s_fx" % (material.name))
+            material_element.appendChild(instance_effect)
+            library_materials.appendChild(material_element)
 
-        root_element.appendChild(libmat)
+        parent_element.appendChild(library_materials)
 
-    def __export_library_geometries(self, root_element):
+    def __export_library_geometries(self, parent_element):
         libgeo = self.__doc.createElement("library_geometries")
         start_time = clock()
         for i in bpy.context.selected_objects:
@@ -2817,9 +2818,9 @@ class CrytekDaeExporter:
                         libgeo.appendChild(geo)
 
                         # bpy.data.meshes.remove(mesh)
-        root_element.appendChild(libgeo)
+        parent_element.appendChild(libgeo)
 
-    def __export_library_controllers(self, root_element):
+    def __export_library_controllers(self, parent_element):
         libcont = self.__doc.createElement("library_controllers")
 
         for selected_object in bpy.context.selected_objects:
@@ -2830,7 +2831,7 @@ class CrytekDaeExporter:
                 if armatures:
                     self.__process_bones(libcont, selected_object, armatures)
 
-        root_element.appendChild(libcont)
+        parent_element.appendChild(libcont)
 
     def __get_armatures(self, object_):
         return [modifier for modifier in object_.modifiers
@@ -2968,7 +2969,7 @@ class CrytekDaeExporter:
         vertw.appendChild(vlst)
         skin_node.appendChild(vertw)
 
-    def __export_library_animation_clips_and_animations(self, root_element):
+    def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
         libanm = self.__doc.createElement("library_animations")
         asw = 0
@@ -3177,29 +3178,27 @@ class CrytekDaeExporter:
 
             if asw == 1:
                 libanmcl.appendChild(anicl)
-        root_element.appendChild(libanmcl)
-        root_element.appendChild(libanm)
+        parent_element.appendChild(libanmcl)
+        parent_element.appendChild(libanm)
 
-    def __export_library_visual_scenes(self, root_element):
-        libvs = self.__doc.createElement("library_visual_scenes")
-        visual_scenes_node = self.__doc.createElement("visual_scene")
-        libvs.appendChild(visual_scenes_node)
-        root_element.appendChild(libvs)
+    def __export_library_visual_scenes(self, parent_element):
+        current_element = self.__doc.createElement("library_visual_scenes")
+        visual_scene = self.__doc.createElement("visual_scene")
+        current_element.appendChild(visual_scene)
+        parent_element.appendChild(current_element)
 
         # doesnt matter what name we have here as long as it is
         # the same for <scene>
-        visual_scenes_node.setAttribute("id", "scene")
-        visual_scenes_node.setAttribute("name", "scene")
+        visual_scene.setAttribute("id", "scene")
+        visual_scene.setAttribute("name", "scene")
         for item in bpy.context.blend_data.groups:
             if item:
                 ename = str(item.id_data.name)
                 node1 = self.__doc.createElement("node")
                 node1.setAttribute("id", "%s" % (ename))
                 node1.setIdAttribute('id')
-            visual_scenes_node.appendChild(node1)
-            objectl = []
-            objectl = item.objects
-            node1 = self.vsp(objectl, node1)
+            visual_scene.appendChild(node1)
+            node1 = self.vsp(item.objects, node1)
             # exportnode settings
             ext1 = self.__doc.createElement("extra")
             tc3 = self.__doc.createElement("technique")
@@ -3221,13 +3220,13 @@ class CrytekDaeExporter:
             ext1.appendChild(tc3)
             node1.appendChild(ext1)
 
-    def __export_scene(self, root_element):
+    def __export_scene(self, parent_element):
         # <scene> nothing really changes here or rather it doesnt need to.
         scene = self.__doc.createElement("scene")
         ivs = self.__doc.createElement("instance_visual_scene")
         ivs.setAttribute("url", "#scene")
         scene.appendChild(ivs)
-        root_element.appendChild(scene)
+        parent_element.appendChild(scene)
 
 
 def get_relative_path(filepath):
