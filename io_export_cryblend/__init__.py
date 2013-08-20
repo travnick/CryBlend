@@ -1401,9 +1401,9 @@ class Export(bpy.types.Operator, ExportHelper):
         cbPrint(CONFIG['RC_LOCATION'])
         try:
             config = Export.Config(config=self)
-
             export.save(config, context, exe)
             self.filepath = '//'
+
         except exceptions.CryBlendException as exception:
             cbPrint(exception.what(), 'error')
             bpy.ops.error.message('INVOKE_DEFAULT', message=exception.what())

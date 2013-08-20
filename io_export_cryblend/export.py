@@ -358,24 +358,24 @@ class CrytekDaeExporter:
                 bpy.data.objects[i.name].select = True
                 cbPrint("Bone Geometry found: " + i.name)
 
-        root_node = self.__doc.createElement('collada')
-        root_node.setAttribute("xmlns",
+        root_element = self.__doc.createElement('collada')
+        root_element.setAttribute("xmlns",
                                "http://www.collada.org/2005/11/COLLADASchema")
-        root_node.setAttribute("version", "1.4.1")
-        self.__doc.appendChild(root_node)
+        root_element.setAttribute("version", "1.4.1")
+        self.__doc.appendChild(root_element)
 
-        self.__export_asset(root_node)
+        self.__export_asset(root_element)
 
         # just here for future use
         libcam = self.__doc.createElement("library_cameras")
-        root_node.appendChild(libcam)
+        root_element.appendChild(libcam)
         liblights = self.__doc.createElement("library_lights")
-        root_node.appendChild(liblights)
+        root_element.appendChild(liblights)
 
-        self.__export_library_images(root_node)
-        self.__export_library_effects(root_node)
-        self.__export_library_materials(root_node)
-        self.__export_library_geometries(root_node)
+        self.__export_library_images(root_element)
+        self.__export_library_effects(root_element)
+        self.__export_library_materials(root_element)
+        self.__export_library_geometries(root_element)
 
         # Duo Oratar
         # Remove the boneGeometry from the selection so we can get on
@@ -384,22 +384,18 @@ class CrytekDaeExporter:
             if '_boneGeometry' in i.name:
                 bpy.data.objects[i.name].select = False
 
-        self.__export_library_controllers(root_node)
-        self.__export_library_animation_clips_and_animations(root_node)
-        self.__export_library_visual_scenes(root_node)
-        self.__export_scene(root_node)
+        self.__export_library_controllers(root_element)
+        self.__export_library_animation_clips_and_animations(root_element)
+        self.__export_library_visual_scenes(root_element)
+        self.__export_scene(root_element)
 
         write_to_file(self.__config, self.__doc, filepath, self.__exe)
 
     def __select_all_export_nodes(self):
-    # make sure everything in our cryexportnode is selected
-    #        for item in bpy.context.blend_data.groups:
-        for i in bpy.context.selectable_objects:
-            for group in bpy.context.blend_data.groups:  # bpy.data.groups:
-                for item in group.objects:
-                    if item.name == i.name:  # If item in group is selectable
-                        bpy.data.objects[i.name].select = True
-                        cbPrint(i.name)
+        for group in bpy.context.blend_data.groups:
+            for object_ in group.objects:
+                object_.select = True
+                cbPrint(object_.name)
 
     def GetObjectChildren(self, Parent):
         return [Object for Object in Parent.children
@@ -2070,10 +2066,10 @@ class CrytekDaeExporter:
                 result += "{!s} ".format(col)
         return result.strip()
 
-    def __export_asset(self, root_node):
+    def __export_asset(self, root_element):
         # Attributes are x=y values inside a tag
         asset = self.__doc.createElement("asset")
-        root_node.appendChild(asset)
+        root_element.appendChild(asset)
         contrib = self.__doc.createElement("contributor")
         asset.appendChild(contrib)
         auth = self.__doc.createElement("author")
@@ -2099,24 +2095,70 @@ class CrytekDaeExporter:
         uax.appendChild(zup)
         asset.appendChild(uax)
 
-    def __export_library_images(self, root_node):
-        libima = self.__doc.createElement("library_images")
-        for image in bpy.data.images:
-            if image.has_data and image.filepath:
-                imaname = image.name
-                image_path = get_relative_path(image.filepath)
-                imaid = self.__doc.createElement("image")
-                imaid.setAttribute("id", "%s" % imaname)
-                imaid.setAttribute("name", "%s" % imaname)
-                infrom = self.__doc.createElement("init_from")
-                fpath = self.__doc.createTextNode("%s" % image_path)
-                infrom.appendChild(fpath)
-                imaid.appendChild(infrom)
-                libima.appendChild(imaid)
+    def __export_library_images(self, root_element):
+        library_images = self.__doc.createElement("library_images")
+        images = self.__get_texture_images_for_selected_objects()
 
-        root_node.appendChild(libima)
+        for image in images:
+            image_path = get_relative_path(image.filepath)
 
-    def __export_library_effects(self, root_node):
+            image_element = self.__doc.createElement("image")
+            image_element.setAttribute("id", "%s" % image.name)
+            image_element.setAttribute("name", "%s" % image.name)
+            init_from = self.__doc.createElement("init_from")
+            path_node = self.__doc.createTextNode("%s" % image_path)
+            init_from.appendChild(path_node)
+            image_element.appendChild(init_from)
+            library_images.appendChild(image_element)
+
+        root_element.appendChild(library_images)
+
+    def __get_texture_images_for_selected_objects(self):
+        images = []
+        textures = self.__get_textures_for_selected_objects()
+
+        for texture in textures:
+            try:
+                if self.is_valid_image(texture.image):
+                    images.append(texture.image)
+
+            except AttributeError:
+                # don't care about non image textures
+                pass
+
+        # return only unique images
+        return list(set(images))
+
+    def __get_textures_for_selected_objects(self):
+        materials = self.__get_materials_for_selected_objects()
+        texture_slots = self.__get_texture_slots_for_materials(materials)
+        return self.__get_textures_for_texture_slots(texture_slots)
+
+    def __get_materials_for_selected_objects(self):
+        materials = []
+        for object_ in bpy.context.selected_objects:
+            for material_slot in object_.material_slots:
+                materials.append(material_slot.material)
+
+        return materials
+
+    def __get_texture_slots_for_materials(self, materials):
+        texture_slots = []
+        for material in materials:
+            for texture_slot in material.texture_slots:
+                # texture_slot is able to be None
+                if texture_slot is not None:
+                    texture_slots.append(texture_slot)
+
+        return texture_slots
+
+    def __get_textures_for_texture_slots(self, texture_slots):
+        return [texture_slot.texture for texture_slot in texture_slots]
+
+    def is_valid_image(self, image):
+        return image.has_data and image.filepath
+
+    def __export_library_effects(self, root_element):
         libeff = self.__doc.createElement("library_effects")
         for mat in bpy.data.materials:
             # is there a material?
@@ -2304,9 +2346,9 @@ class CrytekDaeExporter:
                 effid.appendChild(extra)
                 libeff.appendChild(effid)
 
-        root_node.appendChild(libeff)
+        root_element.appendChild(libeff)
 
-    def __export_library_materials(self, root_node):
+    def __export_library_materials(self, root_element):
         libmat = self.__doc.createElement("library_materials")
         for mat in bpy.data.materials:
             matt = self.__doc.createElement("material")
@@ -2317,9 +2359,9 @@ class CrytekDaeExporter:
             matt.appendChild(ie)
             libmat.appendChild(matt)
 
-        root_node.appendChild(libmat)
+        root_element.appendChild(libmat)
 
-    def __export_library_geometries(self, root_node):
+    def __export_library_geometries(self, root_element):
         libgeo = self.__doc.createElement("library_geometries")
         start_time = clock()
         for i in bpy.context.selected_objects:
@@ -2776,9 +2818,9 @@ class CrytekDaeExporter:
                         libgeo.appendChild(geo)
 
                         # bpy.data.meshes.remove(mesh)
-        root_node.appendChild(libgeo)
+        root_element.appendChild(libgeo)
 
-    def __export_library_controllers(self, root_node):
+    def __export_library_controllers(self, root_element):
         libcont = self.__doc.createElement("library_controllers")
 
         for selected_object in bpy.context.selected_objects:
@@ -2789,7 +2831,7 @@ class CrytekDaeExporter:
                 if armatures:
                     self.__process_bones(libcont, selected_object, armatures)
 
-        root_node.appendChild(libcont)
+        root_element.appendChild(libcont)
 
     def __get_armatures(self, object_):
         return [modifier for modifier in object_.modifiers
@@ -2927,7 +2969,7 @@ class CrytekDaeExporter:
         vertw.appendChild(vlst)
         skin_node.appendChild(vertw)
 
-    def __export_library_animation_clips_and_animations(self, root_node):
+    def __export_library_animation_clips_and_animations(self, root_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
         libanm = self.__doc.createElement("library_animations")
         asw = 0
@@ -3136,14 +3178,14 @@ class CrytekDaeExporter:
 
             if asw == 1:
                 libanmcl.appendChild(anicl)
-        root_node.appendChild(libanmcl)
-        root_node.appendChild(libanm)
+        root_element.appendChild(libanmcl)
+        root_element.appendChild(libanm)
 
-    def __export_library_visual_scenes(self, root_node):
+    def __export_library_visual_scenes(self, root_element):
         libvs = self.__doc.createElement("library_visual_scenes")
         visual_scenes_node = self.__doc.createElement("visual_scene")
         libvs.appendChild(visual_scenes_node)
-        root_node.appendChild(libvs)
+        root_element.appendChild(libvs)
 
         # doesnt matter what name we have here as long as it is
         # the same for <scene>
@@ -3180,13 +3222,13 @@ class CrytekDaeExporter:
             ext1.appendChild(tc3)
             node1.appendChild(ext1)
 
-    def __export_scene(self, root_node):
+    def __export_scene(self, root_element):
         # <scene> nothing really changes here or rather it doesnt need to.
         scene = self.__doc.createElement("scene")
         ivs = self.__doc.createElement("instance_visual_scene")
         ivs.setAttribute("url", "#scene")
         scene.appendChild(ivs)
-        root_node.appendChild(scene)
+        root_element.appendChild(scene)
 
 
 def get_relative_path(filepath):
