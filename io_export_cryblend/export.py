@@ -742,7 +742,12 @@ class CrytekDaeExporter:
         for fcu in curves:
             # location
             # X
-            if fcu.data_path == 'location'and fcu.array_index == 0:
+            axises = {
+                "X":0,
+                "Y":1,
+                "Z":2,
+            }
+            if fcu.data_path == 'location' and fcu.array_index == axises[ax]:
                 anmlx = self.__doc.createElement("animation")
                 anmlx.setAttribute("id", i.name+"s_location_"+ax)
                 fcus[fcu.array_index] = fcu
@@ -751,11 +756,6 @@ class CrytekDaeExporter:
                 inpx = ""
                 outpx = ""
                 intx = ""
-                axises = {
-                    "X":0,
-                    "Y":1,
-                    "Z":2,
-                {
                 temp = fcus[axises[ax]].keyframe_points
                 ii = 0
                 pvalue = 0
@@ -930,9 +930,14 @@ class CrytekDaeExporter:
         act = i.animation_data.action
         curves = act.fcurves
         fcus = {}
+        axises = {
+            "X":0,
+            "Y":1,
+            "Z":2,
+        }
         for fcu in curves:
     # rotation_euler
-            if fcu.data_path == 'rotation_euler'and fcu.array_index == 0:
+            if fcu.data_path == 'rotation_euler' and fcu.array_index == axises[ax]:
                 anmrx = self.__doc.createElement("animation")
                 anmrx.setAttribute("id", i.name+"s_rotation_euler_"+ax)
                 fcus[fcu.array_index] = fcu
@@ -941,11 +946,6 @@ class CrytekDaeExporter:
                 inpx = ""
                 outpx = ""
                 intx = ""
-                axises = {
-                    "X":0,
-                    "Y":1,
-                    "Z":2,
-                {
                 temp = fcus[axises[ax]].keyframe_points
                 ii = 0
                 for keyx in temp:
