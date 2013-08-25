@@ -15,6 +15,23 @@ Your_Blender_path\scripts\addons\
 Changelog:
 --------
 
+**4.9.8**
+Features:
+* Fixed incorrect index numbers in the extract_ani functions.
+
+**4.9.7**
+Features:
+* Fixed the fix of a fix from last time, this is getting stupid.
+
+**4.9.6**
+Features:
+* Fixed .cga export, again.
+
+**4.9.5**
+Features:
+* Fixed that drop-down menu from the last update
+* Refactored some more code
+
 **4.9.4**
 Features:
 * Added a drop-down menu for file type selection at export time
