@@ -31,8 +31,8 @@
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
-    "blender": (2, 6, 7),
-    "version": (4, 9, 4),
+    "blender": (2, 6, 8),
+    "version": (4, 9, 9),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -1401,9 +1401,9 @@ class Export(bpy.types.Operator, ExportHelper):
         cbPrint(CONFIG['RC_LOCATION'])
         try:
             config = Export.Config(config=self)
-
             export.save(config, context, exe)
             self.filepath = '//'
+
         except exceptions.CryBlendException as exception:
             cbPrint(exception.what(), 'error')
             bpy.ops.error.message('INVOKE_DEFAULT', message=exception.what())

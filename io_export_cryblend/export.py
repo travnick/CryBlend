@@ -335,6 +335,12 @@ def veckey3d3(vn, fn):
 
 
 class CrytekDaeExporter:
+    __axises = {
+    "X":0,
+    "Y":1,
+    "Z":2,
+    }
+
     def __init__(self, config, exe):
         self.__config = config
         self.__doc = Document()
@@ -358,24 +364,24 @@ class CrytekDaeExporter:
                 bpy.data.objects[i.name].select = True
                 cbPrint("Bone Geometry found: " + i.name)
 
-        root_node = self.__doc.createElement('collada')
-        root_node.setAttribute("xmlns",
+        root_element = self.__doc.createElement('collada')
+        root_element.setAttribute("xmlns",
                                "http://www.collada.org/2005/11/COLLADASchema")
-        root_node.setAttribute("version", "1.4.1")
-        self.__doc.appendChild(root_node)
+        root_element.setAttribute("version", "1.4.1")
+        self.__doc.appendChild(root_element)
 
-        self.__export_asset(root_node)
+        self.__export_asset(root_element)
 
         # just here for future use
         libcam = self.__doc.createElement("library_cameras")
-        root_node.appendChild(libcam)
+        root_element.appendChild(libcam)
         liblights = self.__doc.createElement("library_lights")
-        root_node.appendChild(liblights)
+        root_element.appendChild(liblights)
 
-        self.__export_library_images(root_node)
-        self.__export_library_effects(root_node)
-        self.__export_library_materials(root_node)
-        self.__export_library_geometries(root_node)
+        self.__export_library_images(root_element)
+        self.__export_library_effects(root_element)
+        self.__export_library_materials(root_element)
+        self.__export_library_geometries(root_element)
 
         # Duo Oratar
         # Remove the boneGeometry from the selection so we can get on
@@ -384,22 +390,18 @@ class CrytekDaeExporter:
             if '_boneGeometry' in i.name:
                 bpy.data.objects[i.name].select = False
 
-        self.__export_library_controllers(root_node)
-        self.__export_library_animation_clips_and_animations(root_node)
-        self.__export_library_visual_scenes(root_node)
-        self.__export_scene(root_node)
+        self.__export_library_controllers(root_element)
+        self.__export_library_animation_clips_and_animations(root_element)
+        self.__export_library_visual_scenes(root_element)
+        self.__export_scene(root_element)
 
         write_to_file(self.__config, self.__doc, filepath, self.__exe)
 
     def __select_all_export_nodes(self):
-    # make sure everything in our cryexportnode is selected
-    #        for item in bpy.context.blend_data.groups:
-        for i in bpy.context.selectable_objects:
-            for group in bpy.context.blend_data.groups:  # bpy.data.groups:
-                for item in group.objects:
-                    if item.name == i.name:  # If item in group is selectable
-                        bpy.data.objects[i.name].select = True
-                        cbPrint(i.name)
+        for group in bpy.context.blend_data.groups:
+            for object_ in group.objects:
+                object_.select = True
+                cbPrint(object_.name)
 
     def GetObjectChildren(self, Parent):
         return [Object for Object in Parent.children
@@ -739,24 +741,25 @@ class CrytekDaeExporter:
                             node1.appendChild(nodename)
         return node1
 
-    def extract_anilx(self, i):
+    def extract_anil(self, i, ax):
         act = i.animation_data.action
         curves = act.fcurves
         fcus = {}
         for fcu in curves:
             # location
             # X
-            if fcu.data_path == 'location'and fcu.array_index == 0:
+            if fcu.data_path == 'location' and fcu.array_index == self.__axises[ax]:
                 anmlx = self.__doc.createElement("animation")
-                anmlx.setAttribute("id", "%s_location_X" % (i.name))
+                anmlx.setAttribute("id", i.name+"_location_"+ax)
                 fcus[fcu.array_index] = fcu
                 intangx = ""
                 outtangx = ""
                 inpx = ""
                 outpx = ""
                 intx = ""
-                temp = fcus[0].keyframe_points
+                temp = fcus[self.__axises[ax]].keyframe_points
                 ii = 0
+                pvalue = 0
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
                     khly = keyx.handle_left[1]
@@ -775,17 +778,15 @@ class CrytekDaeExporter:
                     ii += 1
                 # input
                 sinpx = self.__doc.createElement("source")
-                sinpx.setAttribute("id", "%s_location_X-input" % (i.name))
+                sinpx.setAttribute("id", i.name+"_location_"+ax+"-input")
                 inpxfa = self.__doc.createElement("float_array")
-                inpxfa.setAttribute("id", "%s_location_X-input-array"
-                                    % (i.name))
+                inpxfa.setAttribute("id", i.name+"_location_"+ax+"-input-array")
                 inpxfa.setAttribute("count", "%s" % (ii))
                 sinpxdat = self.__doc.createTextNode("%s" % (inpx))
                 inpxfa.appendChild(sinpxdat)
                 tcinpx = self.__doc.createElement("technique_common")
                 accinpx = self.__doc.createElement("accessor")
-                accinpx.setAttribute("source", "#%s_location_X-input-array"
-                                     % (i.name))
+                accinpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-input-array")
                 accinpx.setAttribute("count", "%s" % (ii))
                 accinpx.setAttribute("stride", "1")
                 parinpx = self.__doc.createElement("param")
@@ -797,19 +798,15 @@ class CrytekDaeExporter:
                 sinpx.appendChild(tcinpx)
                 # output
                 soutpx = self.__doc.createElement("source")
-                soutpx.setAttribute("id", "%s_location_X-output"
-                                    % (i.name))
+                soutpx.setAttribute("id", i.name+"_location_"+ax+"-output")
                 outpxfa = self.__doc.createElement("float_array")
-                outpxfa.setAttribute("id", "%s_location_X-output-array"
-                                     % (i.name))
+                outpxfa.setAttribute("id", i.name+"_location_"+ax+"-output-array")
                 outpxfa.setAttribute("count", "%s" % (ii))
                 soutpxdat = self.__doc.createTextNode("%s" % (outpx))
                 outpxfa.appendChild(soutpxdat)
                 tcoutpx = self.__doc.createElement("technique_common")
                 accoutpx = self.__doc.createElement("accessor")
-                accoutpx.setAttribute("source",
-                                      "#%s_location_X-output-array"
-                                      % (i.name))
+                accoutpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-output-array")
                 accoutpx.setAttribute("count", "%s" % (ii))
                 accoutpx.setAttribute("stride", "1")
                 paroutpx = self.__doc.createElement("param")
@@ -821,20 +818,15 @@ class CrytekDaeExporter:
                 soutpx.appendChild(tcoutpx)
                 # interpolation
                 sintpx = self.__doc.createElement("source")
-                sintpx.setAttribute("id", "%s_location_X-interpolation"
-                                    % (i.name))
+                sintpx.setAttribute("id", i.name+"_location_"+ax+"-interpolation")
                 intpxfa = self.__doc.createElement("Name_array")
-                intpxfa.setAttribute("id",
-                                     "%s_location_X-interpolation-array"
-                                     % (i.name))
+                intpxfa.setAttribute("id", i.name+"_location_"+ax+"-interpolation-array")
                 intpxfa.setAttribute("count", "%s" % (ii))
                 sintpxdat = self.__doc.createTextNode("%s" % (intx))
                 intpxfa.appendChild(sintpxdat)
                 tcintpx = self.__doc.createElement("technique_common")
                 accintpx = self.__doc.createElement("accessor")
-                accintpx.setAttribute("source",
-                                      "#%s_location_X-interpolation-array"
-                                      % (i.name))
+                accintpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-interpolation-array")
                 accintpx.setAttribute("count", "%s" % (ii))
                 accintpx.setAttribute("stride", "1")
                 parintpx = self.__doc.createElement("param")
@@ -846,20 +838,15 @@ class CrytekDaeExporter:
                 sintpx.appendChild(tcintpx)
                 # intangent
                 sintangpx = self.__doc.createElement("source")
-                sintangpx.setAttribute("id", "%s_location_X-intangent"
-                                       % (i.name))
+                sintangpx.setAttribute("id", i.name+"_location_"+ax+"-intangent")
                 intangpxfa = self.__doc.createElement("float_array")
-                intangpxfa.setAttribute("id",
-                                        "%s_location_X-intangent-array"
-                                        % (i.name))
+                intangpxfa.setAttribute("id", i.name+"_location_"+ax+"-intangent-array")
                 intangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 sintangpxdat = self.__doc.createTextNode("%s" % (intangx))
                 intangpxfa.appendChild(sintangpxdat)
                 tcintangpx = self.__doc.createElement("technique_common")
                 accintangpx = self.__doc.createElement("accessor")
-                accintangpx.setAttribute("source",
-                                         "#%s_location_X-intangent-array"
-                                         % (i.name))
+                accintangpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-intangent-array")
                 accintangpx.setAttribute("count", "%s" % (ii))
                 accintangpx.setAttribute("stride", "2")
                 parintangpx = self.__doc.createElement("param")
@@ -875,20 +862,15 @@ class CrytekDaeExporter:
                 sintangpx.appendChild(tcintangpx)
                 # outtangent
                 soutangpx = self.__doc.createElement("source")
-                soutangpx.setAttribute("id", "%s_location_X-outtangent"
-                                       % (i.name))
+                soutangpx.setAttribute("id", i.name+"_location_"+ax+"-outtangent")
                 outangpxfa = self.__doc.createElement("float_array")
-                outangpxfa.setAttribute("id",
-                                        "%s_location_X-outtangent-array"
-                                        % (i.name))
+                outangpxfa.setAttribute("id", i.name+"_location_"+ax+"-outtangent-array")
                 outangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 soutangpxdat = self.__doc.createTextNode("%s" % (outtangx))
                 outangpxfa.appendChild(soutangpxdat)
                 tcoutangpx = self.__doc.createElement("technique_common")
                 accoutangpx = self.__doc.createElement("accessor")
-                accoutangpx.setAttribute("source",
-                                         "#%s_location_X-outtangent-array"
-                                         % (i.name))
+                accoutangpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-outtangent-array")
                 accoutangpx.setAttribute("count", "%s" % (ii))
                 accoutangpx.setAttribute("stride", "2")
                 paroutangpx = self.__doc.createElement("param")
@@ -904,36 +886,28 @@ class CrytekDaeExporter:
                 soutangpx.appendChild(tcoutangpx)
                 # sampler
                 samx = self.__doc.createElement("sampler")
-                samx.setAttribute("id", "%s_location_X-sampler" % (i.name))
+                samx.setAttribute("id", i.name+"_location_"+ax+"-sampler")
                 semip = self.__doc.createElement("input")
                 semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#%s_location_X-input"
-                                   % (i.name))
+                semip.setAttribute("source", "#"+i.name+"_location_"+ax+"-input")
                 semop = self.__doc.createElement("input")
                 semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#%s_location_X-output"
-                                   % (i.name))
+                semop.setAttribute("source", "#"+i.name+"_location_"+ax+"-output")
                 seminter = self.__doc.createElement("input")
                 seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source",
-                                      "#%s_location_X-interpolation"
-                                      % (i.name))
+                seminter.setAttribute("source","#"+i.name+"_location_"+ax+"-interpolation")
                 semintang = self.__doc.createElement("input")
                 semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source", "#%s_location_X-intangent"
-                                       % (i.name))
+                semintang.setAttribute("source", "#"+i.name+"_location_"+ax+"-intangent")
                 semoutang = self.__doc.createElement("input")
                 semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source",
-                                       "#%s_location_X-outtangent"
-                                       % (i.name))
+                semoutang.setAttribute("source", "#"+i.name+"_location_"+ax+"-outtangent")
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
                 chanx = self.__doc.createElement("channel")
-                chanx.setAttribute("source", "#%s_location_X-sampler"
-                                   % (i.name))
-                chanx.setAttribute("target", "%s/translation.X" % (i.name))
+                chanx.setAttribute("source", "#"+i.name+"_location_"+ax+"-sampler")
+                chanx.setAttribute("target", i.name+"/translation."+ax)
                 anmlx.appendChild(sinpx)
                 anmlx.appendChild(soutpx)
                 anmlx.appendChild(sintpx)
@@ -947,445 +921,25 @@ class CrytekDaeExporter:
                 cbPrint(intx)
                 cbPrint(intangx)
                 cbPrint(outtangx)
-                cbPrint("donex")
+                cbPrint("done"+ax)
         return anmlx
 
-    def extract_anily(self, i):
-        act = i.animation_data.action
-        curves = act.fcurves
-        fcus = {}
-        for fcu in curves:
-                # Y
-            if fcu.data_path == 'location'and fcu.array_index == 1:
-                anmly = self.__doc.createElement("animation")
-                anmly.setAttribute("id", "%s_location_Y" % (i.name))
-                fcus[fcu.array_index] = fcu
-                intangy = ""
-                outtangy = ""
-                inpy = ""
-                outpy = ""
-                inty = ""
-                tempy = fcus[1].keyframe_points
-                ii = 0
-                for key in tempy:
-                    khlx = key.handle_left[0]
-                    khly = key.handle_left[1]
-                    khrx = key.handle_right[0]
-                    khry = key.handle_right[1]
-                    frame, value = key.co
-                    time = convert_time(frame)
-                    inty += ("%s " % (key.interpolation))
-                    inpy += ("%.6f " % (time))
-                    outpy += ("%.6f " % (value))
-                    intangfirst = convert_time(khlx)
-                    outangfirst = convert_time(khrx)
-                    intangy += ("%.6f %.6f " % (intangfirst, khly))
-                    outtangy += ("%.6f %.6f " % (outangfirst, khry))
-                    ii += 1
-                # input
-                sinpy = self.__doc.createElement("source")
-                sinpy.setAttribute("id", "%s_location_Y-input" % (i.name))
-                inpyfa = self.__doc.createElement("float_array")
-                inpyfa.setAttribute("id", "%s_location_Y-input-array"
-                                    % (i.name))
-                inpyfa.setAttribute("count", "%s" % (ii))
-                sinpydat = self.__doc.createTextNode("%s" % (inpy))
-                inpyfa.appendChild(sinpydat)
-                tcinpy = self.__doc.createElement("technique_common")
-                accinpy = self.__doc.createElement("accessor")
-                accinpy.setAttribute("source", "#%s_location_Y-input-array"
-                                     % (i.name))
-                accinpy.setAttribute("count", "%s" % (ii))
-                accinpy.setAttribute("stride", "1")
-                parinpy = self.__doc.createElement("param")
-                parinpy.setAttribute("name", "TIME")
-                parinpy.setAttribute("type", "float")
-                accinpy.appendChild(parinpy)
-                tcinpy.appendChild(accinpy)
-                sinpy.appendChild(inpyfa)
-                sinpy.appendChild(tcinpy)
-                # output
-                soutpy = self.__doc.createElement("source")
-                soutpy.setAttribute("id", "%s_location_Y-output"
-                                    % (i.name))
-                outpyfa = self.__doc.createElement("float_array")
-                outpyfa.setAttribute("id", "%s_location_Y-output-array"
-                                     % (i.name))
-                outpyfa.setAttribute("count", "%s" % (ii))
-                soutpydat = self.__doc.createTextNode("%s" % (outpy))
-                outpyfa.appendChild(soutpydat)
-                tcoutpy = self.__doc.createElement("technique_common")
-                accoutpy = self.__doc.createElement("accessor")
-                accoutpy.setAttribute("source",
-                                      "#%s_location_Y-output-array"
-                                      % (i.name))
-                accoutpy.setAttribute("count", "%s" % (ii))
-                accoutpy.setAttribute("stride", "1")
-                paroutpy = self.__doc.createElement("param")
-                paroutpy.setAttribute("name", "VALUE")
-                paroutpy.setAttribute("type", "float")
-                accoutpy.appendChild(paroutpy)
-                tcoutpy.appendChild(accoutpy)
-                soutpy.appendChild(outpyfa)
-                soutpy.appendChild(tcoutpy)
-                # interpolation
-                sintpy = self.__doc.createElement("source")
-                sintpy.setAttribute("id", "%s_location_Y-interpolation"
-                                    % (i.name))
-                intpyfa = self.__doc.createElement("Name_array")
-                intpyfa.setAttribute("id",
-                                     "%s_location_Y-interpolation-array"
-                                     % (i.name))
-                intpyfa.setAttribute("count", "%s" % (ii))
-                sintpydat = self.__doc.createTextNode("%s" % (inty))
-                intpyfa.appendChild(sintpydat)
-                tcintpy = self.__doc.createElement("technique_common")
-                accintpy = self.__doc.createElement("accessor")
-                accintpy.setAttribute("source",
-                                      "#%s_location_Y-interpolation-array"
-                                      % (i.name))
-                accintpy.setAttribute("count", "%s" % (ii))
-                accintpy.setAttribute("stride", "1")
-                parintpy = self.__doc.createElement("param")
-                parintpy.setAttribute("name", "INTERPOLATION")
-                parintpy.setAttribute("type", "name")
-                accintpy.appendChild(parintpy)
-                tcintpy.appendChild(accintpy)
-                sintpy.appendChild(intpyfa)
-                sintpy.appendChild(tcintpy)
-                # intangent
-                sintangpy = self.__doc.createElement("source")
-                sintangpy.setAttribute("id", "%s_location_Y-intangent"
-                                       % (i.name))
-                intangpyfa = self.__doc.createElement("float_array")
-                intangpyfa.setAttribute("id",
-                                        "%s_location_Y-intangent-array"
-                                        % (i.name))
-                intangpyfa.setAttribute("count", "%s" % ((ii) * 2))
-                sintangpydat = self.__doc.createTextNode("%s" % (intangy))
-                intangpyfa.appendChild(sintangpydat)
-                tcintangpy = self.__doc.createElement("technique_common")
-                accintangpy = self.__doc.createElement("accessor")
-                accintangpy.setAttribute("source",
-                                         "#%s_location_Y-intangent-array"
-                                         % (i.name))
-                accintangpy.setAttribute("count", "%s" % (ii))
-                accintangpy.setAttribute("stride", "2")
-                parintangpy = self.__doc.createElement("param")
-                parintangpy.setAttribute("name", "X")
-                parintangpy.setAttribute("type", "float")
-                parintangpyy = self.__doc.createElement("param")
-                parintangpyy.setAttribute("name", "Y")
-                parintangpyy.setAttribute("type", "float")
-                accintangpy.appendChild(parintangpy)
-                accintangpy.appendChild(parintangpyy)
-                tcintangpy.appendChild(accintangpy)
-                sintangpy.appendChild(intangpyfa)
-                sintangpy.appendChild(tcintangpy)
-                # outtangent
-                soutangpy = self.__doc.createElement("source")
-                soutangpy.setAttribute("id", "%s_location_Y-outtangent"
-                                       % (i.name))
-                outangpyfa = self.__doc.createElement("float_array")
-                outangpyfa.setAttribute("id",
-                                        "%s_location_Y-outtangent-array"
-                                        % (i.name))
-                outangpyfa.setAttribute("count", "%s" % ((ii) * 2))
-                soutangpydat = self.__doc.createTextNode("%s" % (outtangy))
-                outangpyfa.appendChild(soutangpydat)
-                tcoutangpy = self.__doc.createElement("technique_common")
-                accoutangpy = self.__doc.createElement("accessor")
-                accoutangpy.setAttribute("source",
-                                         "#%s_location_Y-outtangent-array"
-                                         % (i.name))
-                accoutangpy.setAttribute("count", "%s" % (ii))
-                accoutangpy.setAttribute("stride", "2")
-                paroutangpy = self.__doc.createElement("param")
-                paroutangpy.setAttribute("name", "X")
-                paroutangpy.setAttribute("type", "float")
-                paroutangpyy = self.__doc.createElement("param")
-                paroutangpyy.setAttribute("name", "Y")
-                paroutangpyy.setAttribute("type", "float")
-                accoutangpy.appendChild(paroutangpy)
-                accoutangpy.appendChild(paroutangpyy)
-                tcoutangpy.appendChild(accoutangpy)
-                soutangpy.appendChild(outangpyfa)
-                soutangpy.appendChild(tcoutangpy)
-                # sampler
-                samy = self.__doc.createElement("sampler")
-                samy.setAttribute("id", "%s_location_Y-sampler" % (i.name))
-                semip = self.__doc.createElement("input")
-                semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#%s_location_Y-input"
-                                   % (i.name))
-                semop = self.__doc.createElement("input")
-                semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#%s_location_Y-output"
-                                   % (i.name))
-                seminter = self.__doc.createElement("input")
-                seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source",
-                                      "#%s_location_Y-interpolation"
-                                      % (i.name))
-                semintang = self.__doc.createElement("input")
-                semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source", "#%s_location_Y-intangent"
-                                       % (i.name))
-                semoutang = self.__doc.createElement("input")
-                semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source",
-                                       "#%s_location_Y-outtangent"
-                                       % (i.name))
-                samy.appendChild(semip)
-                samy.appendChild(semop)
-                samy.appendChild(seminter)
-                chany = self.__doc.createElement("channel")
-                chany.setAttribute("source", "#%s_location_Y-sampler"
-                                   % (i.name))
-                chany.setAttribute("target", "%s/translation.Y" % (i.name))
-                anmly.appendChild(sinpy)
-                anmly.appendChild(soutpy)
-                anmly.appendChild(sintpy)
-                anmly.appendChild(sintangpy)
-                anmly.appendChild(soutangpy)
-                anmly.appendChild(samy)
-                anmly.appendChild(chany)
-                cbPrint(ii)
-                cbPrint(inpy)
-                cbPrint(outpy)
-                cbPrint(inty)
-                cbPrint(intangy)
-                cbPrint(outtangy)
-                cbPrint("doney")
-        return anmly
-
-    def extract_anilz(self, i):
-        act = i.animation_data.action
-        curves = act.fcurves
-        fcus = {}
-        for fcu in curves:
-            # Z
-            if fcu.data_path == 'location'and fcu.array_index == 2:
-                anmlz = self.__doc.createElement("animation")
-                anmlz.setAttribute("id", "%s_location_Z" % (i.name))
-                fcus[fcu.array_index] = fcu
-                intangz = ""
-                outtangz = ""
-                inpz = ""
-                outpz = ""
-                intz = ""
-                tempz = fcus[2].keyframe_points
-                ii = 0
-                for key in tempz:
-                    khlx = key.handle_left[0]
-                    khly = key.handle_left[1]
-                    khrx = key.handle_right[0]
-                    khry = key.handle_right[1]
-                    frame, value = key.co
-                    time = convert_time(frame)
-                    intz += ("%s " % (key.interpolation))
-                    inpz += ("%.6f " % (time))
-                    outpz += ("%.6f " % (value))
-                    intangfirst = convert_time(khlx)
-                    outangfirst = convert_time(khrx)
-                    intangz += ("%.6f %.6f " % (intangfirst, khly))
-                    outtangz += ("%.6f %.6f " % (outangfirst, khry))
-                    ii += 1
-                # input
-                sinpz = self.__doc.createElement("source")
-                sinpz.setAttribute("id", "%s_location_Z-input" % (i.name))
-                inpzfa = self.__doc.createElement("float_array")
-                inpzfa.setAttribute("id", "%s_location_Z-input-array"
-                                    % (i.name))
-                inpzfa.setAttribute("count", "%s" % (ii))
-                sinpzdat = self.__doc.createTextNode("%s" % (inpz))
-                inpzfa.appendChild(sinpzdat)
-                tcinpz = self.__doc.createElement("technique_common")
-                accinpz = self.__doc.createElement("accessor")
-                accinpz.setAttribute("source", "#%s_location_Z-input-array"
-                                     % (i.name))
-                accinpz.setAttribute("count", "%s" % (ii))
-                accinpz.setAttribute("stride", "1")
-                parinpz = self.__doc.createElement("param")
-                parinpz.setAttribute("name", "TIME")
-                parinpz.setAttribute("type", "float")
-                accinpz.appendChild(parinpz)
-                tcinpz.appendChild(accinpz)
-                sinpz.appendChild(inpzfa)
-                sinpz.appendChild(tcinpz)
-                # output
-                soutpz = self.__doc.createElement("source")
-                soutpz.setAttribute("id", "%s_location_Z-output"
-                                    % (i.name))
-                outpzfa = self.__doc.createElement("float_array")
-                outpzfa.setAttribute("id", "%s_location_Z-output-array"
-                                     % (i.name))
-                outpzfa.setAttribute("count", "%s" % (ii))
-                soutpzdat = self.__doc.createTextNode("%s" % (outpz))
-                outpzfa.appendChild(soutpzdat)
-                tcoutpz = self.__doc.createElement("technique_common")
-                accoutpz = self.__doc.createElement("accessor")
-                accoutpz.setAttribute("source",
-                                      "#%s_location_Z-output-array"
-                                      % (i.name))
-                accoutpz.setAttribute("count", "%s" % (ii))
-                accoutpz.setAttribute("stride", "1")
-                paroutpz = self.__doc.createElement("param")
-                paroutpz.setAttribute("name", "VALUE")
-                paroutpz.setAttribute("type", "float")
-                accoutpz.appendChild(paroutpz)
-                tcoutpz.appendChild(accoutpz)
-                soutpz.appendChild(outpzfa)
-                soutpz.appendChild(tcoutpz)
-                # interpolation
-                sintpz = self.__doc.createElement("source")
-                sintpz.setAttribute("id", "%s_location_Z-interpolation"
-                                    % (i.name))
-                intpzfa = self.__doc.createElement("Name_array")
-                intpzfa.setAttribute("id",
-                                     "%s_location_Z-interpolation-array"
-                                      % (i.name))
-                intpzfa.setAttribute("count", "%s" % (ii))
-                sintpzdat = self.__doc.createTextNode("%s" % (intz))
-                intpzfa.appendChild(sintpzdat)
-                tcintpz = self.__doc.createElement("technique_common")
-                accintpz = self.__doc.createElement("accessor")
-                accintpz.setAttribute("source",
-                                      "#%s_location_Z-interpolation-array"
-                                      % (i.name))
-                accintpz.setAttribute("count", "%s" % (ii))
-                accintpz.setAttribute("stride", "1")
-                parintpz = self.__doc.createElement("param")
-                parintpz.setAttribute("name", "INTERPOLATION")
-                parintpz.setAttribute("type", "name")
-                accintpz.appendChild(parintpz)
-                tcintpz.appendChild(accintpz)
-                sintpz.appendChild(intpzfa)
-                sintpz.appendChild(tcintpz)
-                # intangent
-                sintangpz = self.__doc.createElement("source")
-                sintangpz.setAttribute("id", "%s_location_Z-intangent"
-                                       % (i.name))
-                intangpzfa = self.__doc.createElement("float_array")
-                intangpzfa.setAttribute("id",
-                                        "%s_location_Z-intangent-array"
-                                        % (i.name))
-                intangpzfa.setAttribute("count", "%s" % ((ii) * 2))
-                sintangpzdat = self.__doc.createTextNode("%s" % (intangz))
-                intangpzfa.appendChild(sintangpzdat)
-                tcintangpz = self.__doc.createElement("technique_common")
-                accintangpz = self.__doc.createElement("accessor")
-                accintangpz.setAttribute("source",
-                                         "#%s_location_Z-intangent-array"
-                                         % (i.name))
-                accintangpz.setAttribute("count", "%s" % (ii))
-                accintangpz.setAttribute("stride", "2")
-                parintangpz = self.__doc.createElement("param")
-                parintangpz.setAttribute("name", "X")
-                parintangpz.setAttribute("type", "float")
-                parintangpyz = self.__doc.createElement("param")
-                parintangpyz.setAttribute("name", "Y")
-                parintangpyz.setAttribute("type", "float")
-                accintangpz.appendChild(parintangpz)
-                accintangpz.appendChild(parintangpyz)
-                tcintangpz.appendChild(accintangpz)
-                sintangpz.appendChild(intangpzfa)
-                sintangpz.appendChild(tcintangpz)
-                # outtangent
-                soutangpz = self.__doc.createElement("source")
-                soutangpz.setAttribute("id",
-                                       "%s_location_Z-outtangent"
-                                       % (i.name))
-                outangpzfa = self.__doc.createElement("float_array")
-                outangpzfa.setAttribute("id",
-                                        "%s_location_Z-outtangent-array"
-                                        % (i.name))
-                outangpzfa.setAttribute("count", "%s" % ((ii) * 2))
-                soutangpzdat = self.__doc.createTextNode("%s" % (outtangz))
-                outangpzfa.appendChild(soutangpzdat)
-                tcoutangpz = self.__doc.createElement("technique_common")
-                accoutangpz = self.__doc.createElement("accessor")
-                accoutangpz.setAttribute("source",
-                                         "#%s_location_Z-outtangent-array"
-                                         % (i.name))
-                accoutangpz.setAttribute("count", "%s" % (ii))
-                accoutangpz.setAttribute("stride", "2")
-                paroutangpz = self.__doc.createElement("param")
-                paroutangpz.setAttribute("name", "X")
-                paroutangpz.setAttribute("type", "float")
-                paroutangpyz = self.__doc.createElement("param")
-                paroutangpyz.setAttribute("name", "Y")
-                paroutangpyz.setAttribute("type", "float")
-                accoutangpz.appendChild(paroutangpz)
-                accoutangpz.appendChild(paroutangpyz)
-                tcoutangpz.appendChild(accoutangpz)
-                soutangpz.appendChild(outangpzfa)
-                soutangpz.appendChild(tcoutangpz)
-                # sampler
-                samz = self.__doc.createElement("sampler")
-                samz.setAttribute("id", "%s_location_Z-sampler" % (i.name))
-                semip = self.__doc.createElement("input")
-                semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#%s_location_Z-input"
-                                   % (i.name))
-                semop = self.__doc.createElement("input")
-                semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#%s_location_Z-output"
-                                   % (i.name))
-                seminter = self.__doc.createElement("input")
-                seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source",
-                                      "#%s_location_Z-interpolation"
-                                      % (i.name))
-                semintang = self.__doc.createElement("input")
-                semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source", "#%s_location_Z-intangent"
-                                       % (i.name))
-                semoutang = self.__doc.createElement("input")
-                semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source",
-                                       "#%s_location_Z-outtangent"
-                                       % (i.name))
-                samz.appendChild(semip)
-                samz.appendChild(semop)
-                samz.appendChild(seminter)
-                chanz = self.__doc.createElement("channel")
-                chanz.setAttribute("source", "#%s_location_Z-sampler"
-                                   % (i.name))
-                chanz.setAttribute("target", "%s/translation.Z" % (i.name))
-                anmlz.appendChild(sinpz)
-                anmlz.appendChild(soutpz)
-                anmlz.appendChild(sintpz)
-                anmlz.appendChild(sintangpz)
-                anmlz.appendChild(soutangpz)
-                anmlz.appendChild(samz)
-                anmlz.appendChild(chanz)
-                cbPrint(ii)
-                cbPrint(inpz)
-                cbPrint(outpz)
-                cbPrint(intz)
-                cbPrint(intangz)
-                cbPrint(outtangz)
-                cbPrint("donez")
-        return anmlz
-
-    def extract_anirx(self, i):
+    def extract_anir(self, i, ax):
         act = i.animation_data.action
         curves = act.fcurves
         fcus = {}
         for fcu in curves:
     # rotation_euler
-            # X
-            if fcu.data_path == 'rotation_euler'and fcu.array_index == 0:
+            if fcu.data_path == 'rotation_euler' and fcu.array_index == self.__axises[ax]:
                 anmrx = self.__doc.createElement("animation")
-                anmrx.setAttribute("id", "%s_rotation_euler_X" % (i.name))
+                anmrx.setAttribute("id", i.name+"_rotation_euler_"+ax)
                 fcus[fcu.array_index] = fcu
                 intangx = ""
                 outtangx = ""
                 inpx = ""
                 outpx = ""
                 intx = ""
-                temp = fcus[0].keyframe_points
+                temp = fcus[self.__axises[ax]].keyframe_points
                 ii = 0
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
@@ -1404,19 +958,15 @@ class CrytekDaeExporter:
                     ii += 1
                 # input
                 sinpx = self.__doc.createElement("source")
-                sinpx.setAttribute("id", "%s_rotation_euler_X-input"
-                                   % (i.name))
+                sinpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-input")
                 inpxfa = self.__doc.createElement("float_array")
-                inpxfa.setAttribute("id", "%s_rotation_euler_X-input-array"
-                                    % (i.name))
+                inpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-input-array")
                 inpxfa.setAttribute("count", "%s" % (ii))
                 sinpxdat = self.__doc.createTextNode("%s" % (inpx))
                 inpxfa.appendChild(sinpxdat)
                 tcinpx = self.__doc.createElement("technique_common")
                 accinpx = self.__doc.createElement("accessor")
-                accinpx.setAttribute("source",
-                                     "#%s_rotation_euler_X-input-array"
-                                     % (i.name))
+                accinpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-input-array")
                 accinpx.setAttribute("count", "%s" % (ii))
                 accinpx.setAttribute("stride", "1")
                 parinpx = self.__doc.createElement("param")
@@ -1428,20 +978,15 @@ class CrytekDaeExporter:
                 sinpx.appendChild(tcinpx)
                 # output
                 soutpx = self.__doc.createElement("source")
-                soutpx.setAttribute("id", "%s_rotation_euler_X-output"
-                                    % (i.name))
+                soutpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-output")
                 outpxfa = self.__doc.createElement("float_array")
-                outpxfa.setAttribute("id",
-                                     "%s_rotation_euler_X-output-array"
-                                     % (i.name))
+                outpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-output-array")
                 outpxfa.setAttribute("count", "%s" % (ii))
                 soutpxdat = self.__doc.createTextNode("%s" % (outpx))
                 outpxfa.appendChild(soutpxdat)
                 tcoutpx = self.__doc.createElement("technique_common")
                 accoutpx = self.__doc.createElement("accessor")
-                accoutpx.setAttribute("source",
-                                      "#%s_rotation_euler_X-output-array"
-                                      % (i.name))
+                accoutpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-output-array")
                 accoutpx.setAttribute("count", "%s" % (ii))
                 accoutpx.setAttribute("stride", "1")
                 paroutpx = self.__doc.createElement("param")
@@ -1453,21 +998,15 @@ class CrytekDaeExporter:
                 soutpx.appendChild(tcoutpx)
                 # interpolation
                 sintpx = self.__doc.createElement("source")
-                sintpx.setAttribute("id",
-                                    "%s_rotation_euler_X-interpolation"
-                                    % (i.name))
+                sintpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-interpolation")
                 intpxfa = self.__doc.createElement("Name_array")
-                intpxfa.setAttribute("id",
-                                "%s_rotation_euler_X-interpolation-array"
-                                     % (i.name))
+                intpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-interpolation-array")
                 intpxfa.setAttribute("count", "%s" % (ii))
                 sintpxdat = self.__doc.createTextNode("%s" % (intx))
                 intpxfa.appendChild(sintpxdat)
                 tcintpx = self.__doc.createElement("technique_common")
                 accintpx = self.__doc.createElement("accessor")
-                accintpx.setAttribute("source",
-                                "#%s_rotation_euler_X-interpolation-array"
-                                      % (i.name))
+                accintpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-interpolation-array")
                 accintpx.setAttribute("count", "%s" % (ii))
                 accintpx.setAttribute("stride", "1")
                 parintpx = self.__doc.createElement("param")
@@ -1479,21 +1018,15 @@ class CrytekDaeExporter:
                 sintpx.appendChild(tcintpx)
                 # intangent
                 sintangpx = self.__doc.createElement("source")
-                sintangpx.setAttribute("id",
-                                       "%s_rotation_euler_X-intangent"
-                                       % (i.name))
+                sintangpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-intangent")
                 intangpxfa = self.__doc.createElement("float_array")
-                intangpxfa.setAttribute("id",
-                                    "%s_rotation_euler_X-intangent-array"
-                                    % (i.name))
+                intangpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-intangent-array")
                 intangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 sintangpxdat = self.__doc.createTextNode("%s" % (intangx))
                 intangpxfa.appendChild(sintangpxdat)
                 tcintangpx = self.__doc.createElement("technique_common")
                 accintangpx = self.__doc.createElement("accessor")
-                accintangpx.setAttribute("source",
-                                    "#%s_rotation_euler_X-intangent-array"
-                                    % (i.name))
+                accintangpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-intangent-array")
                 accintangpx.setAttribute("count", "%s" % (ii))
                 accintangpx.setAttribute("stride", "2")
                 parintangpx = self.__doc.createElement("param")
@@ -1509,21 +1042,15 @@ class CrytekDaeExporter:
                 sintangpx.appendChild(tcintangpx)
                 # outtangent
                 soutangpx = self.__doc.createElement("source")
-                soutangpx.setAttribute("id",
-                                       "%s_rotation_euler_X-outtangent"
-                                       % (i.name))
+                soutangpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-outtangent")
                 outangpxfa = self.__doc.createElement("float_array")
-                outangpxfa.setAttribute("id",
-                                    "%s_rotation_euler_X-outtangent-array"
-                                        % (i.name))
+                outangpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-outtangent-array")
                 outangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 soutangpxdat = self.__doc.createTextNode("%s" % (outtangx))
                 outangpxfa.appendChild(soutangpxdat)
                 tcoutangpx = self.__doc.createElement("technique_common")
                 accoutangpx = self.__doc.createElement("accessor")
-                accoutangpx.setAttribute("source",
-                                    "#%s_rotation_euler_X-outtangent-array"
-                                    % (i.name))
+                accoutangpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-outtangent-array")
                 accoutangpx.setAttribute("count", "%s" % (ii))
                 accoutangpx.setAttribute("stride", "2")
                 paroutangpx = self.__doc.createElement("param")
@@ -1539,39 +1066,28 @@ class CrytekDaeExporter:
                 soutangpx.appendChild(tcoutangpx)
                 # sampler
                 samx = self.__doc.createElement("sampler")
-                samx.setAttribute("id", "%s_rotation_euler_X-sampler"
-                                  % (i.name))
+                samx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-sampler")
                 semip = self.__doc.createElement("input")
                 semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#%s_rotation_euler_X-input"
-                                   % (i.name))
+                semip.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-input")
                 semop = self.__doc.createElement("input")
                 semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#%s_rotation_euler_X-output"
-                                   % (i.name))
+                semop.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-output")
                 seminter = self.__doc.createElement("input")
                 seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source",
-                                      "#%s_rotation_euler_X-interpolation"
-                                      % (i.name))
+                seminter.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-interpolation")
                 semintang = self.__doc.createElement("input")
                 semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source",
-                                       "#%s_rotation_euler_X-intangent"
-                                       % (i.name))
+                semintang.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-intangent")
                 semoutang = self.__doc.createElement("input")
                 semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source",
-                                       "#%s_rotation_euler_X-outtangent"
-                                       % (i.name))
+                semoutang.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-outtangent")
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
                 chanx = self.__doc.createElement("channel")
-                chanx.setAttribute("source", "#%s_rotation_euler_X-sampler"
-                                    % (i.name))
-                chanx.setAttribute("target", "%s/rotation_x.ANGLE"
-                                   % (i.name))
+                chanx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-sampler")
+                chanx.setAttribute("target", i.name+"/rotation_"+ax+".ANGLE")
                 anmrx.appendChild(sinpx)
                 anmrx.appendChild(soutpx)
                 anmrx.appendChild(sintpx)
@@ -1586,446 +1102,8 @@ class CrytekDaeExporter:
                 cbPrint(intangx)
                 cbPrint(outtangx)
                 cbPrint("donerotx")
-        return anmrx
-
-    def extract_aniry(self, i):
-        act = i.animation_data.action
-        curves = act.fcurves
-        fcus = {}
-        for fcu in curves:
-                # Y
-            if fcu.data_path == 'rotation_euler'and fcu.array_index == 1:
-                anmry = self.__doc.createElement("animation")
-                anmry.setAttribute("id", "%s_rotation_euler_Y" % (i.name))
-                fcus[fcu.array_index] = fcu
-
-                intangy = ""
-                outtangy = ""
-                inpy = ""
-                outpy = ""
-                inty = ""
-                tempy = fcus[1].keyframe_points
-                ii = 0
-                for key in tempy:
-                    khlx = key.handle_left[0]
-                    khly = key.handle_left[1]
-                    khrx = key.handle_right[0]
-                    khry = key.handle_right[1]
-                    frame, value = key.co
-                    time = convert_time(frame)
-                    inty += ("%s " % (key.interpolation))
-                    inpy += ("%.6f " % (time))
-                    outpy += ("%.6f " % (value * utils.toD))
-                    intangfirst = convert_time(khlx)
-                    outangfirst = convert_time(khrx)
-                    intangy += ("%.6f %.6f " % (intangfirst, khly))
-                    outtangy += ("%.6f %.6f " % (outangfirst, khry))
-                    ii += 1
-                # input
-                sinpy = self.__doc.createElement("source")
-                sinpy.setAttribute("id", "%s_rotation_euler_Y-input"
-                                   % (i.name))
-                inpyfa = self.__doc.createElement("float_array")
-                inpyfa.setAttribute("id", "%s_rotation_euler_Y-input-array"
-                                     % (i.name))
-                inpyfa.setAttribute("count", "%s" % (ii))
-                sinpydat = self.__doc.createTextNode("%s" % (inpy))
-                inpyfa.appendChild(sinpydat)
-                tcinpy = self.__doc.createElement("technique_common")
-                accinpy = self.__doc.createElement("accessor")
-                accinpy.setAttribute("source",
-                                     "#%s_rotation_euler_Y-input-array"
-                                     % (i.name))
-                accinpy.setAttribute("count", "%s" % (ii))
-                accinpy.setAttribute("stride", "1")
-                parinpy = self.__doc.createElement("param")
-                parinpy.setAttribute("name", "TIME")
-                parinpy.setAttribute("type", "float")
-                accinpy.appendChild(parinpy)
-                tcinpy.appendChild(accinpy)
-                sinpy.appendChild(inpyfa)
-                sinpy.appendChild(tcinpy)
-                # output
-                soutpy = self.__doc.createElement("source")
-                soutpy.setAttribute("id", "%s_rotation_euler_Y-output"
-                                    % (i.name))
-                outpyfa = self.__doc.createElement("float_array")
-                outpyfa.setAttribute("id",
-                                     "%s_rotation_euler_Y-output-array"
-                                      % (i.name))
-                outpyfa.setAttribute("count", "%s" % (ii))
-                soutpydat = self.__doc.createTextNode("%s" % (outpy))
-                outpyfa.appendChild(soutpydat)
-                tcoutpy = self.__doc.createElement("technique_common")
-                accoutpy = self.__doc.createElement("accessor")
-                accoutpy.setAttribute("source",
-                                      "#%s_rotation_euler_Y-output-array"
-                                      % (i.name))
-                accoutpy.setAttribute("count", "%s" % (ii))
-                accoutpy.setAttribute("stride", "1")
-                paroutpy = self.__doc.createElement("param")
-                paroutpy.setAttribute("name", "VALUE")
-                paroutpy.setAttribute("type", "float")
-                accoutpy.appendChild(paroutpy)
-                tcoutpy.appendChild(accoutpy)
-                soutpy.appendChild(outpyfa)
-                soutpy.appendChild(tcoutpy)
-                # interpolation
-                sintpy = self.__doc.createElement("source")
-                sintpy.setAttribute("id",
-                                    "%s_rotation_euler_Y-interpolation"
-                                    % (i.name))
-                intpyfa = self.__doc.createElement("Name_array")
-                intpyfa.setAttribute("id",
-                                "%s_rotation_euler_Y-interpolation-array"
-                                % (i.name))
-                intpyfa.setAttribute("count", "%s" % (ii))
-                sintpydat = self.__doc.createTextNode("%s" % (inty))
-                intpyfa.appendChild(sintpydat)
-                tcintpy = self.__doc.createElement("technique_common")
-                accintpy = self.__doc.createElement("accessor")
-                accintpy.setAttribute("source",
-                                "#%s_rotation_euler_Y-interpolation-array"
-                                % (i.name))
-                accintpy.setAttribute("count", "%s" % (ii))
-                accintpy.setAttribute("stride", "1")
-                parintpy = self.__doc.createElement("param")
-                parintpy.setAttribute("name", "INTERPOLATION")
-                parintpy.setAttribute("type", "name")
-                accintpy.appendChild(parintpy)
-                tcintpy.appendChild(accintpy)
-                sintpy.appendChild(intpyfa)
-                sintpy.appendChild(tcintpy)
-                # intangent
-                sintangpy = self.__doc.createElement("source")
-                sintangpy.setAttribute("id",
-                                       "%s_rotation_euler_Y-intangent"
-                                       % (i.name))
-                intangpyfa = self.__doc.createElement("float_array")
-                intangpyfa.setAttribute("id",
-                                    "%s_rotation_euler_Y-intangent-array"
-                                         % (i.name))
-                intangpyfa.setAttribute("count", "%s" % ((ii) * 2))
-                sintangpydat = self.__doc.createTextNode("%s" % (intangy))
-                intangpyfa.appendChild(sintangpydat)
-                tcintangpy = self.__doc.createElement("technique_common")
-                accintangpy = self.__doc.createElement("accessor")
-                accintangpy.setAttribute("source",
-                                    "#%s_rotation_euler_Y-intangent-array"
-                                    % (i.name))
-                accintangpy.setAttribute("count", "%s" % (ii))
-                accintangpy.setAttribute("stride", "2")
-                parintangpy = self.__doc.createElement("param")
-                parintangpy.setAttribute("name", "X")
-                parintangpy.setAttribute("type", "float")
-                parintangpyy = self.__doc.createElement("param")
-                parintangpyy.setAttribute("name", "Y")
-                parintangpyy.setAttribute("type", "float")
-                accintangpy.appendChild(parintangpy)
-                accintangpy.appendChild(parintangpyy)
-                tcintangpy.appendChild(accintangpy)
-                sintangpy.appendChild(intangpyfa)
-                sintangpy.appendChild(tcintangpy)
-                # outtangent
-                soutangpy = self.__doc.createElement("source")
-                soutangpy.setAttribute("id",
-                                       "%s_rotation_euler_Y-outtangent"
-                                       % (i.name))
-                outangpyfa = self.__doc.createElement("float_array")
-                outangpyfa.setAttribute("id",
-                                    "%s_rotation_euler_Y-outtangent-array"
-                                    % (i.name))
-                outangpyfa.setAttribute("count", "%s" % ((ii) * 2))
-                soutangpydat = self.__doc.createTextNode("%s" % (outtangy))
-                outangpyfa.appendChild(soutangpydat)
-                tcoutangpy = self.__doc.createElement("technique_common")
-                accoutangpy = self.__doc.createElement("accessor")
-                accoutangpy.setAttribute("source",
-                                    "#%s_rotation_euler_Y-outtangent-array"
-                                    % (i.name))
-                accoutangpy.setAttribute("count", "%s" % (ii))
-                accoutangpy.setAttribute("stride", "2")
-                paroutangpy = self.__doc.createElement("param")
-                paroutangpy.setAttribute("name", "X")
-                paroutangpy.setAttribute("type", "float")
-                paroutangpyy = self.__doc.createElement("param")
-                paroutangpyy.setAttribute("name", "Y")
-                paroutangpyy.setAttribute("type", "float")
-                accoutangpy.appendChild(paroutangpy)
-                accoutangpy.appendChild(paroutangpyy)
-                tcoutangpy.appendChild(accoutangpy)
-                soutangpy.appendChild(outangpyfa)
-                soutangpy.appendChild(tcoutangpy)
-                # sampler
-                samy = self.__doc.createElement("sampler")
-                samy.setAttribute("id", "%s_rotation_euler_Y-sampler"
-                                  % (i.name))
-                semip = self.__doc.createElement("input")
-                semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#%s_rotation_euler_Y-input"
-                                   % (i.name))
-                semop = self.__doc.createElement("input")
-                semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#%s_rotation_euler_Y-output"
-                                   % (i.name))
-                seminter = self.__doc.createElement("input")
-                seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source",
-                                      "#%s_rotation_euler_Y-interpolation"
-                                      % (i.name))
-                semintang = self.__doc.createElement("input")
-                semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source",
-                                       "#%s_rotation_euler_Y-intangent"
-                                       % (i.name))
-                semoutang = self.__doc.createElement("input")
-                semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source",
-                                       "#%s_rotation_euler_Y-outtangent"
-                                       % (i.name))
-                samy.appendChild(semip)
-                samy.appendChild(semop)
-                samy.appendChild(seminter)
-                chany = self.__doc.createElement("channel")
-                chany.setAttribute("source", "#%s_rotation_euler_Y-sampler"
-                                   % (i.name))
-                chany.setAttribute("target", "%s/rotation_y.ANGLE"
-                                   % (i.name))
-                anmry.appendChild(sinpy)
-                anmry.appendChild(soutpy)
-                anmry.appendChild(sintpy)
-                anmry.appendChild(sintangpy)
-                anmry.appendChild(soutangpy)
-                anmry.appendChild(samy)
-                anmry.appendChild(chany)
-                cbPrint(ii)
-                cbPrint(inpy)
-                cbPrint(outpy)
-                cbPrint(inty)
-                cbPrint(intangy)
-                cbPrint(outtangy)
-                cbPrint("doneroty")
-        return anmry
-
-    def extract_anirz(self, i):
-        act = i.animation_data.action
-        curves = act.fcurves
-        fcus = {}
-        for fcu in curves:
-            # Z
-            if fcu.data_path == 'rotation_euler'and fcu.array_index == 2:
-                anmrz = self.__doc.createElement("animation")
-                anmrz.setAttribute("id", "%s_rotation_euler_Z" % (i.name))
-                fcus[fcu.array_index] = fcu
-
-                intangz = ""
-                outtangz = ""
-                inpz = ""
-                outpz = ""
-                intz = ""
-                tempz = fcus[2].keyframe_points
-                ii = 0
-                for key in tempz:
-                    khlx = key.handle_left[0]
-                    khly = key.handle_left[1]
-                    khrx = key.handle_right[0]
-                    khry = key.handle_right[1]
-                    frame, value = key.co
-                    time = convert_time(frame)
-                    intz += ("%s " % (key.interpolation))
-                    inpz += ("%.6f " % (time))
-                    outpz += ("%.6f " % (value * utils.toD))
-                    intangfirst = convert_time(khlx)
-                    outangfirst = convert_time(khrx)
-                    intangz += ("%.6f %.6f " % (intangfirst, khly))
-                    outtangz += ("%.6f %.6f " % (outangfirst, khry))
-                    ii += 1
-                # input
-                sinpz = self.__doc.createElement("source")
-                sinpz.setAttribute("id", "%s_rotation_euler_Z-input"
-                                   % (i.name))
-                inpzfa = self.__doc.createElement("float_array")
-                inpzfa.setAttribute("id", "%s_rotation_euler_Z-input-array"
-                                    % (i.name))
-                inpzfa.setAttribute("count", "%s" % (ii))
-                sinpzdat = self.__doc.createTextNode("%s" % (inpz))
-                inpzfa.appendChild(sinpzdat)
-                tcinpz = self.__doc.createElement("technique_common")
-                accinpz = self.__doc.createElement("accessor")
-                accinpz.setAttribute("source",
-                                     "#%s_rotation_euler_Z-input-array"
-                                     % (i.name))
-                accinpz.setAttribute("count", "%s" % (ii))
-                accinpz.setAttribute("stride", "1")
-                parinpz = self.__doc.createElement("param")
-                parinpz.setAttribute("name", "TIME")
-                parinpz.setAttribute("type", "float")
-                accinpz.appendChild(parinpz)
-                tcinpz.appendChild(accinpz)
-                sinpz.appendChild(inpzfa)
-                sinpz.appendChild(tcinpz)
-                # output
-                soutpz = self.__doc.createElement("source")
-                soutpz.setAttribute("id", "%s_rotation_euler_Z-output"
-                                    % (i.name))
-                outpzfa = self.__doc.createElement("float_array")
-                outpzfa.setAttribute("id",
-                                     "%s_rotation_euler_Z-output-array"
-                                     % (i.name))
-                outpzfa.setAttribute("count", "%s" % (ii))
-                soutpzdat = self.__doc.createTextNode("%s" % (outpz))
-                outpzfa.appendChild(soutpzdat)
-                tcoutpz = self.__doc.createElement("technique_common")
-                accoutpz = self.__doc.createElement("accessor")
-                accoutpz.setAttribute("source",
-                                      "#%s_rotation_euler_Z-output-array"
-                                      % (i.name))
-                accoutpz.setAttribute("count", "%s" % (ii))
-                accoutpz.setAttribute("stride", "1")
-                paroutpz = self.__doc.createElement("param")
-                paroutpz.setAttribute("name", "VALUE")
-                paroutpz.setAttribute("type", "float")
-                accoutpz.appendChild(paroutpz)
-                tcoutpz.appendChild(accoutpz)
-                soutpz.appendChild(outpzfa)
-                soutpz.appendChild(tcoutpz)
-                # interpolation
-                sintpz = self.__doc.createElement("source")
-                sintpz.setAttribute("id",
-                                    "%s_rotation_euler_Z-interpolation"
-                                    % (i.name))
-                intpzfa = self.__doc.createElement("Name_array")
-                intpzfa.setAttribute("id",
-                                "%s_rotation_euler_Z-interpolation-array"
-                                % (i.name))
-                intpzfa.setAttribute("count", "%s" % (ii))
-                sintpzdat = self.__doc.createTextNode("%s" % (intz))
-                intpzfa.appendChild(sintpzdat)
-                tcintpz = self.__doc.createElement("technique_common")
-                accintpz = self.__doc.createElement("accessor")
-                accintpz.setAttribute("source",
-                                "#%s_rotation_euler_Z-interpolation-array"
-                                % (i.name))
-                accintpz.setAttribute("count", "%s" % (ii))
-                accintpz.setAttribute("stride", "1")
-                parintpz = self.__doc.createElement("param")
-                parintpz.setAttribute("name", "INTERPOLATION")
-                parintpz.setAttribute("type", "name")
-                accintpz.appendChild(parintpz)
-                tcintpz.appendChild(accintpz)
-                sintpz.appendChild(intpzfa)
-                sintpz.appendChild(tcintpz)
-                # intangent
-                sintangpz = self.__doc.createElement("source")
-                sintangpz.setAttribute("id",
-                                       "%s_rotation_euler_Z-intangent"
-                                       % (i.name))
-                intangpzfa = self.__doc.createElement("float_array")
-                intangpzfa.setAttribute("id",
-                                    "%s_rotation_euler_Z-intangent-array"
-                                    % (i.name))
-                intangpzfa.setAttribute("count", "%s" % ((ii) * 2))
-                sintangpzdat = self.__doc.createTextNode("%s" % (intangz))
-                intangpzfa.appendChild(sintangpzdat)
-                tcintangpz = self.__doc.createElement("technique_common")
-                accintangpz = self.__doc.createElement("accessor")
-                accintangpz.setAttribute("source",
-                                    "#%s_rotation_euler_Z-intangent-array"
-                                    % (i.name))
-                accintangpz.setAttribute("count", "%s" % (ii))
-                accintangpz.setAttribute("stride", "2")
-                parintangpz = self.__doc.createElement("param")
-                parintangpz.setAttribute("name", "X")
-                parintangpz.setAttribute("type", "float")
-                parintangpyz = self.__doc.createElement("param")
-                parintangpyz.setAttribute("name", "Y")
-                parintangpyz.setAttribute("type", "float")
-                accintangpz.appendChild(parintangpz)
-                accintangpz.appendChild(parintangpyz)
-                tcintangpz.appendChild(accintangpz)
-                sintangpz.appendChild(intangpzfa)
-                sintangpz.appendChild(tcintangpz)
-                # outtangent
-                soutangpz = self.__doc.createElement("source")
-                soutangpz.setAttribute("id",
-                                       "%s_rotation_euler_Z-outtangent"
-                                       % (i.name))
-                outangpzfa = self.__doc.createElement("float_array")
-                outangpzfa.setAttribute("id",
-                                    "%s_rotation_euler_Z-outtangent-array"
-                                    % (i.name))
-                outangpzfa.setAttribute("count", "%s" % ((ii) * 2))
-                soutangpzdat = self.__doc.createTextNode("%s" % (outtangz))
-                outangpzfa.appendChild(soutangpzdat)
-                tcoutangpz = self.__doc.createElement("technique_common")
-                accoutangpz = self.__doc.createElement("accessor")
-                accoutangpz.setAttribute("source",
-                                    "#%s_rotation_euler_Z-outtangent-array"
-                                    % (i.name))
-                accoutangpz.setAttribute("count", "%s" % (ii))
-                accoutangpz.setAttribute("stride", "2")
-                paroutangpz = self.__doc.createElement("param")
-                paroutangpz.setAttribute("name", "X")
-                paroutangpz.setAttribute("type", "float")
-                paroutangpyz = self.__doc.createElement("param")
-                paroutangpyz.setAttribute("name", "Y")
-                paroutangpyz.setAttribute("type", "float")
-                accoutangpz.appendChild(paroutangpz)
-                accoutangpz.appendChild(paroutangpyz)
-                tcoutangpz.appendChild(accoutangpz)
-                soutangpz.appendChild(outangpzfa)
-                soutangpz.appendChild(tcoutangpz)
-                # sampler
-                samz = self.__doc.createElement("sampler")
-                samz.setAttribute("id", "%s_rotation_euler_Z-sampler"
-                                   % (i.name))
-                semip = self.__doc.createElement("input")
-                semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#%s_rotation_euler_Z-input"
-                                   % (i.name))
-                semop = self.__doc.createElement("input")
-                semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#%s_rotation_euler_Z-output"
-                                    % (i.name))
-                seminter = self.__doc.createElement("input")
-                seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source",
-                                      "#%s_rotation_euler_Z-interpolation"
-                                      % (i.name))
-                semintang = self.__doc.createElement("input")
-                semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source",
-                                       "#%s_rotation_euler_Z-intangent"
-                                        % (i.name))
-                semoutang = self.__doc.createElement("input")
-                semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source",
-                                       "#%s_rotation_euler_Z-outtangent"
-                                        % (i.name))
-                samz.appendChild(semip)
-                samz.appendChild(semop)
-                samz.appendChild(seminter)
-                chanz = self.__doc.createElement("channel")
-                chanz.setAttribute("source", "#%s_rotation_euler_Z-sampler"
-                                    % (i.name))
-                chanz.setAttribute("target", "%s/rotation_z.ANGLE"
-                                   % (i.name))
-                anmrz.appendChild(sinpz)
-                anmrz.appendChild(soutpz)
-                anmrz.appendChild(sintpz)
-                anmrz.appendChild(sintangpz)
-                anmrz.appendChild(soutangpz)
-                anmrz.appendChild(samz)
-                anmrz.appendChild(chanz)
-                cbPrint(ii)
-                cbPrint(inpz)
-                cbPrint(outpz)
-                cbPrint(intz)
-                cbPrint(intangz)
-                cbPrint(outtangz)
-                cbPrint("donerotz")
-        return anmrz
-
+        return anmrx        
+        
     def __get_bone_names_for_idref(self, bones):
         bones_for_idref = ""
 
@@ -2070,10 +1148,10 @@ class CrytekDaeExporter:
                 result += "{!s} ".format(col)
         return result.strip()
 
-    def __export_asset(self, root_node):
+    def __export_asset(self, parent_element):
         # Attributes are x=y values inside a tag
         asset = self.__doc.createElement("asset")
-        root_node.appendChild(asset)
+        parent_element.appendChild(asset)
         contrib = self.__doc.createElement("contributor")
         asset.appendChild(contrib)
         auth = self.__doc.createElement("author")
@@ -2099,227 +1177,273 @@ class CrytekDaeExporter:
         uax.appendChild(zup)
         asset.appendChild(uax)
 
-    def __export_library_images(self, root_node):
-        libima = self.__doc.createElement("library_images")
-        for image in bpy.data.images:
-            if image.has_data and image.filepath:
-                imaname = image.name
-                image_path = get_relative_path(image.filepath)
-                imaid = self.__doc.createElement("image")
-                imaid.setAttribute("id", "%s" % imaname)
-                imaid.setAttribute("name", "%s" % imaname)
-                infrom = self.__doc.createElement("init_from")
-                fpath = self.__doc.createTextNode("%s" % image_path)
-                infrom.appendChild(fpath)
-                imaid.appendChild(infrom)
-                libima.appendChild(imaid)
+    def __export_library_images(self, parent_element):
+        library_images = self.__doc.createElement("library_images")
+        images = self.__get_texture_images_for_selected_objects()
 
-        root_node.appendChild(libima)
+        for image in images:
+            image_path = get_relative_path(image.filepath)
 
-    def __export_library_effects(self, root_node):
-        libeff = self.__doc.createElement("library_effects")
-        for mat in bpy.data.materials:
-            # is there a material?
-            if mat:
-                dtex = 0
-                stex = 0
-                ntex = 0
-                dimage = ""
-                simage = ""
-                nimage = ""
-                for mtex in mat.texture_slots:
-                    if mtex and mtex.texture.type == 'IMAGE':
-                        image = mtex.texture.image
-                        if image:
-                            if mtex.use_map_color_diffuse:
-                                dtex = 1
-                                dimage = image.name
-                                dnpsurf = self.__doc.createElement("newparam")
-                                dnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                                dsrf = self.__doc.createElement("surface")
-                                dsrf.setAttribute("type", "2D")
-                                if1 = self.__doc.createElement("init_from")
-                                if1tn = self.__doc.createTextNode("%s" % (image.name))
-                                if1.appendChild(if1tn)
-                                dsrf.appendChild(if1)
-                                dnpsurf.appendChild(dsrf)
-                                dnpsamp = self.__doc.createElement("newparam")
-                                dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                                dsamp = self.__doc.createElement("sampler2D")
-                                # dsamp.setAttribute("type","2D")
-                                if2 = self.__doc.createElement("source")
-                                if2tn = self.__doc.createTextNode(
-                                    "%s-surface" % (image.name))
-                                if2.appendChild(if2tn)
-                                dsamp.appendChild(if2)
-                                dnpsamp.appendChild(dsamp)
-                            if mtex.use_map_color_spec:
-                                stex = 1
-                                simage = image.name
-                                snpsurf = self.__doc.createElement("newparam")
-                                snpsurf.setAttribute("sid", "%s-surface" % image.name)
-                                ssrf = self.__doc.createElement("surface")
-                                ssrf.setAttribute("type", "2D")
-                                sif1 = self.__doc.createElement("init_from")
-                                sif1tn = self.__doc.createTextNode(
-                                    "%s" % (image.name))
-                                sif1.appendChild(sif1tn)
-                                ssrf.appendChild(sif1)
-                                snpsurf.appendChild(ssrf)
-                                snpsamp = self.__doc.createElement("newparam")
-                                snpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                                ssamp = self.__doc.createElement("sampler2D")
-                                sif2 = self.__doc.createElement("source")
-                                sif2tn = self.__doc.createTextNode(
-                                    "%s-surface" % (image.name))
-                                sif2.appendChild(sif2tn)
-                                ssamp.appendChild(sif2)
-                                snpsamp.appendChild(ssamp)
-                            if mtex.use_map_normal:
-                                ntex = 1
-                                nimage = image.name
-                                nnpsurf = self.__doc.createElement("newparam")
-                                nnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                                nsrf = self.__doc.createElement("surface")
-                                nsrf.setAttribute("type", "2D")
-                                nif1 = self.__doc.createElement("init_from")
-                                nif1tn = self.__doc.createTextNode(
-                                    "%s" % (image.name))
-                                nif1.appendChild(nif1tn)
-                                nsrf.appendChild(nif1)
-                                nnpsurf.appendChild(nsrf)
-                                nnpsamp = self.__doc.createElement("newparam")
-                                nnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                                nsamp = self.__doc.createElement("sampler2D")
-                                if2 = self.__doc.createElement("source")
-                                if2tn = self.__doc.createTextNode(
-                                    "%s-surface" % (image.name))
-                                if2.appendChild(if2tn)
-                                nsamp.appendChild(if2)
-                                nnpsamp.appendChild(nsamp)
+            image_element = self.__doc.createElement("image")
+            image_element.setAttribute("id", "%s" % image.name)
+            image_element.setAttribute("name", "%s" % image.name)
+            init_from = self.__doc.createElement("init_from")
+            path_node = self.__doc.createTextNode("%s" % image_path)
+            init_from.appendChild(path_node)
+            image_element.appendChild(init_from)
+            library_images.appendChild(image_element)
 
-                effid = self.__doc.createElement("effect")
-                effid.setAttribute("id", "%s_fx" % (mat.name))
-                prof_com = self.__doc.createElement("profile_COMMON")
-                if dtex == 1:
-                    prof_com.appendChild(dnpsurf)
-                    prof_com.appendChild(dnpsamp)
-                if stex == 1:
-                    prof_com.appendChild(snpsurf)
-                    prof_com.appendChild(snpsamp)
-                if ntex == 1:
-                    prof_com.appendChild(nnpsurf)
-                    prof_com.appendChild(nnpsamp)
-                tech_com = self.__doc.createElement("technique")
-                tech_com.setAttribute("sid", "common")
-                phong = self.__doc.createElement("phong")
-                emis = self.__doc.createElement("emission")
+        parent_element.appendChild(library_images)
+
+    def __get_texture_images_for_selected_objects(self):
+        images = []
+        textures = self.__get_textures_for_selected_objects()
+
+        for texture in textures:
+            try:
+                if self.is_valid_image(texture.image):
+                    images.append(texture.image)
+
+            except AttributeError:
+                # don't care about non image textures
+                pass
+
+        # return only unique images
+        return list(set(images))
+
+    def __get_textures_for_selected_objects(self):
+        materials = self.__get_materials_for_selected_objects()
+        texture_slots = self.__get_texture_slots_for_materials(materials)
+        return self.__get_textures_for_texture_slots(texture_slots)
+
+    def __get_materials_for_selected_objects(self):
+        materials = []
+        for object_ in bpy.context.selected_objects:
+            for material_slot in object_.material_slots:
+                materials.append(material_slot.material)
+
+        return materials
+
+    def __get_texture_slots_for_materials(self, materials):
+        texture_slots = []
+        for material in materials:
+            for texture_slot in material.texture_slots:
+                # texture_slot is able to be None
+                if texture_slot is not None:
+                    texture_slots.append(texture_slot)
+
+        return texture_slots
+
+    def __get_textures_for_texture_slots(self, texture_slots):
+        return [texture_slot.texture for texture_slot in texture_slots]
+
+    def is_valid_image(self, image):
+        return image.has_data and image.filepath
+
+    def __export_library_effects(self, parent_element):
+        current_element = self.__doc.createElement("library_effects")
+        parent_element.appendChild(current_element)
+
+        materials = self.__get_materials_for_selected_objects()
+        for material in materials:
+            dtex = 0
+            stex = 0
+            ntex = 0
+            dimage = ""
+            simage = ""
+            nimage = ""
+            for texture_slot in material.texture_slots:
+                if texture_slot and texture_slot.texture.type == 'IMAGE':
+                    image = texture_slot.texture.image
+                    if image:
+                        if texture_slot.use_map_color_diffuse:
+                            dtex = 1
+                            dimage = image.name
+                            dnpsurf = self.__doc.createElement("newparam")
+                            dnpsurf.setAttribute("sid", "%s-surface" % image.name)
+                            dsrf = self.__doc.createElement("surface")
+                            dsrf.setAttribute("type", "2D")
+                            if1 = self.__doc.createElement("init_from")
+                            if1tn = self.__doc.createTextNode("%s" % (image.name))
+                            if1.appendChild(if1tn)
+                            dsrf.appendChild(if1)
+                            dnpsurf.appendChild(dsrf)
+                            dnpsamp = self.__doc.createElement("newparam")
+                            dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                            dsamp = self.__doc.createElement("sampler2D")
+                            if2 = self.__doc.createElement("source")
+                            if2tn = self.__doc.createTextNode(
+                                "%s-surface" % (image.name))
+                            if2.appendChild(if2tn)
+                            dsamp.appendChild(if2)
+                            dnpsamp.appendChild(dsamp)
+                        if texture_slot.use_map_color_spec:
+                            stex = 1
+                            simage = image.name
+                            snpsurf = self.__doc.createElement("newparam")
+                            snpsurf.setAttribute("sid", "%s-surface" % image.name)
+                            ssrf = self.__doc.createElement("surface")
+                            ssrf.setAttribute("type", "2D")
+                            sif1 = self.__doc.createElement("init_from")
+                            sif1tn = self.__doc.createTextNode(
+                                "%s" % (image.name))
+                            sif1.appendChild(sif1tn)
+                            ssrf.appendChild(sif1)
+                            snpsurf.appendChild(ssrf)
+                            snpsamp = self.__doc.createElement("newparam")
+                            snpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                            ssamp = self.__doc.createElement("sampler2D")
+                            sif2 = self.__doc.createElement("source")
+                            sif2tn = self.__doc.createTextNode(
+                                "%s-surface" % (image.name))
+                            sif2.appendChild(sif2tn)
+                            ssamp.appendChild(sif2)
+                            snpsamp.appendChild(ssamp)
+                        if texture_slot.use_map_normal:
+                            ntex = 1
+                            nimage = image.name
+                            nnpsurf = self.__doc.createElement("newparam")
+                            nnpsurf.setAttribute("sid", "%s-surface" % image.name)
+                            nsrf = self.__doc.createElement("surface")
+                            nsrf.setAttribute("type", "2D")
+                            nif1 = self.__doc.createElement("init_from")
+                            nif1tn = self.__doc.createTextNode(
+                                "%s" % (image.name))
+                            nif1.appendChild(nif1tn)
+                            nsrf.appendChild(nif1)
+                            nnpsurf.appendChild(nsrf)
+                            nnpsamp = self.__doc.createElement("newparam")
+                            nnpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                            nsamp = self.__doc.createElement("sampler2D")
+                            if2 = self.__doc.createElement("source")
+                            if2tn = self.__doc.createTextNode(
+                                "%s-surface" % (image.name))
+                            if2.appendChild(if2tn)
+                            nsamp.appendChild(if2)
+                            nnpsamp.appendChild(nsamp)
+
+            effid = self.__doc.createElement("effect")
+            effid.setAttribute("id", "%s_fx" % (material.name))
+            prof_com = self.__doc.createElement("profile_COMMON")
+            if dtex == 1:
+                prof_com.appendChild(dnpsurf)
+                prof_com.appendChild(dnpsamp)
+            if stex == 1:
+                prof_com.appendChild(snpsurf)
+                prof_com.appendChild(snpsamp)
+            if ntex == 1:
+                prof_com.appendChild(nnpsurf)
+                prof_com.appendChild(nnpsamp)
+            tech_com = self.__doc.createElement("technique")
+            tech_com.setAttribute("sid", "common")
+            phong = self.__doc.createElement("phong")
+            emis = self.__doc.createElement("emission")
+            color = self.__doc.createElement("color")
+            color.setAttribute("sid", "emission")
+            cot = utils.getcol(material.emit, material.emit, material.emit, 1.0)
+            emit = self.__doc.createTextNode("%s" % (cot))
+            color.appendChild(emit)
+            emis.appendChild(color)
+            amb = self.__doc.createElement("ambient")
+            color = self.__doc.createElement("color")
+            color.setAttribute("sid", "ambient")
+            cot = utils.getcol(material.ambient, material.ambient, material.ambient, 1.0)
+            ambcol = self.__doc.createTextNode("%s" % (cot))
+            color.appendChild(ambcol)
+            amb.appendChild(color)
+            dif = self.__doc.createElement("diffuse")
+            if dtex == 1:
+                dtexr = self.__doc.createElement("texture")
+                dtexr.setAttribute("texture", "%s-sampler" % dimage)
+                dif.appendChild(dtexr)
+            else:
                 color = self.__doc.createElement("color")
-                color.setAttribute("sid", "emission")
-                cot = utils.getcol(mat.emit, mat.emit, mat.emit, 1.0)
-                emit = self.__doc.createTextNode("%s" % (cot))
-                color.appendChild(emit)
-                emis.appendChild(color)
-                amb = self.__doc.createElement("ambient")
+                color.setAttribute("sid", "diffuse")
+                cot = utils.getcol(material.diffuse_color.r,
+                    material.diffuse_color.g,
+                    material.diffuse_color.b, 1.0)
+                difcol = self.__doc.createTextNode("%s" % (cot))
+                color.appendChild(difcol)
+                dif.appendChild(color)
+            spec = self.__doc.createElement("specular")
+            if stex == 1:
+                stexr = self.__doc.createElement("texture")
+                stexr.setAttribute("texture", "%s-sampler" % simage)
+                spec.appendChild(stexr)
+            else:
                 color = self.__doc.createElement("color")
-                color.setAttribute("sid", "ambient")
-                cot = utils.getcol(mat.ambient, mat.ambient, mat.ambient, 1.0)
-                ambcol = self.__doc.createTextNode("%s" % (cot))
-                color.appendChild(ambcol)
-                amb.appendChild(color)
-                dif = self.__doc.createElement("diffuse")
-                if dtex == 1:
-                    dtexr = self.__doc.createElement("texture")
-                    dtexr.setAttribute("texture", "%s-sampler" % dimage)
-                    dif.appendChild(dtexr)
-                else:
-                    color = self.__doc.createElement("color")
-                    color.setAttribute("sid", "diffuse")
-                    cot = utils.getcol(mat.diffuse_color.r,
-                        mat.diffuse_color.g,
-                        mat.diffuse_color.b, 1.0)
-                    difcol = self.__doc.createTextNode("%s" % (cot))
-                    color.appendChild(difcol)
-                    dif.appendChild(color)
-                spec = self.__doc.createElement("specular")
-                if stex == 1:
-                    stexr = self.__doc.createElement("texture")
-                    stexr.setAttribute("texture", "%s-sampler" % simage)
-                    spec.appendChild(stexr)
-                else:
-                    color = self.__doc.createElement("color")
-                    color.setAttribute("sid", "specular")
-                    cot = utils.getcol(mat.specular_color.r,
-                        mat.specular_color.g,
-                        mat.specular_color.b, 1.0)
-                    speccol = self.__doc.createTextNode("%s" % (cot))
-                    color.appendChild(speccol)
-                    spec.appendChild(color)
-                shin = self.__doc.createElement("shininess")
-                flo = self.__doc.createElement("float")
-                flo.setAttribute("sid", "shininess")
-                cot = mat.specular_hardness
-                shinval = self.__doc.createTextNode("%s" % (cot))
-                flo.appendChild(shinval)
-                shin.appendChild(flo)
-                ioref = self.__doc.createElement("index_of_refraction")
-                flo = self.__doc.createElement("float")
-                flo.setAttribute("sid", "index_of_refraction")
-                cot = mat.alpha
-                iorval = self.__doc.createTextNode("%s" % (cot))
-                flo.appendChild(iorval)
-                ioref.appendChild(flo)
-                phong.appendChild(emis)
-                phong.appendChild(amb)
-                phong.appendChild(dif)
-                phong.appendChild(spec)
-                phong.appendChild(shin)
-                phong.appendChild(ioref)
-                if ntex == 1:
-                    bump = self.__doc.createElement("normal")
-                    ntexr = self.__doc.createElement("texture")
-                    ntexr.setAttribute("texture", "%s-sampler" % nimage)
-                    bump.appendChild(ntexr)
-                    phong.appendChild(bump)
-                tech_com.appendChild(phong)
-                prof_com.appendChild(tech_com)
-                extra = self.__doc.createElement("extra")
-                techn = self.__doc.createElement("technique")
-                techn.setAttribute("profile", "GOOGLEEARTH")
-                ds = self.__doc.createElement("double_sided")
-                dsval = self.__doc.createTextNode("1")
-                ds.appendChild(dsval)
-                techn.appendChild(ds)
-                extra.appendChild(techn)
-                prof_com.appendChild(extra)
-                effid.appendChild(prof_com)
-                extra = self.__doc.createElement("extra")
-                techn = self.__doc.createElement("technique")
-                techn.setAttribute("profile", "MAX3D")
-                ds = self.__doc.createElement("double_sided")
-                dsval = self.__doc.createTextNode("1")
-                ds.appendChild(dsval)
-                techn.appendChild(ds)
-                extra.appendChild(techn)
-                effid.appendChild(extra)
-                libeff.appendChild(effid)
+                color.setAttribute("sid", "specular")
+                cot = utils.getcol(material.specular_color.r,
+                    material.specular_color.g,
+                    material.specular_color.b, 1.0)
+                speccol = self.__doc.createTextNode("%s" % (cot))
+                color.appendChild(speccol)
+                spec.appendChild(color)
+            shin = self.__doc.createElement("shininess")
+            flo = self.__doc.createElement("float")
+            flo.setAttribute("sid", "shininess")
+            cot = material.specular_hardness
+            shinval = self.__doc.createTextNode("%s" % (cot))
+            flo.appendChild(shinval)
+            shin.appendChild(flo)
+            ioref = self.__doc.createElement("index_of_refraction")
+            flo = self.__doc.createElement("float")
+            flo.setAttribute("sid", "index_of_refraction")
+            cot = material.alpha
+            iorval = self.__doc.createTextNode("%s" % (cot))
+            flo.appendChild(iorval)
+            ioref.appendChild(flo)
+            phong.appendChild(emis)
+            phong.appendChild(amb)
+            phong.appendChild(dif)
+            phong.appendChild(spec)
+            phong.appendChild(shin)
+            phong.appendChild(ioref)
+            if ntex == 1:
+                bump = self.__doc.createElement("normal")
+                ntexr = self.__doc.createElement("texture")
+                ntexr.setAttribute("texture", "%s-sampler" % nimage)
+                bump.appendChild(ntexr)
+                phong.appendChild(bump)
+            tech_com.appendChild(phong)
+            prof_com.appendChild(tech_com)
+            extra = self.__doc.createElement("extra")
+            techn = self.__doc.createElement("technique")
+            techn.setAttribute("profile", "GOOGLEEARTH")
+            ds = self.__doc.createElement("double_sided")
+            dsval = self.__doc.createTextNode("1")
+            ds.appendChild(dsval)
+            techn.appendChild(ds)
+            extra.appendChild(techn)
+            prof_com.appendChild(extra)
+            effid.appendChild(prof_com)
+            extra = self.__doc.createElement("extra")
+            techn = self.__doc.createElement("technique")
+            techn.setAttribute("profile", "MAX3D")
+            ds = self.__doc.createElement("double_sided")
+            dsval = self.__doc.createTextNode("1")
+            ds.appendChild(dsval)
+            techn.appendChild(ds)
+            extra.appendChild(techn)
+            effid.appendChild(extra)
+            current_element.appendChild(effid)
 
-        root_node.appendChild(libeff)
+    def __export_library_materials(self, parent_element):
+        library_materials = self.__doc.createElement("library_materials")
+        materials = self.__get_materials_for_selected_objects()
 
-    def __export_library_materials(self, root_node):
-        libmat = self.__doc.createElement("library_materials")
-        for mat in bpy.data.materials:
-            matt = self.__doc.createElement("material")
-            matt.setAttribute("id", "%s" % (mat.name))
-            matt.setAttribute("name", "%s" % (mat.name))
-            ie = self.__doc.createElement("instance_effect")
-            ie.setAttribute("url", "#%s_fx" % (mat.name))
-            matt.appendChild(ie)
-            libmat.appendChild(matt)
+        for material in materials:
+            material_element = self.__doc.createElement("material")
+            material_element.setAttribute("id", "%s" % (material.name))
+            material_element.setAttribute("name", "%s" % (material.name))
+            instance_effect = self.__doc.createElement("instance_effect")
+            instance_effect.setAttribute("url", "#%s_fx" % (material.name))
+            material_element.appendChild(instance_effect)
+            library_materials.appendChild(material_element)
 
-        root_node.appendChild(libmat)
+        parent_element.appendChild(library_materials)
 
-    def __export_library_geometries(self, root_node):
+    def __export_library_geometries(self, parent_element):
         libgeo = self.__doc.createElement("library_geometries")
         start_time = clock()
         for i in bpy.context.selected_objects:
@@ -2776,9 +1900,9 @@ class CrytekDaeExporter:
                         libgeo.appendChild(geo)
 
                         # bpy.data.meshes.remove(mesh)
-        root_node.appendChild(libgeo)
+        parent_element.appendChild(libgeo)
 
-    def __export_library_controllers(self, root_node):
+    def __export_library_controllers(self, parent_element):
         libcont = self.__doc.createElement("library_controllers")
 
         for selected_object in bpy.context.selected_objects:
@@ -2789,7 +1913,7 @@ class CrytekDaeExporter:
                 if armatures:
                     self.__process_bones(libcont, selected_object, armatures)
 
-        root_node.appendChild(libcont)
+        parent_element.appendChild(libcont)
 
     def __get_armatures(self, object_):
         return [modifier for modifier in object_.modifiers
@@ -2927,7 +2051,7 @@ class CrytekDaeExporter:
         vertw.appendChild(vlst)
         skin_node.appendChild(vertw)
 
-    def __export_library_animation_clips_and_animations(self, root_node):
+    def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
         libanm = self.__doc.createElement("library_animations")
         asw = 0
@@ -2960,12 +2084,12 @@ class CrytekDaeExporter:
                             curves = act.fcurves
                             frstrt = curves.data.frame_range[0]
                             frend = curves.data.frame_range[1]
-                            anmlx = self.extract_anilx(i)
-                            anmly = self.extract_anily(i)
-                            anmlz = self.extract_anilz(i)
-                            anmrx = self.extract_anirx(i)
-                            anmry = self.extract_aniry(i)
-                            anmrz = self.extract_anirz(i)
+                            anmlx = self.extract_anil(i, 'X')
+                            anmly = self.extract_anil(i, 'Y')
+                            anmlz = self.extract_anil(i, 'Z')
+                            anmrx = self.extract_anir(i, 'X')
+                            anmry = self.extract_anir(i, 'Y')
+                            anmrz = self.extract_anir(i, 'Z')
                             instlx = self.__doc.createElement(
                                 "instance_animation")
                             instlx.setAttribute("url", "#%s_location_X" % (i.name))
@@ -3014,12 +2138,12 @@ class CrytekDaeExporter:
                             curves = act.fcurves
                             frstrt = curves.data.frame_range[0]
                             frend = curves.data.frame_range[1]
-                            anmlx = self.extract_anilx(i)
-                            anmly = self.extract_anily(i)
-                            anmlz = self.extract_anilz(i)
-                            anmrx = self.extract_anirx(i)
-                            anmry = self.extract_aniry(i)
-                            anmrz = self.extract_anirz(i)
+                            anmlx = self.extract_anil(i, 'X')
+                            anmly = self.extract_anil(i, 'Y')
+                            anmlz = self.extract_anil(i, 'Z')
+                            anmrx = self.extract_anir(i, 'X')
+                            anmry = self.extract_anir(i, 'Y')
+                            anmrz = self.extract_anir(i, 'Z')
                             # animationclip name and framerange
                             for ai in i.children:
                                 aname = str(ai.name)
@@ -3136,29 +2260,27 @@ class CrytekDaeExporter:
 
             if asw == 1:
                 libanmcl.appendChild(anicl)
-        root_node.appendChild(libanmcl)
-        root_node.appendChild(libanm)
+        parent_element.appendChild(libanmcl)
+        parent_element.appendChild(libanm)
 
-    def __export_library_visual_scenes(self, root_node):
-        libvs = self.__doc.createElement("library_visual_scenes")
-        visual_scenes_node = self.__doc.createElement("visual_scene")
-        libvs.appendChild(visual_scenes_node)
-        root_node.appendChild(libvs)
+    def __export_library_visual_scenes(self, parent_element):
+        current_element = self.__doc.createElement("library_visual_scenes")
+        visual_scene = self.__doc.createElement("visual_scene")
+        current_element.appendChild(visual_scene)
+        parent_element.appendChild(current_element)
 
         # doesnt matter what name we have here as long as it is
         # the same for <scene>
-        visual_scenes_node.setAttribute("id", "scene")
-        visual_scenes_node.setAttribute("name", "scene")
+        visual_scene.setAttribute("id", "scene")
+        visual_scene.setAttribute("name", "scene")
         for item in bpy.context.blend_data.groups:
             if item:
                 ename = str(item.id_data.name)
                 node1 = self.__doc.createElement("node")
                 node1.setAttribute("id", "%s" % (ename))
                 node1.setIdAttribute('id')
-            visual_scenes_node.appendChild(node1)
-            objectl = []
-            objectl = item.objects
-            node1 = self.vsp(objectl, node1)
+            visual_scene.appendChild(node1)
+            node1 = self.vsp(item.objects, node1)
             # exportnode settings
             ext1 = self.__doc.createElement("extra")
             tc3 = self.__doc.createElement("technique")
@@ -3167,10 +2289,10 @@ class CrytekDaeExporter:
             if self.__config.export_type == 'CGF':
                 pcgf = self.__doc.createTextNode("fileType=cgf")
                 prop1.appendChild(pcgf)
-            if self.__config.export_type == 'CGA':
+            if self.__config.export_type == 'CGA & ANM':
                 pcga = self.__doc.createTextNode("fileType=cgaanm")
                 prop1.appendChild(pcga)
-            if self.__config.export_type == 'CHR':
+            if self.__config.export_type == 'CHR & CAF':
                 pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
                 prop1.appendChild(pchrcaf)
             if self.__config.donot_merge:
@@ -3180,13 +2302,13 @@ class CrytekDaeExporter:
             ext1.appendChild(tc3)
             node1.appendChild(ext1)
 
-    def __export_scene(self, root_node):
+    def __export_scene(self, parent_element):
         # <scene> nothing really changes here or rather it doesnt need to.
         scene = self.__doc.createElement("scene")
         ivs = self.__doc.createElement("instance_visual_scene")
         ivs.setAttribute("url", "#scene")
         scene.appendChild(ivs)
-        root_node.appendChild(scene)
+        parent_element.appendChild(scene)
 
 
 def get_relative_path(filepath):
