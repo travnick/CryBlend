@@ -750,7 +750,7 @@ class CrytekDaeExporter:
             # X
             if fcu.data_path == 'location' and fcu.array_index == self.__axises[ax]:
                 anmlx = self.__doc.createElement("animation")
-                anmlx.setAttribute("id", i.name+"_location_"+ax)
+                anmlx.setAttribute("id", i.name + "_location_" + ax)
                 fcus[fcu.array_index] = fcu
                 intangx = ""
                 outtangx = ""
@@ -759,7 +759,6 @@ class CrytekDaeExporter:
                 intx = ""
                 temp = fcus[self.__axises[ax]].keyframe_points
                 ii = 0
-                pvalue = 0
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
                     khly = keyx.handle_left[1]
@@ -778,15 +777,15 @@ class CrytekDaeExporter:
                     ii += 1
                 # input
                 sinpx = self.__doc.createElement("source")
-                sinpx.setAttribute("id", i.name+"_location_"+ax+"-input")
+                sinpx.setAttribute("id", i.name + "_location_" + ax + "-input")
                 inpxfa = self.__doc.createElement("float_array")
-                inpxfa.setAttribute("id", i.name+"_location_"+ax+"-input-array")
+                inpxfa.setAttribute("id", i.name + "_location_" + ax + "-input-array")
                 inpxfa.setAttribute("count", "%s" % (ii))
                 sinpxdat = self.__doc.createTextNode("%s" % (inpx))
                 inpxfa.appendChild(sinpxdat)
                 tcinpx = self.__doc.createElement("technique_common")
                 accinpx = self.__doc.createElement("accessor")
-                accinpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-input-array")
+                accinpx.setAttribute("source", "#" + i.name + "_location_" + ax + "-input-array")
                 accinpx.setAttribute("count", "%s" % (ii))
                 accinpx.setAttribute("stride", "1")
                 parinpx = self.__doc.createElement("param")
@@ -798,15 +797,15 @@ class CrytekDaeExporter:
                 sinpx.appendChild(tcinpx)
                 # output
                 soutpx = self.__doc.createElement("source")
-                soutpx.setAttribute("id", i.name+"_location_"+ax+"-output")
+                soutpx.setAttribute("id", i.name + "_location_" + ax + "-output")
                 outpxfa = self.__doc.createElement("float_array")
-                outpxfa.setAttribute("id", i.name+"_location_"+ax+"-output-array")
+                outpxfa.setAttribute("id", i.name + "_location_" + ax + "-output-array")
                 outpxfa.setAttribute("count", "%s" % (ii))
                 soutpxdat = self.__doc.createTextNode("%s" % (outpx))
                 outpxfa.appendChild(soutpxdat)
                 tcoutpx = self.__doc.createElement("technique_common")
                 accoutpx = self.__doc.createElement("accessor")
-                accoutpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-output-array")
+                accoutpx.setAttribute("source", "#" + i.name + "_location_" + ax + "-output-array")
                 accoutpx.setAttribute("count", "%s" % (ii))
                 accoutpx.setAttribute("stride", "1")
                 paroutpx = self.__doc.createElement("param")
@@ -818,15 +817,15 @@ class CrytekDaeExporter:
                 soutpx.appendChild(tcoutpx)
                 # interpolation
                 sintpx = self.__doc.createElement("source")
-                sintpx.setAttribute("id", i.name+"_location_"+ax+"-interpolation")
+                sintpx.setAttribute("id", i.name + "_location_" + ax + "-interpolation")
                 intpxfa = self.__doc.createElement("Name_array")
-                intpxfa.setAttribute("id", i.name+"_location_"+ax+"-interpolation-array")
+                intpxfa.setAttribute("id", i.name + "_location_" + ax + "-interpolation-array")
                 intpxfa.setAttribute("count", "%s" % (ii))
                 sintpxdat = self.__doc.createTextNode("%s" % (intx))
                 intpxfa.appendChild(sintpxdat)
                 tcintpx = self.__doc.createElement("technique_common")
                 accintpx = self.__doc.createElement("accessor")
-                accintpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-interpolation-array")
+                accintpx.setAttribute("source", "#" + i.name + "_location_" + ax + "-interpolation-array")
                 accintpx.setAttribute("count", "%s" % (ii))
                 accintpx.setAttribute("stride", "1")
                 parintpx = self.__doc.createElement("param")
@@ -838,15 +837,15 @@ class CrytekDaeExporter:
                 sintpx.appendChild(tcintpx)
                 # intangent
                 sintangpx = self.__doc.createElement("source")
-                sintangpx.setAttribute("id", i.name+"_location_"+ax+"-intangent")
+                sintangpx.setAttribute("id", i.name + "_location_" + ax + "-intangent")
                 intangpxfa = self.__doc.createElement("float_array")
-                intangpxfa.setAttribute("id", i.name+"_location_"+ax+"-intangent-array")
+                intangpxfa.setAttribute("id", i.name + "_location_" + ax + "-intangent-array")
                 intangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 sintangpxdat = self.__doc.createTextNode("%s" % (intangx))
                 intangpxfa.appendChild(sintangpxdat)
                 tcintangpx = self.__doc.createElement("technique_common")
                 accintangpx = self.__doc.createElement("accessor")
-                accintangpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-intangent-array")
+                accintangpx.setAttribute("source", "#" + i.name + "_location_" + ax + "-intangent-array")
                 accintangpx.setAttribute("count", "%s" % (ii))
                 accintangpx.setAttribute("stride", "2")
                 parintangpx = self.__doc.createElement("param")
@@ -862,15 +861,15 @@ class CrytekDaeExporter:
                 sintangpx.appendChild(tcintangpx)
                 # outtangent
                 soutangpx = self.__doc.createElement("source")
-                soutangpx.setAttribute("id", i.name+"_location_"+ax+"-outtangent")
+                soutangpx.setAttribute("id", i.name + "_location_" + ax + "-outtangent")
                 outangpxfa = self.__doc.createElement("float_array")
-                outangpxfa.setAttribute("id", i.name+"_location_"+ax+"-outtangent-array")
+                outangpxfa.setAttribute("id", i.name + "_location_" + ax + "-outtangent-array")
                 outangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 soutangpxdat = self.__doc.createTextNode("%s" % (outtangx))
                 outangpxfa.appendChild(soutangpxdat)
                 tcoutangpx = self.__doc.createElement("technique_common")
                 accoutangpx = self.__doc.createElement("accessor")
-                accoutangpx.setAttribute("source", "#"+i.name+"_location_"+ax+"-outtangent-array")
+                accoutangpx.setAttribute("source", "#" + i.name + "_location_" + ax + "-outtangent-array")
                 accoutangpx.setAttribute("count", "%s" % (ii))
                 accoutangpx.setAttribute("stride", "2")
                 paroutangpx = self.__doc.createElement("param")
@@ -886,28 +885,28 @@ class CrytekDaeExporter:
                 soutangpx.appendChild(tcoutangpx)
                 # sampler
                 samx = self.__doc.createElement("sampler")
-                samx.setAttribute("id", i.name+"_location_"+ax+"-sampler")
+                samx.setAttribute("id", i.name + "_location_" + ax + "-sampler")
                 semip = self.__doc.createElement("input")
                 semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#"+i.name+"_location_"+ax+"-input")
+                semip.setAttribute("source", "#" + i.name + "_location_" + ax + "-input")
                 semop = self.__doc.createElement("input")
                 semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#"+i.name+"_location_"+ax+"-output")
+                semop.setAttribute("source", "#" + i.name + "_location_" + ax + "-output")
                 seminter = self.__doc.createElement("input")
                 seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source","#"+i.name+"_location_"+ax+"-interpolation")
+                seminter.setAttribute("source", "#" + i.name + "_location_" + ax + "-interpolation")
                 semintang = self.__doc.createElement("input")
                 semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source", "#"+i.name+"_location_"+ax+"-intangent")
+                semintang.setAttribute("source", "#" + i.name + "_location_" + ax + "-intangent")
                 semoutang = self.__doc.createElement("input")
                 semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source", "#"+i.name+"_location_"+ax+"-outtangent")
+                semoutang.setAttribute("source", "#" + i.name + "_location_" + ax + "-outtangent")
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
                 chanx = self.__doc.createElement("channel")
-                chanx.setAttribute("source", "#"+i.name+"_location_"+ax+"-sampler")
-                chanx.setAttribute("target", i.name+"/translation."+ax)
+                chanx.setAttribute("source", "#" + i.name + "_location_" + ax + "-sampler")
+                chanx.setAttribute("target", i.name + "/translation." + ax)
                 anmlx.appendChild(sinpx)
                 anmlx.appendChild(soutpx)
                 anmlx.appendChild(sintpx)
@@ -921,7 +920,7 @@ class CrytekDaeExporter:
                 cbPrint(intx)
                 cbPrint(intangx)
                 cbPrint(outtangx)
-                cbPrint("done"+ax)
+                cbPrint("done" + ax)
         return anmlx
 
     def extract_anir(self, i, ax):
@@ -929,10 +928,10 @@ class CrytekDaeExporter:
         curves = act.fcurves
         fcus = {}
         for fcu in curves:
-    # rotation_euler
+        # rotation_euler
             if fcu.data_path == 'rotation_euler' and fcu.array_index == self.__axises[ax]:
                 anmrx = self.__doc.createElement("animation")
-                anmrx.setAttribute("id", i.name+"_rotation_euler_"+ax)
+                anmrx.setAttribute("id", i.name + "_rotation_euler_" + ax)
                 fcus[fcu.array_index] = fcu
                 intangx = ""
                 outtangx = ""
@@ -958,15 +957,15 @@ class CrytekDaeExporter:
                     ii += 1
                 # input
                 sinpx = self.__doc.createElement("source")
-                sinpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-input")
+                sinpx.setAttribute("id", i.name + "_rotation_euler_" + ax + "-input")
                 inpxfa = self.__doc.createElement("float_array")
-                inpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-input-array")
+                inpxfa.setAttribute("id", i.name + "_rotation_euler_" + ax + "-input-array")
                 inpxfa.setAttribute("count", "%s" % (ii))
                 sinpxdat = self.__doc.createTextNode("%s" % (inpx))
                 inpxfa.appendChild(sinpxdat)
                 tcinpx = self.__doc.createElement("technique_common")
                 accinpx = self.__doc.createElement("accessor")
-                accinpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-input-array")
+                accinpx.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-input-array")
                 accinpx.setAttribute("count", "%s" % (ii))
                 accinpx.setAttribute("stride", "1")
                 parinpx = self.__doc.createElement("param")
@@ -978,15 +977,15 @@ class CrytekDaeExporter:
                 sinpx.appendChild(tcinpx)
                 # output
                 soutpx = self.__doc.createElement("source")
-                soutpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-output")
+                soutpx.setAttribute("id", i.name + "_rotation_euler_" + ax + "-output")
                 outpxfa = self.__doc.createElement("float_array")
-                outpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-output-array")
+                outpxfa.setAttribute("id", i.name + "_rotation_euler_" + ax + "-output-array")
                 outpxfa.setAttribute("count", "%s" % (ii))
                 soutpxdat = self.__doc.createTextNode("%s" % (outpx))
                 outpxfa.appendChild(soutpxdat)
                 tcoutpx = self.__doc.createElement("technique_common")
                 accoutpx = self.__doc.createElement("accessor")
-                accoutpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-output-array")
+                accoutpx.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-output-array")
                 accoutpx.setAttribute("count", "%s" % (ii))
                 accoutpx.setAttribute("stride", "1")
                 paroutpx = self.__doc.createElement("param")
@@ -998,15 +997,15 @@ class CrytekDaeExporter:
                 soutpx.appendChild(tcoutpx)
                 # interpolation
                 sintpx = self.__doc.createElement("source")
-                sintpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-interpolation")
+                sintpx.setAttribute("id", i.name + "_rotation_euler_" + ax + "-interpolation")
                 intpxfa = self.__doc.createElement("Name_array")
-                intpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-interpolation-array")
+                intpxfa.setAttribute("id", i.name + "_rotation_euler_" + ax + "-interpolation-array")
                 intpxfa.setAttribute("count", "%s" % (ii))
                 sintpxdat = self.__doc.createTextNode("%s" % (intx))
                 intpxfa.appendChild(sintpxdat)
                 tcintpx = self.__doc.createElement("technique_common")
                 accintpx = self.__doc.createElement("accessor")
-                accintpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-interpolation-array")
+                accintpx.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-interpolation-array")
                 accintpx.setAttribute("count", "%s" % (ii))
                 accintpx.setAttribute("stride", "1")
                 parintpx = self.__doc.createElement("param")
@@ -1018,15 +1017,15 @@ class CrytekDaeExporter:
                 sintpx.appendChild(tcintpx)
                 # intangent
                 sintangpx = self.__doc.createElement("source")
-                sintangpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-intangent")
+                sintangpx.setAttribute("id", i.name + "_rotation_euler_" + ax + "-intangent")
                 intangpxfa = self.__doc.createElement("float_array")
-                intangpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-intangent-array")
+                intangpxfa.setAttribute("id", i.name + "_rotation_euler_" + ax + "-intangent-array")
                 intangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 sintangpxdat = self.__doc.createTextNode("%s" % (intangx))
                 intangpxfa.appendChild(sintangpxdat)
                 tcintangpx = self.__doc.createElement("technique_common")
                 accintangpx = self.__doc.createElement("accessor")
-                accintangpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-intangent-array")
+                accintangpx.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-intangent-array")
                 accintangpx.setAttribute("count", "%s" % (ii))
                 accintangpx.setAttribute("stride", "2")
                 parintangpx = self.__doc.createElement("param")
@@ -1042,15 +1041,15 @@ class CrytekDaeExporter:
                 sintangpx.appendChild(tcintangpx)
                 # outtangent
                 soutangpx = self.__doc.createElement("source")
-                soutangpx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-outtangent")
+                soutangpx.setAttribute("id", i.name + "_rotation_euler_" + ax + "-outtangent")
                 outangpxfa = self.__doc.createElement("float_array")
-                outangpxfa.setAttribute("id", i.name+"_rotation_euler_"+ax+"-outtangent-array")
+                outangpxfa.setAttribute("id", i.name + "_rotation_euler_" + ax + "-outtangent-array")
                 outangpxfa.setAttribute("count", "%s" % ((ii) * 2))
                 soutangpxdat = self.__doc.createTextNode("%s" % (outtangx))
                 outangpxfa.appendChild(soutangpxdat)
                 tcoutangpx = self.__doc.createElement("technique_common")
                 accoutangpx = self.__doc.createElement("accessor")
-                accoutangpx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-outtangent-array")
+                accoutangpx.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-outtangent-array")
                 accoutangpx.setAttribute("count", "%s" % (ii))
                 accoutangpx.setAttribute("stride", "2")
                 paroutangpx = self.__doc.createElement("param")
@@ -1066,28 +1065,28 @@ class CrytekDaeExporter:
                 soutangpx.appendChild(tcoutangpx)
                 # sampler
                 samx = self.__doc.createElement("sampler")
-                samx.setAttribute("id", i.name+"_rotation_euler_"+ax+"-sampler")
+                samx.setAttribute("id", i.name + "_rotation_euler_" + ax + "-sampler")
                 semip = self.__doc.createElement("input")
                 semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-input")
+                semip.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-input")
                 semop = self.__doc.createElement("input")
                 semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-output")
+                semop.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-output")
                 seminter = self.__doc.createElement("input")
                 seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-interpolation")
+                seminter.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-interpolation")
                 semintang = self.__doc.createElement("input")
                 semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-intangent")
+                semintang.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-intangent")
                 semoutang = self.__doc.createElement("input")
                 semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-outtangent")
+                semoutang.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-outtangent")
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
                 chanx = self.__doc.createElement("channel")
-                chanx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-sampler")
-                chanx.setAttribute("target", i.name+"/rotation_"+ax+".ANGLE")
+                chanx.setAttribute("source", "#" + i.name + "_rotation_euler_" + ax + "-sampler")
+                chanx.setAttribute("target", i.name + "/rotation_" + ax + ".ANGLE")
                 anmrx.appendChild(sinpx)
                 anmrx.appendChild(soutpx)
                 anmrx.appendChild(sintpx)
@@ -1102,8 +1101,8 @@ class CrytekDaeExporter:
                 cbPrint(intangx)
                 cbPrint(outtangx)
                 cbPrint("donerotx")
-        return anmrx        
-        
+        return anmrx
+
     def __get_bone_names_for_idref(self, bones):
         bones_for_idref = ""
 
