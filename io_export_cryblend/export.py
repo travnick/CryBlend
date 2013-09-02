@@ -335,6 +335,12 @@ def veckey3d3(vn, fn):
 
 
 class CrytekDaeExporter:
+    __axises = {
+    "X":0,
+    "Y":1,
+    "Z":2,
+    }
+
     def __init__(self, config, exe):
         self.__config = config
         self.__doc = Document()
@@ -742,12 +748,7 @@ class CrytekDaeExporter:
         for fcu in curves:
             # location
             # X
-            axises = {
-                "X":0,
-                "Y":1,
-                "Z":2,
-            }
-            if fcu.data_path == 'location' and fcu.array_index == axises[ax]:
+            if fcu.data_path == 'location' and fcu.array_index == self.__axises[ax]:
                 anmlx = self.__doc.createElement("animation")
                 anmlx.setAttribute("id", i.name+"_location_"+ax)
                 fcus[fcu.array_index] = fcu
@@ -756,7 +757,7 @@ class CrytekDaeExporter:
                 inpx = ""
                 outpx = ""
                 intx = ""
-                temp = fcus[axises[ax]].keyframe_points
+                temp = fcus[self.__axises[ax]].keyframe_points
                 ii = 0
                 pvalue = 0
                 for keyx in temp:
@@ -904,8 +905,6 @@ class CrytekDaeExporter:
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
-                # samx.appendChild(semintang)
-                # samx.appendChild(semoutang)
                 chanx = self.__doc.createElement("channel")
                 chanx.setAttribute("source", "#"+i.name+"_location_"+ax+"-sampler")
                 chanx.setAttribute("target", i.name+"/translation."+ax)
@@ -916,7 +915,6 @@ class CrytekDaeExporter:
                 anmlx.appendChild(soutangpx)
                 anmlx.appendChild(samx)
                 anmlx.appendChild(chanx)
-                # libanm.appendChild(anmlx)
                 cbPrint(ii)
                 cbPrint(inpx)
                 cbPrint(outpx)
@@ -930,14 +928,9 @@ class CrytekDaeExporter:
         act = i.animation_data.action
         curves = act.fcurves
         fcus = {}
-        axises = {
-            "X":0,
-            "Y":1,
-            "Z":2,
-        }
         for fcu in curves:
     # rotation_euler
-            if fcu.data_path == 'rotation_euler' and fcu.array_index == axises[ax]:
+            if fcu.data_path == 'rotation_euler' and fcu.array_index == self.__axises[ax]:
                 anmrx = self.__doc.createElement("animation")
                 anmrx.setAttribute("id", i.name+"_rotation_euler_"+ax)
                 fcus[fcu.array_index] = fcu
@@ -946,7 +939,7 @@ class CrytekDaeExporter:
                 inpx = ""
                 outpx = ""
                 intx = ""
-                temp = fcus[axises[ax]].keyframe_points
+                temp = fcus[self.__axises[ax]].keyframe_points
                 ii = 0
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
@@ -1092,8 +1085,6 @@ class CrytekDaeExporter:
                 samx.appendChild(semip)
                 samx.appendChild(semop)
                 samx.appendChild(seminter)
-                # samx.appendChild(semintang)
-                # samx.appendChild(semoutang)
                 chanx = self.__doc.createElement("channel")
                 chanx.setAttribute("source", "#"+i.name+"_rotation_euler_"+ax+"-sampler")
                 chanx.setAttribute("target", i.name+"/rotation_"+ax+".ANGLE")
@@ -1104,7 +1095,6 @@ class CrytekDaeExporter:
                 anmrx.appendChild(soutangpx)
                 anmrx.appendChild(samx)
                 anmrx.appendChild(chanx)
-                # libanm.appendChild(anmrx)
                 cbPrint(ii)
                 cbPrint(inpx)
                 cbPrint(outpx)
