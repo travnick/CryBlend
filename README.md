@@ -15,6 +15,11 @@ Your_Blender_path\scripts\addons\
 Changelog:
 --------
 
+**4.9.9**
+Features:
+* Fixed the previous fixes
+* Fixed animation export for .anm
+
 **4.9.8**
 Features:
 * Fixed incorrect index numbers in the extract_ani functions.
