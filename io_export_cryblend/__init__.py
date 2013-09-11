@@ -1145,28 +1145,22 @@ rotlist = []
 
 def add_kfl(self, context):
     scene = bpy.context.scene
+    object_ = None
     for a in bpy.context.scene.objects:
         if a.type == 'ARMATURE':
-            ob = a
+            object_ = a
     bpy.ops.screen.animation_play()
 
     def kfdat(frame, bonename, data):
         return frame, bonename, data
-    # loclist = []
-    # rotlist = []
-    obPresent = True
-    try:
-        testValue = ob
-    except:
-        obPresent = False
 
-    if obPresent:
+    if object_:
         for frame in range(scene.frame_end + 1):
             # frame = frame + 5
             '''do the inverse parent times current to get proper info here'''
             cbPrint("Stage 1 auto-keyframe.")
             scene.frame_set(frame)
-            for bone in ob.pose.bones:
+            for bone in object_.pose.bones:
                 if bone.parent:
                     if bone.parent.parent:
                         for bonep in bpy.context.scene.objects:
@@ -1202,7 +1196,7 @@ def add_kfl(self, context):
     # for frame in range(scene.frame_end + 1):
     #   print("stage2 auto keyframe")
         # scene.frame_set(frame)
-        # for bone in ob.pose.bones:
+        # for bone in object_.pose.bones:
         #   for i in bpy.context.scene.objects:
             #   if i.name == bone.name:
                 #   for fr in loclist:
@@ -1229,27 +1223,18 @@ def add_kfl(self, context):
 def add_kf(self, context):
     scene = bpy.context.scene
     sfc = scene.frame_current
+    object_ = None
     for a in bpy.context.scene.objects:
         if a.type == 'ARMATURE':
-            ob = a
-    # for kf in loclist[sfc]:
-    #   print(kf)
+            object_ = a
+            break
 
-    obPresent = True
-    try:
-        testValue = ob
-    except:
-        obPresent = False
-
-    if obPresent:
-        for bone in ob.pose.bones:
+    if object_:
+        for bone in object_.pose.bones:
             i = bpy.context.scene.objects.get(bone.name)
-            # for i in bpy.context.scene.objects:
-                # if i.name == bone.name:
             if i is not None:
                 # TODO: merge those two for loops
                 for fr in loclist:
-                #   print(fr)
                     if fr[0] == sfc:
                         if fr[1] == bone.name:
                             cbPrint(fr[2])
