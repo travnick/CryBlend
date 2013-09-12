@@ -1178,10 +1178,11 @@ class CrytekDaeExporter:
 
     def __export_library_images(self, parent_element):
         library_images = self.__doc.createElement("library_images")
-        images = self.__get_texture_images_for_selected_objects()
+        parent_element.appendChild(library_images)
 
-        for image in images:
-            image_path = get_relative_path(image.filepath)
+        for image in self.__get_texture_images_for_selected_objects():
+            tiffFilePath = self.__convert_to_tiff_and_save(image)
+            image_path = get_relative_path(tiffFilePath)
 
             image_element = self.__doc.createElement("image")
             image_element.setAttribute("id", "%s" % image.name)
@@ -1192,7 +1193,26 @@ class CrytekDaeExporter:
             image_element.appendChild(init_from)
             library_images.appendChild(image_element)
 
-        parent_element.appendChild(library_images)
+    def __convert_to_tiff_and_save(self, image):
+        if image.file_format is not 'TIFF':
+            tiffFilePath = os.path.splitext(image.filepath)[0] + ".tif"
+            cbPrint(tiffFilePath, 'debug')
+
+            if self.__config.run_rc_and_do_materials:
+                try:
+                    tiffImage = image.copy()
+                    time.sleep(5)
+                    tiffImage.filepath_raw = tiffFilePath
+                    tiffImage.file_format = 'TIFF'
+                    tiffImage.save()
+                finally:
+                    # remove tmp image from blend file database
+                    bpy.data.images.remove(tiffImage)
+
+        else:
+            tiffFilePath = image.filepath
+
+        return tiffFilePath
 
     def __get_texture_images_for_selected_objects(self):
         images = []
@@ -1212,8 +1232,7 @@ class CrytekDaeExporter:
 
     def __get_textures_for_selected_objects(self):
         materials = self.__get_materials_for_selected_objects()
-        texture_slots = self.__get_texture_slots_for_materials(materials)
-        return self.__get_textures_for_texture_slots(texture_slots)
+        return self.__get_textures_for_materials(materials)
 
     def __get_materials_for_selected_objects(self):
         materials = []
@@ -1223,13 +1242,25 @@ class CrytekDaeExporter:
 
         return materials
 
+    def __get_textures_for_materials(self, materials):
+        texture_slots = self.__get_texture_slots_for_materials(materials)
+        return self.__get_textures_for_texture_slots(texture_slots)
+
     def __get_texture_slots_for_materials(self, materials):
         texture_slots = []
+
         for material in materials:
-            for texture_slot in material.texture_slots:
-                # texture_slot is able to be None
-                if texture_slot is not None:
-                    texture_slots.append(texture_slot)
+            texture_slots.extend(
+                            self.__get_texture_slots_for_material(material))
+
+        return texture_slots
+
+    def __get_texture_slots_for_material(self, material):
+        texture_slots = []
+        for texture_slot in material.texture_slots:
+            # texture_slot is able to be None
+            if texture_slot and texture_slot.texture.type == 'IMAGE':
+                texture_slots.append(texture_slot)
 
         return texture_slots
 
