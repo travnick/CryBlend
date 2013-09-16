@@ -1181,7 +1181,8 @@ class CrytekDaeExporter:
         parent_element.appendChild(library_images)
 
         for image in self.__get_texture_images_for_selected_objects():
-            tiffFilePath = self.__convert_to_tiff_and_save(image)
+            tiffFilePath = self.__get_tiff_image_path(image)
+            self.__save_as_tiff(image, tiffFilePath)
             image_path = get_relative_path(tiffFilePath)
 
             image_element = self.__doc.createElement("image")
@@ -1193,26 +1194,21 @@ class CrytekDaeExporter:
             image_element.appendChild(init_from)
             library_images.appendChild(image_element)
 
-    def __convert_to_tiff_and_save(self, image):
-        if image.file_format is not 'TIFF':
-            tiffFilePath = os.path.splitext(image.filepath)[0] + ".tif"
-            cbPrint(tiffFilePath, 'debug')
-
-            if self.__config.run_rc_and_do_materials:
-                try:
-                    tiffImage = image.copy()
-                    time.sleep(5)
-                    tiffImage.filepath_raw = tiffFilePath
-                    tiffImage.file_format = 'TIFF'
-                    tiffImage.save()
-                finally:
-                    # remove tmp image from blend file database
-                    bpy.data.images.remove(tiffImage)
-
-        else:
-            tiffFilePath = image.filepath
-
+    def __get_tiff_image_path(self, image):
+        tiffFilePath = os.path.splitext(image.filepath)[0] + ".tif"
         return tiffFilePath
+
+    def __save_as_tiff(self, image, tiffFilePath):
+        if image.file_format is not 'TIFF':
+            if self.__config.run_rc_and_do_materials:
+                originalPath = image.filepath
+
+                try:
+                    image.filepath_raw = tiffFilePath
+                    image.file_format = 'TIFF'
+                    image.save()
+                finally:
+                    image.filepath = originalPath
 
     def __get_texture_images_for_selected_objects(self):
         images = []
