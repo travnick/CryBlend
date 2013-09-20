@@ -165,7 +165,8 @@ def make_layer(fname):
             object_node.setAttribute('ViewDistRatio', '100')
             object_node.setAttribute('HiddenInGame', '0')
             properties = layerDoc.createElement("Properties")
-            properties.setAttribute('object_Model', '/Objects/' + group.name[14:] + '.cgf')
+            properties.setAttribute('object_Model', '/Objects/'
+                                    + group.name[14:] + '.cgf')
             properties.setAttribute('bCanTriggerAreas', '0')
             properties.setAttribute('bExcludeCover', '0')
             properties.setAttribute('DmgFactorWhenCollidingAI', '1')
@@ -340,9 +341,9 @@ def veckey3d3(vn, fn):
 
 class CrytekDaeExporter:
     __axises = {
-    "X":0,
-    "Y":1,
-    "Z":2,
+        'X': 0,
+        'Y': 1,
+        'Z': 2,
     }
 
     def __init__(self, config, exe):
@@ -599,7 +600,7 @@ class CrytekDaeExporter:
                 sx = str(object_.scale[0])
                 sy = str(object_.scale[1])
                 sz = str(object_.scale[2])
-                scn = self.__doc.createTextNode("%s" % utils.addthree(sx, sy, sz))
+                scn = self.__doc.createTextNode(utils.addthree(sx, sy, sz))
                 sc.appendChild(scn)
                 nodename.appendChild(trans)
                 nodename.appendChild(rotz)
@@ -672,17 +673,19 @@ class CrytekDaeExporter:
                     vmin0 = str(vmin[0])
                     vmin1 = str(vmin[1])
                     vmin2 = str(vmin[2])
-                    bbmnval = self.__doc.createTextNode("%s %s %s" % (vmin0[:6],
-                                                               vmin1[:6],
-                                                               vmin2[:6]))
+                    bbmnval = self.__doc.createTextNode("%s %s %s"
+                                                        % (vmin0[:6],
+                                                           vmin1[:6],
+                                                           vmin2[:6]))
                     bbmn.appendChild(bbmnval)
                     bbmx = self.__doc.createElement("bound_box_max")
                     vmax0 = str(vmax[0])
                     vmax1 = str(vmax[1])
                     vmax2 = str(vmax[2])
-                    bbmxval = self.__doc.createTextNode("%s %s %s" % (vmax0[:6],
-                                                               vmax1[:6],
-                                                               vmax2[:6]))
+                    bbmxval = self.__doc.createTextNode("%s %s %s"
+                                                        % (vmax0[:6],
+                                                           vmax1[:6],
+                                                           vmax2[:6]))
                     bbmx.appendChild(bbmxval)
                     ht.appendChild(bbmn)
                     ht.appendChild(bbmx)
@@ -1748,11 +1751,10 @@ class CrytekDaeExporter:
                         cbPrint("Alpha.")
                     else:
                         for fi, cf in enumerate(collayer.data):
-                            if (len(mesh.tessfaces[fi].vertices) ==
-                                4):
-                                colors = cf.color1[:], cf.color2[:], cf.color3[:], cf.color4[:]
-                            else:
-                                colors = cf.color1[:], cf.color2[:], cf.color3[:]
+                            colors = [cf.color1[:], cf.color2[:], cf.color3[:]]
+                            if len(mesh.tessfaces[fi].vertices) == 4:
+                                colors.append(cf.color4[:])
+
                             for colr in colors:
                                 if ni == -1:
                                     if alpha_found == 1:
@@ -1977,7 +1979,8 @@ class CrytekDaeExporter:
 
         armature_bones = self.__get_bones(armature)
         idar = self.__doc.createElement("IDREF_array")
-        idar.setAttribute("id", "%s_%s_joints_array" % (armature.name, object_.name))
+        idar.setAttribute("id", "%s_%s_joints_array"
+                          % (armature.name, object_.name))
         idar.setAttribute("count", "%s" % len(armature_bones))
         blist = self.__get_bone_names_for_idref(armature_bones)
 
@@ -1987,7 +1990,8 @@ class CrytekDaeExporter:
         src.appendChild(idar)
         tcom = self.__doc.createElement("technique_common")
         acc = self.__doc.createElement("accessor")
-        acc.setAttribute("source", "#%s_%s_joints_array" % (armature.name, object_.name))
+        acc.setAttribute("source", "#%s_%s_joints_array"
+                         % (armature.name, object_.name))
         acc.setAttribute("count", "%s" % len(armature_bones))
         acc.setAttribute("stride", "1")
         paran = self.__doc.createElement("param")
@@ -1997,18 +2001,22 @@ class CrytekDaeExporter:
         src.appendChild(tcom)
         skin_node.appendChild(src)
         source_node = self.__doc.createElement("source")
-        source_node.setAttribute("id", "%s_%s_matrices" % (armature.name, object_.name))
+        source_node.setAttribute("id", "%s_%s_matrices"
+                                 % (armature.name, object_.name))
 
         float_array_node = self.__doc.createElement("float_array")
-        float_array_node.setAttribute("id", "%s_%s_matrices_array" % (armature.name, object_.name))
-        float_array_node.setAttribute("count", "%s" % (len(armature_bones) * 16))
+        float_array_node.setAttribute("id", "%s_%s_matrices_array"
+                                      % (armature.name, object_.name))
+        float_array_node.setAttribute("count", "%s"
+                                      % (len(armature_bones) * 16))
 
         self.__export_float_array(armature_bones, float_array_node)
         source_node.appendChild(float_array_node)
 
         tcommat = self.__doc.createElement("technique_common")
         accm = self.__doc.createElement("accessor")
-        accm.setAttribute("source", "#%s_%s_matrices_array" % (armature.name, object_.name))
+        accm.setAttribute("source", "#%s_%s_matrices_array"
+                          % (armature.name, object_.name))
         accm.setAttribute("count", "%s" % (len(armature_bones)))
         accm.setAttribute("stride", "16")
         paranm = self.__doc.createElement("param")
@@ -2018,9 +2026,11 @@ class CrytekDaeExporter:
         source_node.appendChild(tcommat)
         skin_node.appendChild(source_node)
         srcw = self.__doc.createElement("source")
-        srcw.setAttribute("id", "%s_%s_weights" % (armature.name, object_.name))
+        srcw.setAttribute("id", "%s_%s_weights"
+                          % (armature.name, object_.name))
         flarw = self.__doc.createElement("float_array")
-        flarw.setAttribute("id", "%s_%s_weights_array" % (armature.name, object_.name))
+        flarw.setAttribute("id", "%s_%s_weights_array"
+                           % (armature.name, object_.name))
         wa = ""
         vw = ""
         me = object_.data
@@ -2047,7 +2057,8 @@ class CrytekDaeExporter:
         flarw.appendChild(lfarwa)
         tcomw = self.__doc.createElement("technique_common")
         accw = self.__doc.createElement("accessor")
-        accw.setAttribute("source", "#%s_%s_weights_array" % (armature.name, object_.name))
+        accw.setAttribute("source", "#%s_%s_weights_array"
+                          % (armature.name, object_.name))
         accw.setAttribute("count", "%s" % vcount)
         accw.setAttribute("stride", "1")
         paranw = self.__doc.createElement("param")
@@ -2061,11 +2072,13 @@ class CrytekDaeExporter:
         jnts = self.__doc.createElement("joints")
         is1 = self.__doc.createElement("input")
         is1.setAttribute("semantic", "JOINT")
-        is1.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
+        is1.setAttribute("source", "#%s_%s_joints"
+                         % (armature.name, object_.name))
         jnts.appendChild(is1)
         is2 = self.__doc.createElement("input")
         is2.setAttribute("semantic", "INV_BIND_MATRIX")
-        is2.setAttribute("source", "#%s_%s_matrices" % (armature.name, object_.name))
+        is2.setAttribute("source", "#%s_%s_matrices"
+                         % (armature.name, object_.name))
         jnts.appendChild(is2)
         skin_node.appendChild(jnts)
         vertw = self.__doc.createElement("vertex_weights")
@@ -2073,12 +2086,14 @@ class CrytekDaeExporter:
         is3 = self.__doc.createElement("input")
         is3.setAttribute("semantic", "JOINT")
         is3.setAttribute("offset", "0")
-        is3.setAttribute("source", "#%s_%s_joints" % (armature.name, object_.name))
+        is3.setAttribute("source", "#%s_%s_joints"
+                         % (armature.name, object_.name))
         vertw.appendChild(is3)
         is4 = self.__doc.createElement("input")
         is4.setAttribute("semantic", "WEIGHT")
         is4.setAttribute("offset", "1")
-        is4.setAttribute("source", "#%s_%s_weights" % (armature.name, object_.name))
+        is4.setAttribute("source", "#%s_%s_weights"
+                         % (armature.name, object_.name))
         vertw.appendChild(is4)
         vcnt = self.__doc.createElement("vcount")
         vcnt1 = self.__doc.createTextNode("%s" % vcntr)
