@@ -1304,18 +1304,6 @@ class Export(bpy.types.Operator, ExportHelper):
             ),
             default="CGF",
     )
-
-    # is_caf = BoolProperty(
-            # name="Caf",
-            # description="For Animated Models, Skeletal,animation",
-            # default=False,
-            # )
-    # fr_start = IntProperty(
-            # name = "First Frame",
-            # default = 1, min = 0, max = 10,
-            # description = "An example integer"
-            # )
-
     merge_anm = BoolProperty(
             name="Merge anim",
             description="For Animated Models--merge animations into 1",
@@ -1332,24 +1320,21 @@ class Export(bpy.types.Operator, ExportHelper):
                         + "that are within 1 degree",
             default=False,
             )
-    # sh_edge = BoolProperty(
-    #   name="Smooth with sharp edges",
-    #   description="Temp hack to export smooth shaded models"
-    #                + "with sharp edges",
-    #     default=False,
-    #   )
-
     run_rc = BoolProperty(
             name="Run Resource Compiler",
             description="Generally a Good Idea",
             default=True,
             )
-    run_rc_and_do_materials = BoolProperty(
+    do_materials = BoolProperty(
             name="Run RC and Do Materials",
             description="Generally a Good Idea",
             default=False,
             )
-
+    refresh_rc = BoolProperty(
+            name="Refresh RC output",
+            description="Generally a Good Idea",
+            default=True,
+            )
     include_ik = BoolProperty(
             name="Include IK in Character",
             description="Adds IK from your skeleton to the phys skeleton"
@@ -1373,7 +1358,8 @@ class Export(bpy.types.Operator, ExportHelper):
                 'donot_merge',
                 'avg_pface',
                 'run_rc',
-                'run_rc_and_do_materials',
+                'do_materials',
+                'refresh_rc',
                 'include_ik',
                 'make_layer'
             )

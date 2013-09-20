@@ -79,124 +79,129 @@ def fixed_writexml(self, writer, indent="", addindent="", newl=""):
 xml.dom.minidom.Element.writexml = fixed_writexml
 
 
-# end http://ronrothman.com/
-#    public/leftbraned/xml-dom-minidom-toprettyxml-and-silly-whitespace/
-def write_to_file(config, doc, fname, exe):
-    s = doc.toprettyxml(indent="  ")
-    f = open(fname, "w")
-    f.write(s)
+def write_to_file(config, doc, file_name, exe):
+    xml_string = doc.toprettyxml(indent="  ")
+    file = open(file_name, "w")
+    file.write(xml_string)
+    file.close()
 
-    dae_file_for_rc = get_dae_path_for_rc(fname)
-    mystr = "/createmtl=1 "
-    if config.run_rc:
-        run_rc(exe, dae_file_for_rc)
-    if config.run_rc_and_do_materials:
-        mtl_creating_process = run_rc(exe, dae_file_for_rc, mystr)
-        mtl_fix_thread = threading.Thread(
-            target=fix_normalmap_in_mtls,
-            args=(mtl_creating_process, fname)
-        )
-        mtl_fix_thread.start()
+    dae_file_for_rc = get_dae_path_for_rc(file_name)
+    rc_params = ["/verbose", "/threads=cores"]
+    if config.refresh_rc:
+        rc_params.append("/refresh")
+
+    if config.run_rc or config.do_materials:
+        if config.do_materials:
+            rc_params.append("/createmtl=1")
+
+        rc_process = run_rc(exe, dae_file_for_rc, rc_params)
+
+        if config.do_materials:
+            mtl_fix_thread = threading.Thread(
+                target=fix_normalmap_in_mtls,
+                args=(rc_process, file_name)
+            )
+            mtl_fix_thread.start()
+
     if config.make_layer:
-        lName = "ExportedLayer"
-        layerDoc = Document()
-        # ObjectLayer
-        objLayer = layerDoc.createElement("ObjectLayer")
-        # Layer
-        layer = layerDoc.createElement("Layer")
-        layer.setAttribute('name', lName)
-        layer.setAttribute('GUID', generateGUID())
-        layer.setAttribute('FullName', lName)
-        layer.setAttribute('External', '0')
-        layer.setAttribute('Exportable', '1')
-        layer.setAttribute('ExportLayerPak', '1')
-        layer.setAttribute('DefaultLoaded', '0')
-        layer.setAttribute('HavePhysics', '1')
-        layer.setAttribute('Expanded', '0')
-        layer.setAttribute('IsDefaultColor', '1')
-        # Layer Objects
-        layerObjects = layerDoc.createElement("LayerObjects")
-        # Actual Objects
-        for group in bpy.context.blend_data.groups:
-            if group.objects > 1:
-                origin = (0, 0, 0)
-                rotation = (1, 0, 0, 0)
-            else:
-                origin = group.objects[0].location
-                rotation = group.objects[0].delta_rotation_quaternion
+        layer = make_layer(file_name)
+        lyr_file_name = os.path.splitext(file_name)[0] + ".lyr"
+        file = open(lyr_file_name, 'w')
+        file.write(layer)
+        file.close()
 
-            if 'CryExportNode' in group.name:
-                object_node = layerDoc.createElement("Object")
-                object_node.setAttribute('name', group.name[14:])
-                object_node.setAttribute('Type', 'Entity')
-                object_node.setAttribute('Id', generateGUID())
-                object_node.setAttribute('LayerGUID',
-                                         layer.getAttribute('GUID'))
-                object_node.setAttribute('Layer', lName)
-                positionString = "{!s}, {!s}, {!s}".format(
-                                    origin[0], origin[1], origin[2])
-                object_node.setAttribute('Pos', positionString)
-                rotationString = "{!s}, {!s}, {!s}, {!s}".format(
-                                    rotation[0], rotation[1],
-                                    rotation[2], rotation[3])
-                object_node.setAttribute('Rotate', rotationString)
-                object_node.setAttribute('EntityClass', 'BasicEntity')
-                object_node.setAttribute('FloorNumber', '-1')
-                object_node.setAttribute('RenderNearest', '0')
-                object_node.setAttribute('NoStaticDecals', '0')
-                object_node.setAttribute('CreatedThroughPool', '0')
-                object_node.setAttribute('MatLayersMask', '0')
-                object_node.setAttribute('OutdoorOnly', '0')
-                object_node.setAttribute('CastShadow', '1')
-                object_node.setAttribute('MotionBlurMultiplier', '1')
-                object_node.setAttribute('LodRatio', '100')
-                object_node.setAttribute('ViewDistRatio', '100')
-                object_node.setAttribute('HiddenInGame', '0')
 
-                properties = layerDoc.createElement("Properties")
-                properties.setAttribute('object_Model', '/Objects/'
-                                        + group.name[14:] + '.cgf')
-                properties.setAttribute('bCanTriggerAreas', '0')
-                properties.setAttribute('bExcludeCover', '0')
-                properties.setAttribute('DmgFactorWhenCollidingAI', '1')
-                properties.setAttribute('esFaction', '')
-                properties.setAttribute('bHeavyObject', '0')
-                properties.setAttribute('bInteractLargeObject', '0')
-                properties.setAttribute('bMissionCritical', '0')
-                properties.setAttribute('bPickable', '0')
-                properties.setAttribute('soclasses_SmartObjectClass', '')
-                properties.setAttribute('bUsable', '0')
-                properties.setAttribute('UseMessage', '0')
+def make_layer(fname):
+    lName = "ExportedLayer"
+    layerDoc = Document()
+    # ObjectLayer
+    objLayer = layerDoc.createElement("ObjectLayer")
+    # Layer
+    layer = layerDoc.createElement("Layer")
+    layer.setAttribute('name', lName)
+    layer.setAttribute('GUID', generateGUID())
+    layer.setAttribute('FullName', lName)
+    layer.setAttribute('External', '0')
+    layer.setAttribute('Exportable', '1')
+    layer.setAttribute('ExportLayerPak', '1')
+    layer.setAttribute('DefaultLoaded', '0')
+    layer.setAttribute('HavePhysics', '1')
+    layer.setAttribute('Expanded', '0')
+    layer.setAttribute('IsDefaultColor', '1')
+    # Layer Objects
+    layerObjects = layerDoc.createElement("LayerObjects")
+    # Actual Objects
+    for group in bpy.context.blend_data.groups:
+        if group.objects > 1:
+            origin = 0, 0, 0
+            rotation = 1, 0, 0, 0
+        else:
+            origin = group.objects[0].location
+            rotation = group.objects[0].delta_rotation_quaternion
+        if 'CryExportNode' in group.name:
+            object_node = layerDoc.createElement("Object")
+            object_node.setAttribute('name', group.name[14:])
+            object_node.setAttribute('Type', 'Entity')
+            object_node.setAttribute('Id', generateGUID())
+            object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
+            object_node.setAttribute('Layer', lName)
+            positionString = "{!s}, {!s}, {!s}".format(
+                origin[0], origin[1], origin[2])
+            object_node.setAttribute('Pos', positionString)
+            rotationString = "{!s}, {!s}, {!s}, {!s}".format(
+                rotation[0], rotation[1],
+                rotation[2], rotation[3])
+            object_node.setAttribute('Rotate', rotationString)
+            object_node.setAttribute('EntityClass', 'BasicEntity')
+            object_node.setAttribute('FloorNumber', '-1')
+            object_node.setAttribute('RenderNearest', '0')
+            object_node.setAttribute('NoStaticDecals', '0')
+            object_node.setAttribute('CreatedThroughPool', '0')
+            object_node.setAttribute('MatLayersMask', '0')
+            object_node.setAttribute('OutdoorOnly', '0')
+            object_node.setAttribute('CastShadow', '1')
+            object_node.setAttribute('MotionBlurMultiplier', '1')
+            object_node.setAttribute('LodRatio', '100')
+            object_node.setAttribute('ViewDistRatio', '100')
+            object_node.setAttribute('HiddenInGame', '0')
+            properties = layerDoc.createElement("Properties")
+            properties.setAttribute('object_Model', '/Objects/' + group.name[14:] + '.cgf')
+            properties.setAttribute('bCanTriggerAreas', '0')
+            properties.setAttribute('bExcludeCover', '0')
+            properties.setAttribute('DmgFactorWhenCollidingAI', '1')
+            properties.setAttribute('esFaction', '')
+            properties.setAttribute('bHeavyObject', '0')
+            properties.setAttribute('bInteractLargeObject', '0')
+            properties.setAttribute('bMissionCritical', '0')
+            properties.setAttribute('bPickable', '0')
+            properties.setAttribute('soclasses_SmartObjectClass', '')
+            properties.setAttribute('bUsable', '0')
+            properties.setAttribute('UseMessage', '0')
+            health = layerDoc.createElement("Health")
+            health.setAttribute('bInvulnerable', '1')
+            health.setAttribute('MaxHealth', '500')
+            health.setAttribute('bOnlyEnemyFire', '1')
+            interest = layerDoc.createElement("Interest")
+            interest.setAttribute('soaction_Action', '')
+            interest.setAttribute('bInteresting', '0')
+            interest.setAttribute('InterestLevel', '1')
+            interest.setAttribute('Pause', '15')
+            interest.setAttribute('Radius', '20')
+            interest.setAttribute('bShared', '0')
+            vOffset = layerDoc.createElement('vOffset')
+            vOffset.setAttribute('x', '0')
+            vOffset.setAttribute('y', '0')
+            vOffset.setAttribute('z', '0')
+            interest.appendChild(vOffset)
+            properties.appendChild(health)
+            properties.appendChild(interest)
+            object_node.appendChild(properties)
+            layerObjects.appendChild(object_node)
 
-                health = layerDoc.createElement("Health")
-                health.setAttribute('bInvulnerable', '1')
-                health.setAttribute('MaxHealth', '500')
-                health.setAttribute('bOnlyEnemyFire', '1')
-
-                interest = layerDoc.createElement("Interest")
-                interest.setAttribute('soaction_Action', '')
-                interest.setAttribute('bInteresting', '0')
-                interest.setAttribute('InterestLevel', '1')
-                interest.setAttribute('Pause', '15')
-                interest.setAttribute('Radius', '20')
-                interest.setAttribute('bShared', '0')
-                vOffset = layerDoc.createElement('vOffset')
-                vOffset.setAttribute('x', '0')
-                vOffset.setAttribute('y', '0')
-                vOffset.setAttribute('z', '0')
-                interest.appendChild(vOffset)
-
-                properties.appendChild(health)
-                properties.appendChild(interest)
-                object_node.appendChild(properties)
-                layerObjects.appendChild(object_node)
-        layer.appendChild(layerObjects)
-        objLayer.appendChild(layer)
-        layerDoc.appendChild(objLayer)
-        s = layerDoc.toprettyxml(indent="  ")
-        f = open(fname[:-4] + '.lyr', 'w')
-        f.write(s)
-        f.close()
+    layer.appendChild(layerObjects)
+    objLayer.appendChild(layer)
+    layerDoc.appendChild(objLayer)
+    return layerDoc.toprettyxml(indent="  ")
 
 
 def get_dae_path_for_rc(daeFilePath):
@@ -212,14 +217,13 @@ def get_dae_path_for_rc(daeFilePath):
 
 def run_rc(rc_path, dae_path, params=None):
     cbPrint(rc_path)
-    if params is None:
-        params = ""
-    else:
-        cbPrint(params)
+    rc_params = " ".join(params)
+
+    cbPrint(rc_params)
     cbPrint(dae_path)
 
     try:
-        run_object = subprocess.Popen([rc_path, params, dae_path])
+        run_object = subprocess.Popen([rc_path, rc_params, dae_path])
     except:
         raise exceptions.NoRcSelectedException
 
@@ -241,11 +245,11 @@ def fix_normalmap_in_mtls(rc_process, dae_file):
 
 
 def get_mtl_files_in_directory(directory):
-    MTL_FILE_EXTENSION = "mtl"
+    MTL_MATCH_STRING = "*.{!s}".format("mtl")
 
     mtl_files = []
     for file in os.listdir(directory):
-        if fnmatch.fnmatch(file, "*.{!s}".format(MTL_FILE_EXTENSION)):
+        if fnmatch.fnmatch(file, MTL_MATCH_STRING):
             filepath = "{!s}/{!s}".format(directory, file)
             mtl_files.append(filepath)
 
@@ -1200,7 +1204,7 @@ class CrytekDaeExporter:
 
     def __save_as_tiff(self, image, tiffFilePath):
         if image.file_format is not 'TIFF':
-            if self.__config.run_rc_and_do_materials:
+            if self.__config.do_materials:
                 originalPath = image.filepath
 
                 try:
