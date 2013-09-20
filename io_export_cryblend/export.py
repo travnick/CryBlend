@@ -1274,189 +1274,193 @@ class CrytekDaeExporter:
         current_element = self.__doc.createElement("library_effects")
         parent_element.appendChild(current_element)
 
-        materials = self.__get_materials_for_selected_objects()
-        for material in materials:
-            dtex = 0
-            stex = 0
-            ntex = 0
-            dimage = ""
-            simage = ""
-            nimage = ""
-            for texture_slot in material.texture_slots:
-                if texture_slot and texture_slot.texture.type == 'IMAGE':
-                    image = texture_slot.texture.image
-                    if image:
-                        if texture_slot.use_map_color_diffuse:
-                            dtex = 1
-                            dimage = image.name
-                            dnpsurf = self.__doc.createElement("newparam")
-                            dnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                            dsrf = self.__doc.createElement("surface")
-                            dsrf.setAttribute("type", "2D")
-                            if1 = self.__doc.createElement("init_from")
-                            if1tn = self.__doc.createTextNode("%s" % (image.name))
-                            if1.appendChild(if1tn)
-                            dsrf.appendChild(if1)
-                            dnpsurf.appendChild(dsrf)
-                            dnpsamp = self.__doc.createElement("newparam")
-                            dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                            dsamp = self.__doc.createElement("sampler2D")
-                            if2 = self.__doc.createElement("source")
-                            if2tn = self.__doc.createTextNode(
-                                "%s-surface" % (image.name))
-                            if2.appendChild(if2tn)
-                            dsamp.appendChild(if2)
-                            dnpsamp.appendChild(dsamp)
-                        if texture_slot.use_map_color_spec:
-                            stex = 1
-                            simage = image.name
-                            snpsurf = self.__doc.createElement("newparam")
-                            snpsurf.setAttribute("sid", "%s-surface" % image.name)
-                            ssrf = self.__doc.createElement("surface")
-                            ssrf.setAttribute("type", "2D")
-                            sif1 = self.__doc.createElement("init_from")
-                            sif1tn = self.__doc.createTextNode(
-                                "%s" % (image.name))
-                            sif1.appendChild(sif1tn)
-                            ssrf.appendChild(sif1)
-                            snpsurf.appendChild(ssrf)
-                            snpsamp = self.__doc.createElement("newparam")
-                            snpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                            ssamp = self.__doc.createElement("sampler2D")
-                            sif2 = self.__doc.createElement("source")
-                            sif2tn = self.__doc.createTextNode(
-                                "%s-surface" % (image.name))
-                            sif2.appendChild(sif2tn)
-                            ssamp.appendChild(sif2)
-                            snpsamp.appendChild(ssamp)
-                        if texture_slot.use_map_normal:
-                            ntex = 1
-                            nimage = image.name
-                            nnpsurf = self.__doc.createElement("newparam")
-                            nnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                            nsrf = self.__doc.createElement("surface")
-                            nsrf.setAttribute("type", "2D")
-                            nif1 = self.__doc.createElement("init_from")
-                            nif1tn = self.__doc.createTextNode(
-                                "%s" % (image.name))
-                            nif1.appendChild(nif1tn)
-                            nsrf.appendChild(nif1)
-                            nnpsurf.appendChild(nsrf)
-                            nnpsamp = self.__doc.createElement("newparam")
-                            nnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                            nsamp = self.__doc.createElement("sampler2D")
-                            if2 = self.__doc.createElement("source")
-                            if2tn = self.__doc.createTextNode(
-                                "%s-surface" % (image.name))
-                            if2.appendChild(if2tn)
-                            nsamp.appendChild(if2)
-                            nnpsamp.appendChild(nsamp)
+        for material in self.__get_materials_for_selected_objects():
+            self.__export_library_effects_material(material, current_element)
 
-            effid = self.__doc.createElement("effect")
-            effid.setAttribute("id", "%s_fx" % (material.name))
-            prof_com = self.__doc.createElement("profile_COMMON")
-            if dtex == 1:
-                prof_com.appendChild(dnpsurf)
-                prof_com.appendChild(dnpsamp)
-            if stex == 1:
-                prof_com.appendChild(snpsurf)
-                prof_com.appendChild(snpsamp)
-            if ntex == 1:
-                prof_com.appendChild(nnpsurf)
-                prof_com.appendChild(nnpsamp)
-            tech_com = self.__doc.createElement("technique")
-            tech_com.setAttribute("sid", "common")
-            phong = self.__doc.createElement("phong")
-            emis = self.__doc.createElement("emission")
+    def __export_library_effects_material(self, material, current_element):
+        dtex = 0
+        stex = 0
+        ntex = 0
+        dimage = ""
+        simage = ""
+        nimage = ""
+        texture_slots = self.__get_texture_slots_for_material(material)
+        for texture_slot in texture_slots:
+            image = texture_slot.texture.image
+            if texture_slot.use_map_color_diffuse:
+                dtex = 1
+                dimage = image.name
+                dnpsurf = self.__doc.createElement("newparam")
+                dnpsurf.setAttribute("sid", "%s-surface" % image.name)
+                dsrf = self.__doc.createElement("surface")
+                dsrf.setAttribute("type", "2D")
+                if1 = self.__doc.createElement("init_from")
+                if1tn = self.__doc.createTextNode("%s" % (image.name))
+                if1.appendChild(if1tn)
+                dsrf.appendChild(if1)
+                dnpsurf.appendChild(dsrf)
+                dnpsamp = self.__doc.createElement("newparam")
+                dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                dsamp = self.__doc.createElement("sampler2D")
+                if2 = self.__doc.createElement("source")
+                if2tn = self.__doc.createTextNode(
+                    "%s-surface" % (image.name))
+                if2.appendChild(if2tn)
+                dsamp.appendChild(if2)
+                dnpsamp.appendChild(dsamp)
+            if texture_slot.use_map_color_spec:
+                stex = 1
+                simage = image.name
+                snpsurf = self.__doc.createElement("newparam")
+                snpsurf.setAttribute("sid", "%s-surface" % image.name)
+                ssrf = self.__doc.createElement("surface")
+                ssrf.setAttribute("type", "2D")
+                sif1 = self.__doc.createElement("init_from")
+                sif1tn = self.__doc.createTextNode(
+                    "%s" % (image.name))
+                sif1.appendChild(sif1tn)
+                ssrf.appendChild(sif1)
+                snpsurf.appendChild(ssrf)
+                snpsamp = self.__doc.createElement("newparam")
+                snpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                ssamp = self.__doc.createElement("sampler2D")
+                sif2 = self.__doc.createElement("source")
+                sif2tn = self.__doc.createTextNode(
+                    "%s-surface" % (image.name))
+                sif2.appendChild(sif2tn)
+                ssamp.appendChild(sif2)
+                snpsamp.appendChild(ssamp)
+            if texture_slot.use_map_normal:
+                ntex = 1
+                nimage = image.name
+                nnpsurf = self.__doc.createElement("newparam")
+                nnpsurf.setAttribute("sid", "%s-surface" % image.name)
+                nsrf = self.__doc.createElement("surface")
+                nsrf.setAttribute("type", "2D")
+                nif1 = self.__doc.createElement("init_from")
+                nif1tn = self.__doc.createTextNode(
+                    "%s" % (image.name))
+                nif1.appendChild(nif1tn)
+                nsrf.appendChild(nif1)
+                nnpsurf.appendChild(nsrf)
+                nnpsamp = self.__doc.createElement("newparam")
+                nnpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                nsamp = self.__doc.createElement("sampler2D")
+                if2 = self.__doc.createElement("source")
+                if2tn = self.__doc.createTextNode(
+                    "%s-surface" % (image.name))
+                if2.appendChild(if2tn)
+                nsamp.appendChild(if2)
+                nnpsamp.appendChild(nsamp)
+
+        effid = self.__doc.createElement("effect")
+        effid.setAttribute("id", "%s_fx" % (material.name))
+        prof_com = self.__doc.createElement("profile_COMMON")
+        if dtex == 1:
+            prof_com.appendChild(dnpsurf)
+            prof_com.appendChild(dnpsamp)
+        if stex == 1:
+            prof_com.appendChild(snpsurf)
+            prof_com.appendChild(snpsamp)
+        if ntex == 1:
+            prof_com.appendChild(nnpsurf)
+            prof_com.appendChild(nnpsamp)
+        tech_com = self.__doc.createElement("technique")
+        tech_com.setAttribute("sid", "common")
+        phong = self.__doc.createElement("phong")
+        emis = self.__doc.createElement("emission")
+        color = self.__doc.createElement("color")
+        color.setAttribute("sid", "emission")
+        cot = utils.getcol(material.emit, material.emit, material.emit, 1.0)
+        emit = self.__doc.createTextNode("%s" % (cot))
+        color.appendChild(emit)
+        emis.appendChild(color)
+        amb = self.__doc.createElement("ambient")
+        color = self.__doc.createElement("color")
+        color.setAttribute("sid", "ambient")
+        cot = utils.getcol(material.ambient,
+                           material.ambient,
+                           material.ambient,
+                           1.0)
+        ambcol = self.__doc.createTextNode("%s" % (cot))
+        color.appendChild(ambcol)
+        amb.appendChild(color)
+        dif = self.__doc.createElement("diffuse")
+        if dtex == 1:
+            dtexr = self.__doc.createElement("texture")
+            dtexr.setAttribute("texture", "%s-sampler" % dimage)
+            dif.appendChild(dtexr)
+        else:
             color = self.__doc.createElement("color")
-            color.setAttribute("sid", "emission")
-            cot = utils.getcol(material.emit, material.emit, material.emit, 1.0)
-            emit = self.__doc.createTextNode("%s" % (cot))
-            color.appendChild(emit)
-            emis.appendChild(color)
-            amb = self.__doc.createElement("ambient")
+            color.setAttribute("sid", "diffuse")
+            cot = utils.getcol(material.diffuse_color.r,
+                material.diffuse_color.g,
+                material.diffuse_color.b, 1.0)
+            difcol = self.__doc.createTextNode("%s" % (cot))
+            color.appendChild(difcol)
+            dif.appendChild(color)
+        spec = self.__doc.createElement("specular")
+        if stex == 1:
+            stexr = self.__doc.createElement("texture")
+            stexr.setAttribute("texture", "%s-sampler" % simage)
+            spec.appendChild(stexr)
+        else:
             color = self.__doc.createElement("color")
-            color.setAttribute("sid", "ambient")
-            cot = utils.getcol(material.ambient, material.ambient, material.ambient, 1.0)
-            ambcol = self.__doc.createTextNode("%s" % (cot))
-            color.appendChild(ambcol)
-            amb.appendChild(color)
-            dif = self.__doc.createElement("diffuse")
-            if dtex == 1:
-                dtexr = self.__doc.createElement("texture")
-                dtexr.setAttribute("texture", "%s-sampler" % dimage)
-                dif.appendChild(dtexr)
-            else:
-                color = self.__doc.createElement("color")
-                color.setAttribute("sid", "diffuse")
-                cot = utils.getcol(material.diffuse_color.r,
-                    material.diffuse_color.g,
-                    material.diffuse_color.b, 1.0)
-                difcol = self.__doc.createTextNode("%s" % (cot))
-                color.appendChild(difcol)
-                dif.appendChild(color)
-            spec = self.__doc.createElement("specular")
-            if stex == 1:
-                stexr = self.__doc.createElement("texture")
-                stexr.setAttribute("texture", "%s-sampler" % simage)
-                spec.appendChild(stexr)
-            else:
-                color = self.__doc.createElement("color")
-                color.setAttribute("sid", "specular")
-                cot = utils.getcol(material.specular_color.r,
-                    material.specular_color.g,
-                    material.specular_color.b, 1.0)
-                speccol = self.__doc.createTextNode("%s" % (cot))
-                color.appendChild(speccol)
-                spec.appendChild(color)
-            shin = self.__doc.createElement("shininess")
-            flo = self.__doc.createElement("float")
-            flo.setAttribute("sid", "shininess")
-            cot = material.specular_hardness
-            shinval = self.__doc.createTextNode("%s" % (cot))
-            flo.appendChild(shinval)
-            shin.appendChild(flo)
-            ioref = self.__doc.createElement("index_of_refraction")
-            flo = self.__doc.createElement("float")
-            flo.setAttribute("sid", "index_of_refraction")
-            cot = material.alpha
-            iorval = self.__doc.createTextNode("%s" % (cot))
-            flo.appendChild(iorval)
-            ioref.appendChild(flo)
-            phong.appendChild(emis)
-            phong.appendChild(amb)
-            phong.appendChild(dif)
-            phong.appendChild(spec)
-            phong.appendChild(shin)
-            phong.appendChild(ioref)
-            if ntex == 1:
-                bump = self.__doc.createElement("normal")
-                ntexr = self.__doc.createElement("texture")
-                ntexr.setAttribute("texture", "%s-sampler" % nimage)
-                bump.appendChild(ntexr)
-                phong.appendChild(bump)
-            tech_com.appendChild(phong)
-            prof_com.appendChild(tech_com)
-            extra = self.__doc.createElement("extra")
-            techn = self.__doc.createElement("technique")
-            techn.setAttribute("profile", "GOOGLEEARTH")
-            ds = self.__doc.createElement("double_sided")
-            dsval = self.__doc.createTextNode("1")
-            ds.appendChild(dsval)
-            techn.appendChild(ds)
-            extra.appendChild(techn)
-            prof_com.appendChild(extra)
-            effid.appendChild(prof_com)
-            extra = self.__doc.createElement("extra")
-            techn = self.__doc.createElement("technique")
-            techn.setAttribute("profile", "MAX3D")
-            ds = self.__doc.createElement("double_sided")
-            dsval = self.__doc.createTextNode("1")
-            ds.appendChild(dsval)
-            techn.appendChild(ds)
-            extra.appendChild(techn)
-            effid.appendChild(extra)
-            current_element.appendChild(effid)
+            color.setAttribute("sid", "specular")
+            cot = utils.getcol(material.specular_color.r,
+                material.specular_color.g,
+                material.specular_color.b, 1.0)
+            speccol = self.__doc.createTextNode("%s" % (cot))
+            color.appendChild(speccol)
+            spec.appendChild(color)
+        shin = self.__doc.createElement("shininess")
+        flo = self.__doc.createElement("float")
+        flo.setAttribute("sid", "shininess")
+        cot = material.specular_hardness
+        shinval = self.__doc.createTextNode("%s" % (cot))
+        flo.appendChild(shinval)
+        shin.appendChild(flo)
+        ioref = self.__doc.createElement("index_of_refraction")
+        flo = self.__doc.createElement("float")
+        flo.setAttribute("sid", "index_of_refraction")
+        cot = material.alpha
+        iorval = self.__doc.createTextNode("%s" % (cot))
+        flo.appendChild(iorval)
+        ioref.appendChild(flo)
+        phong.appendChild(emis)
+        phong.appendChild(amb)
+        phong.appendChild(dif)
+        phong.appendChild(spec)
+        phong.appendChild(shin)
+        phong.appendChild(ioref)
+        if ntex == 1:
+            bump = self.__doc.createElement("normal")
+            ntexr = self.__doc.createElement("texture")
+            ntexr.setAttribute("texture", "%s-sampler" % nimage)
+            bump.appendChild(ntexr)
+            phong.appendChild(bump)
+        tech_com.appendChild(phong)
+        prof_com.appendChild(tech_com)
+        extra = self.__doc.createElement("extra")
+        techn = self.__doc.createElement("technique")
+        techn.setAttribute("profile", "GOOGLEEARTH")
+        ds = self.__doc.createElement("double_sided")
+        dsval = self.__doc.createTextNode("1")
+        ds.appendChild(dsval)
+        techn.appendChild(ds)
+        extra.appendChild(techn)
+        prof_com.appendChild(extra)
+        effid.appendChild(prof_com)
+        extra = self.__doc.createElement("extra")
+        techn = self.__doc.createElement("technique")
+        techn.setAttribute("profile", "MAX3D")
+        ds = self.__doc.createElement("double_sided")
+        dsval = self.__doc.createTextNode("1")
+        ds.appendChild(dsval)
+        techn.appendChild(ds)
+        extra.appendChild(techn)
+        effid.appendChild(extra)
+        current_element.appendChild(effid)
 
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
@@ -1475,462 +1479,467 @@ class CrytekDaeExporter:
 
     def __export_library_geometries(self, parent_element):
         libgeo = self.__doc.createElement("library_geometries")
-        start_time = clock()
-        for i in bpy.context.selected_objects:
-            if i:
-                name = str(i.name)
-                if (name[:6] != "_joint"):
-                    if (i.type == "MESH"):
-                        if i.mode == 'EDIT':
-                            bpy.ops.object.mode_set(mode='OBJECT')
-                        i.data.update(calc_tessface=1)
-                        mesh = i.data
-                        me_verts = mesh.vertices[:]
-                        mname = i.name
-                        geo = self.__doc.createElement("geometry")
-                        geo.setAttribute("id", "%s" % (mname))
-                        me = self.__doc.createElement("mesh")
-                        # positions
-                        sourcep = self.__doc.createElement("source")
-                        sourcep.setAttribute("id", "%s-positions" % (mname))
-                        float_positions = ""
-                        iv = -1
-                        for v in me_verts:
-                            if iv == -1:
-                                float_positions += "%.6f %.6g %.6f " % v.co[:]
-                                iv = 0
-                            else:
-                                if iv == 7:
-                                    iv = 0
-                                float_positions += "%.6f %.6g %.6f " % v.co[:]
-                            iv += 1
-
-                        cbPrint('vert loc took %.4f sec.' % (clock() - start_time))
-                        far = self.__doc.createElement("float_array")
-                        far.setAttribute("id", "%s-positions-array" % (mname))
-                        far.setAttribute("count", "%s" % (str(len(mesh.vertices) * 3)))
-                        mpos = self.__doc.createTextNode("%s" % (float_positions))
-                        far.appendChild(mpos)
-                        techcom = self.__doc.createElement("technique_common")
-                        acc = self.__doc.createElement("accessor")
-                        acc.setAttribute("source", "#%s-positions-array" % (mname))
-                        acc.setAttribute("count", "%s" % (str(len(mesh.vertices))))
-                        acc.setAttribute("stride", "3")
-                        parx = self.__doc.createElement("param")
-                        parx.setAttribute("name", "X")
-                        parx.setAttribute("type", "float")
-                        pary = self.__doc.createElement("param")
-                        pary.setAttribute("name", "Y")
-                        pary.setAttribute("type", "float")
-                        parz = self.__doc.createElement("param")
-                        parz.setAttribute("name", "Z")
-                        parz.setAttribute("type", "float")
-                        acc.appendChild(parx)
-                        acc.appendChild(pary)
-                        acc.appendChild(parz)
-                        techcom.appendChild(acc)
-                        sourcep.appendChild(far)
-                        sourcep.appendChild(techcom)
-                        me.appendChild(sourcep)
-                        # positions
-                        # normals
-                        float_normals = ""
-                        float_normals_count = ""
-                        iin = 0
-                        iin = ""
-                        start_time = clock()
-                        # mesh.sort_faces()
-                        # mesh.calc_normals()
-                        face_index_pairs = mesh.tessfaces
-                        ush = 0
-                        has_sharp_edges = 0
-                        # for f in mesh.tessfaces:
-                        for f in face_index_pairs:
-                            if f.use_smooth:
-                                for v_idx in f.vertices:
-                                    for e_idx in mesh.edges:
-                                        for ev in e_idx.vertices:
-                                            if ev == v_idx:
-                                                if e_idx.use_edge_sharp:
-                                                    ush = 1
-                                                    has_sharp_edges = 1
-                                                else:
-                                                    ush = 2
-
-                                    if ush == 1:
-                                        v = me_verts[v_idx]
-                                        noKey = veckey3d21(f.normal)
-                                        float_normals += '%.6f %.6f %.6f ' % noKey
-                                        iin += "1"
-                                    if ush == 2:
-                                        v = me_verts[v_idx]
-                                        noKey = veckey3d21(v.normal)
-                                        float_normals += '%.6f %.6f %.6f ' % noKey
-                                        iin += "1"
-                                    ush = 0
-
-                            else:
-                                fnc = ""
-                                fns = 0
-                                fnlx = 0
-                                fnly = 0
-                                fnlz = 0
-                                if self.__config.avg_pface:
-                                    if fns == 0:
-                                        fnlx = f.normal.x
-                                        fnly = f.normal.y
-                                        fnlz = f.normal.z
-                                        fnc += "1"
-                                        cbPrint("face%s" % fnlx)
-                                    for fn in face_index_pairs:
-                                        if (f.normal.angle(fn.normal) <
-                                            .052):
-                                            if (f.normal.angle(fn.normal) >
-                                                - .052):
-                                                fnlx = fn.normal.x + fnlx
-                                                fnly = fn.normal.x + fnly
-                                                fnlz = fn.normal.x + fnlz
-                                                fnc += "1"
-                                                fns = 1
-
-                                    cbPrint("facen2%s" % (fnlx / len(fnc)))
-                                    iin += "1"
-                                    float_normals += '%.6f %.6f %.6f ' % (fnlx / len(fnc),
-                                        fnly / len(fnc),
-                                        fnlz / len(fnc))
-                                else:
-                                    noKey = veckey3d21(f.normal)
-                                    float_normals += '%.6f %.6f %.6f ' % noKey
-                                    iin += "1"  # for v_idx in f.vertices:
-
-    # Hard, each vert gets normal
-    # from the face.
-                        float_normals_count = len(iin) * 3
-                        cbPrint('normals took %.4f sec.' % (clock() - start_time))
-                        float_vertsc = len(iin)
-                        cbPrint(str(float_vertsc))
-                        iin = 0
-                        sourcenor = self.__doc.createElement("source")
-                        sourcenor.setAttribute("id", "%s-normals" % (mname))
-                        farn = self.__doc.createElement("float_array")
-                        farn.setAttribute("id", "%s-normals-array" % (mname))
-                        farn.setAttribute("count", "%s" % (float_normals_count))
-                        fpos = self.__doc.createTextNode("%s" % (float_normals))
-                        farn.appendChild(fpos)
-                        tcom = self.__doc.createElement("technique_common")
-                        acc = self.__doc.createElement("accessor")
-                        acc.setAttribute("source", "%s-normals-array" % (mname))
-                        acc.setAttribute("count", "%s" % (float_vertsc))
-                        acc.setAttribute("stride", "3")
-                        parx = self.__doc.createElement("param")
-                        parx.setAttribute("name", "X")
-                        parx.setAttribute("type", "float")
-                        pary = self.__doc.createElement("param")
-                        pary.setAttribute("name", "Y")
-                        pary.setAttribute("type", "float")
-                        parz = self.__doc.createElement("param")
-                        parz.setAttribute("name", "Z")
-                        parz.setAttribute("type", "float")
-                        acc.appendChild(parx)
-                        acc.appendChild(pary)
-                        acc.appendChild(parz)
-                        tcom.appendChild(acc)
-                        sourcenor.appendChild(farn)
-                        sourcenor.appendChild(tcom)
-                        me.appendChild(sourcenor)
-                        # end normals
-                        # uv we will make assumptions here because this is
-                        # for a game export so there should allways
-                        # be a uv set
-                        uvs = self.__doc.createElement("source")
-            # thankyou fbx exporter
-                        uvlay = []
-                        # lay = i.data.uv_textures.active
-                        # if lay:
-                        start_time = clock()
-                        uvlay = i.data.tessface_uv_textures
-                        if uvlay:
-                            cbPrint("Found UV map.")
-                        elif (i.type == "MESH"):
-                            bpy.ops.mesh.uv_texture_add()
-                            cbPrint("Your UV map is missing, adding.")
-                        for uvindex, uvlayer in enumerate(uvlay):
-                            mapslot = uvindex
-                            mapname = str(uvlayer.name)
-                            uvid = "%s-%s-%s" % (mname, mapname, mapslot)
-                            i_n = -1
-                            ii = 0  # Count how many UVs we write
-                            test = ""
-                            for uf in uvlayer.data:
-                            # workaround, since uf.uv iteration
-                            # is wrong atm
-                                for uv in uf.uv:
-                                    if i_n == -1:
-                                        test += '%.6f %.6f ' % uv[:]
-                                        i_n = 0
-                                    else:
-                                        if i_n == 7:
-                                    # fw('\n\t\t\t ')
-                                            i_n = 0
-                                        test += '%.6f %.6f ' % uv[:]
-                                    i_n += 1
-                                    ii += 1  # One more UV
-
-    # thankyou
-                            uvc1 = str((ii) * 2)
-                            uvc2 = str(ii)
-
-                        uvs.setAttribute("id", "%s-%s-%s" % (mname, mapname, mapslot))
-                        cbPrint('UVs took %.4f sec.' % (clock() - start_time))
-                        fa = self.__doc.createElement("float_array")
-                        fa.setAttribute("id", "%s-array" % (uvid))
-                        fa.setAttribute("count", "%s" % (uvc1))
-                        uvp = self.__doc.createTextNode("%s" % (test))
-                        fa.appendChild(uvp)
-                        tc2 = self.__doc.createElement("technique_common")
-                        acc2 = self.__doc.createElement("accessor")
-                        acc2.setAttribute("source", "#%s-array" % (uvid))
-                        acc2.setAttribute("count", "%s" % (uvc2))
-                        acc2.setAttribute("stride", "2")
-                        pars = self.__doc.createElement("param")
-                        pars.setAttribute("name", "S")
-                        pars.setAttribute("type", "float")
-                        part = self.__doc.createElement("param")
-                        part.setAttribute("name", "T")
-                        part.setAttribute("type", "float")
-                        acc2.appendChild(pars)
-                        acc2.appendChild(part)
-                        tc2.appendChild(acc2)
-                        uvs.appendChild(fa)
-                        uvs.appendChild(tc2)
-                        me.appendChild(uvs)
-                        # enduv
-                        # vertcol
-                        # from fbx exporter
-                        collayers = []
-                        vcols = self.__doc.createElement("source")
-                        cn = 0
-                        # list for vert alpha if found
-                        alpha_found = 0
-                        alpha_list = []
-                        if i.data.tessface_vertex_colors:
-                            collayers = i.data.tessface_vertex_colors
-                            for colindex, collayer in enumerate(collayers):
-                                ni = -1
-                                colname = str(collayer.name)
-                                if colname == "alpha":
-                                    alpha_found = 1
-                                    for fi, cf in enumerate(collayer.data):
-                                        cbPrint(str(fi))
-                                        if (len(mesh.tessfaces[fi].vertices) ==
-                                            4):
-                                            colors = cf.color1[:], cf.color2[:], cf.color3[:], cf.color4[:]
-                                        else:
-                                            colors = cf.color1[:], cf.color2[:], cf.color3[:]
-                                        for colr in colors:
-                                            tmp = [fi, colr[0]]
-
-                                        alpha_list.append(tmp)
-
-                                    for vca in alpha_list:
-                                        cbPrint(str(vca))
-
-                        if i.data.tessface_vertex_colors:
-                            # vcols= doc.createElement("source")
-                            collayers = i.data.tessface_vertex_colors
-                            for collayer in collayers:
-                                ni = -1
-                                ii = 0  # Count how many Colors we write
-                                vcol = ""
-                                colname = str(collayer.name)
-                                if colname == "alpha":
-                                    cbPrint("Alpha.")
-                                else:
-                                    for fi, cf in enumerate(collayer.data):
-                                        if (len(mesh.tessfaces[fi].vertices) ==
-                                            4):
-                                            colors = cf.color1[:], cf.color2[:], cf.color3[:], cf.color4[:]
-                                        else:
-                                            colors = cf.color1[:], cf.color2[:], cf.color3[:]
-                                        for colr in colors:
-                                            if ni == -1:
-                                                if alpha_found == 1:
-                                                    tmp = alpha_list[fi]
-                                                    vcol += '%.6f %.6f %.6f ' % colr
-                                                    vcol += '%.6f ' % tmp[1]
-                                                    cbPrint(colr[0])
-                                                else:
-                                                    vcol += '%.6f %.6f %.6f ' % colr
-                                                ni = 0
-                                            else:
-                                                if ni == 7:
-                                                    ni = 0
-                                                if alpha_found == 1:
-                                                    tmp = alpha_list[fi]
-                                                    vcol += '%.6f %.6f %.6f ' % colr
-                                                    vcol += '%.6f ' % tmp[1]
-                                                    cbPrint(colr[0])
-                                                else:
-                                                    vcol += '%.6f %.6f %.6f ' % colr
-                                            ni += 1
-                                            ii += 1  # One more Color
-
-                                            # thankyou fbx
-                                    if cn == 1:
-                                        vcolc1 = str((ii) * 4)
-                                    else:
-                                        vcolc1 = str((ii) * 3)
-                                    # vcolc1=str((ii)*3)
-                                    vcolc2 = str(ii)
-
-                            vcols.setAttribute("id", "%s-colors" % (mname))
-                            fa = self.__doc.createElement("float_array")
-                            fa.setAttribute("id", "%s-colors-array" % (mname))
-                            fa.setAttribute("count", "%s" % (vcolc1))
-                            vcolp = self.__doc.createTextNode("%s" % (vcol))
-                            fa.appendChild(vcolp)
-                            tc2 = self.__doc.createElement("technique_common")
-                            acc3 = self.__doc.createElement("accessor")
-                            acc3.setAttribute("source", "#%s-colors-array" % (mname))
-                            acc3.setAttribute("count", "%s" % (vcolc2))
-                            if alpha_found == 1:
-                                acc3.setAttribute("stride", "4")
-                            else:
-                                acc3.setAttribute("stride", "3")
-                            parr = self.__doc.createElement("param")
-                            parr.setAttribute("name", "R")
-                            parr.setAttribute("type", "float")
-                            parg = self.__doc.createElement("param")
-                            parg.setAttribute("name", "G")
-                            parg.setAttribute("type", "float")
-                            parb = self.__doc.createElement("param")
-                            parb.setAttribute("name", "B")
-                            parb.setAttribute("type", "float")
-                            para = self.__doc.createElement("param")
-                            para.setAttribute("name", "A")
-                            para.setAttribute("type", "float")
-                            acc3.appendChild(parr)
-                            acc3.appendChild(parg)
-                            acc3.appendChild(parb)
-                            if alpha_found == 1:
-                                acc3.appendChild(para)
-                            alpha_found = 0
-                            tc2.appendChild(acc3)
-                            vcols.appendChild(fa)
-                            vcols.appendChild(tc2)
-                        me.appendChild(vcols)
-                        # endvertcol
-                        # vertices
-                        vertic = self.__doc.createElement("vertices")
-                        vertic.setAttribute("id", "%s-vertices" % (mname))
-                        inputsem1 = self.__doc.createElement("input")
-                        inputsem1.setAttribute("semantic", "POSITION")
-                        inputsem1.setAttribute("source", "#%s-positions" % (mname))
-                        vertic.appendChild(inputsem1)
-                        me.appendChild(vertic)
-                        # end vertices
-                        # polylist
-                        mat = mesh.materials[:]
-                        start_time = clock()
-                        if mat:
-                            # yes lets go through them 1 at a time
-                            for im in enumerate(mat):
-                                polyl = self.__doc.createElement("polylist")
-                                polyl.setAttribute("material", "%s" % (im[1].name))
-                                verts = ""
-                                face_count = ""
-                                face_counter = 0
-                                ni = 0
-                                texindex = 0
-                                nverts = ""
-                                for f in face_index_pairs:
-                                    fi = f.vertices[:]
-                                    if f.material_index == im[0]:
-                                        nverts += str(len(f.vertices)) + " "
-                                        face_count += str(
-                                            "%s" % (face_counter))
-                                        for v in f.vertices:
-                                            verts += str(v) + " "
-                                            if f.use_smooth:
-                                                if has_sharp_edges == 1:
-                                                    verts += str("%s " % (ni))
-                                                    ni += 1
-                                                else:
-                                                    verts += str(v) + " "
-                                                # verts += str("%s "%(ni))
-                                                # ni += 1
-                                            else:
-                                                verts += str("%s " % (ni))
-                                            verts += str("%s " % (texindex))
-                                            if mesh.vertex_colors:
-                                                verts += str(
-                                                    "%s " % (texindex))
-                                            texindex += 1
-
-                                    if f.use_smooth:
-                                        if has_sharp_edges != 1:
-                                            ni += len(f.vertices)
-                                    else:
-                                        ni += 1  # #<--naughty naughty
-                                    if f.material_index == im[0]:
-                                        texindex = texindex
-                                    else:
-                                        texindex += len(fi)  # 4#3
-
-                                cbPrint(str(ni))
-                                verts += ""
-                                cbPrint('polylist took %.4f sec.' % (clock() - start_time))
-                                polyl.setAttribute("count", "%s" % (len(face_count)))
-                                inpv = self.__doc.createElement("input")
-                                inpv.setAttribute("semantic", "VERTEX")
-                                inpv.setAttribute("source", "#%s-vertices" % (mname))
-                                inpv.setAttribute("offset", "0")
-                                polyl.appendChild(inpv)
-                                inpn = self.__doc.createElement("input")
-                                inpn.setAttribute("semantic", "NORMAL")
-                                inpn.setAttribute("source", "#%s-normals" % (mname))
-                                inpn.setAttribute("offset", "1")
-                                polyl.appendChild(inpn)
-                                inpuv = self.__doc.createElement("input")
-                                inpuv.setAttribute("semantic", "TEXCOORD")
-                                inpuv.setAttribute("source", "#%s" % (uvid))
-                                # will allways be 2, vcolors can be 2 or 3
-                                inpuv.setAttribute("offset", "2")
-                                inpuv.setAttribute("set", "%s" % (mapslot))
-                                polyl.appendChild(inpuv)
-                                if mesh.vertex_colors:
-                                    inpvcol = self.__doc.createElement("input")
-                                    inpvcol.setAttribute("semantic", "COLOR")
-                                    inpvcol.setAttribute("source", "#%s-colors" % (mname))
-                                    # vcolors can be 2 or 3
-                                    inpvcol.setAttribute("offset", "3")
-                                    polyl.appendChild(inpvcol)
-                                vc = self.__doc.createElement("vcount")
-                                vcl = self.__doc.createTextNode("%s" % (nverts))
-                                vc.appendChild(vcl)
-                                pl = self.__doc.createElement("p")
-                                pltn = self.__doc.createTextNode("%s" % (verts))
-                                pl.appendChild(pltn)
-                                polyl.appendChild(vc)
-                                polyl.appendChild(pl)
-                                me.appendChild(polyl)
-
-                                # endpolylist
-                        has_sharp_edges = 0
-                        emt = self.__doc.createElement("extra")
-                        emtt = self.__doc.createElement("technique")
-                        emtt.setAttribute("profile", "MAYA")
-                        dsd = self.__doc.createElement("double_sided")
-                        dsdtn = self.__doc.createTextNode("1")
-                        dsd.appendChild(dsdtn)
-                        emtt.appendChild(dsd)
-                        emt.appendChild(emtt)
-                        me.appendChild(emt)
-                        geo.appendChild(me)
-                        libgeo.appendChild(geo)
-
-                        # bpy.data.meshes.remove(mesh)
         parent_element.appendChild(libgeo)
+
+        start_time = clock()
+        for object_ in self.__get_objects_for_library_geometries():
+            if object_.mode == 'EDIT':
+                bpy.ops.object.mode_set(mode='OBJECT')
+            object_.data.update(calc_tessface=1)
+            mesh = object_.data
+            me_verts = mesh.vertices[:]
+            mname = object_.name
+            geo = self.__doc.createElement("geometry")
+            geo.setAttribute("id", "%s" % (mname))
+            me = self.__doc.createElement("mesh")
+            # positions
+            sourcep = self.__doc.createElement("source")
+            sourcep.setAttribute("id", "%s-positions" % (mname))
+            float_positions = ""
+            iv = -1
+            for v in me_verts:
+                if iv == -1:
+                    float_positions += "%.6f %.6g %.6f " % v.co[:]
+                    iv = 0
+                else:
+                    if iv == 7:
+                        iv = 0
+                    float_positions += "%.6f %.6g %.6f " % v.co[:]
+                iv += 1
+
+            cbPrint('vert loc took %.4f sec.' % (clock() - start_time))
+            far = self.__doc.createElement("float_array")
+            far.setAttribute("id", "%s-positions-array" % (mname))
+            far.setAttribute("count", "%s" % (str(len(mesh.vertices) * 3)))
+            mpos = self.__doc.createTextNode("%s" % (float_positions))
+            far.appendChild(mpos)
+            techcom = self.__doc.createElement("technique_common")
+            acc = self.__doc.createElement("accessor")
+            acc.setAttribute("source", "#%s-positions-array" % (mname))
+            acc.setAttribute("count", "%s" % (str(len(mesh.vertices))))
+            acc.setAttribute("stride", "3")
+            parx = self.__doc.createElement("param")
+            parx.setAttribute("name", "X")
+            parx.setAttribute("type", "float")
+            pary = self.__doc.createElement("param")
+            pary.setAttribute("name", "Y")
+            pary.setAttribute("type", "float")
+            parz = self.__doc.createElement("param")
+            parz.setAttribute("name", "Z")
+            parz.setAttribute("type", "float")
+            acc.appendChild(parx)
+            acc.appendChild(pary)
+            acc.appendChild(parz)
+            techcom.appendChild(acc)
+            sourcep.appendChild(far)
+            sourcep.appendChild(techcom)
+            me.appendChild(sourcep)
+            # positions
+            # normals
+            float_normals = ""
+            float_normals_count = ""
+            iin = 0
+            iin = ""
+            start_time = clock()
+            # mesh.sort_faces()
+            # mesh.calc_normals()
+            face_index_pairs = mesh.tessfaces
+            ush = 0
+            has_sharp_edges = 0
+            # for f in mesh.tessfaces:
+            for f in face_index_pairs:
+                if f.use_smooth:
+                    for v_idx in f.vertices:
+                        for e_idx in mesh.edges:
+                            for ev in e_idx.vertices:
+                                if ev == v_idx:
+                                    if e_idx.use_edge_sharp:
+                                        ush = 1
+                                        has_sharp_edges = 1
+                                    else:
+                                        ush = 2
+
+                        if ush == 1:
+                            v = me_verts[v_idx]
+                            noKey = veckey3d21(f.normal)
+                            float_normals += '%.6f %.6f %.6f ' % noKey
+                            iin += "1"
+                        if ush == 2:
+                            v = me_verts[v_idx]
+                            noKey = veckey3d21(v.normal)
+                            float_normals += '%.6f %.6f %.6f ' % noKey
+                            iin += "1"
+                        ush = 0
+
+                else:
+                    fnc = ""
+                    fns = 0
+                    fnlx = 0
+                    fnly = 0
+                    fnlz = 0
+                    if self.__config.avg_pface:
+                        if fns == 0:
+                            fnlx = f.normal.x
+                            fnly = f.normal.y
+                            fnlz = f.normal.z
+                            fnc += "1"
+                            cbPrint("face%s" % fnlx)
+                        for fn in face_index_pairs:
+                            if (f.normal.angle(fn.normal) <
+                                .052):
+                                if (f.normal.angle(fn.normal) >
+                                    - .052):
+                                    fnlx = fn.normal.x + fnlx
+                                    fnly = fn.normal.x + fnly
+                                    fnlz = fn.normal.x + fnlz
+                                    fnc += "1"
+                                    fns = 1
+
+                        cbPrint("facen2%s" % (fnlx / len(fnc)))
+                        iin += "1"
+                        float_normals += '%.6f %.6f %.6f ' % (fnlx / len(fnc),
+                            fnly / len(fnc),
+                            fnlz / len(fnc))
+                    else:
+                        noKey = veckey3d21(f.normal)
+                        float_normals += '%.6f %.6f %.6f ' % noKey
+                        iin += "1"  # for v_idx in f.vertices:
+
+            # Hard, each vert gets normal
+            # from the face.
+            float_normals_count = len(iin) * 3
+            cbPrint('normals took %.4f sec.' % (clock() - start_time))
+            float_vertsc = len(iin)
+            cbPrint(str(float_vertsc))
+            iin = 0
+            sourcenor = self.__doc.createElement("source")
+            sourcenor.setAttribute("id", "%s-normals" % (mname))
+            farn = self.__doc.createElement("float_array")
+            farn.setAttribute("id", "%s-normals-array" % (mname))
+            farn.setAttribute("count", "%s" % (float_normals_count))
+            fpos = self.__doc.createTextNode("%s" % (float_normals))
+            farn.appendChild(fpos)
+            tcom = self.__doc.createElement("technique_common")
+            acc = self.__doc.createElement("accessor")
+            acc.setAttribute("source", "%s-normals-array" % (mname))
+            acc.setAttribute("count", "%s" % (float_vertsc))
+            acc.setAttribute("stride", "3")
+            parx = self.__doc.createElement("param")
+            parx.setAttribute("name", "X")
+            parx.setAttribute("type", "float")
+            pary = self.__doc.createElement("param")
+            pary.setAttribute("name", "Y")
+            pary.setAttribute("type", "float")
+            parz = self.__doc.createElement("param")
+            parz.setAttribute("name", "Z")
+            parz.setAttribute("type", "float")
+            acc.appendChild(parx)
+            acc.appendChild(pary)
+            acc.appendChild(parz)
+            tcom.appendChild(acc)
+            sourcenor.appendChild(farn)
+            sourcenor.appendChild(tcom)
+            me.appendChild(sourcenor)
+            # end normals
+            # uv we will make assumptions here because this is
+            # for a game export so there should allways
+            # be a uv set
+            uvs = self.__doc.createElement("source")
+            uvlay = []
+            # lay = object_.data.uv_textures.active
+            # if lay:
+            start_time = clock()
+            uvlay = object_.data.tessface_uv_textures
+            if uvlay:
+                cbPrint("Found UV map.")
+            elif (object_.type == "MESH"):
+                bpy.ops.mesh.uv_texture_add()
+                cbPrint("Your UV map is missing, adding.")
+            for uvindex, uvlayer in enumerate(uvlay):
+                mapslot = uvindex
+                mapname = str(uvlayer.name)
+                uvid = "%s-%s-%s" % (mname, mapname, mapslot)
+                i_n = -1
+                ii = 0  # Count how many UVs we write
+                test = ""
+                for uf in uvlayer.data:
+                # workaround, since uf.uv iteration
+                # is wrong atm
+                    for uv in uf.uv:
+                        if i_n == -1:
+                            test += '%.6f %.6f ' % uv[:]
+                            i_n = 0
+                        else:
+                            if i_n == 7:
+                        # fw('\n\t\t\t ')
+                                i_n = 0
+                            test += '%.6f %.6f ' % uv[:]
+                        i_n += 1
+                        ii += 1  # One more UV
+
+                uvc1 = str((ii) * 2)
+                uvc2 = str(ii)
+
+            uvs.setAttribute("id", "%s-%s-%s" % (mname, mapname, mapslot))
+            cbPrint('UVs took %.4f sec.' % (clock() - start_time))
+            fa = self.__doc.createElement("float_array")
+            fa.setAttribute("id", "%s-array" % (uvid))
+            fa.setAttribute("count", "%s" % (uvc1))
+            uvp = self.__doc.createTextNode("%s" % (test))
+            fa.appendChild(uvp)
+            tc2 = self.__doc.createElement("technique_common")
+            acc2 = self.__doc.createElement("accessor")
+            acc2.setAttribute("source", "#%s-array" % (uvid))
+            acc2.setAttribute("count", "%s" % (uvc2))
+            acc2.setAttribute("stride", "2")
+            pars = self.__doc.createElement("param")
+            pars.setAttribute("name", "S")
+            pars.setAttribute("type", "float")
+            part = self.__doc.createElement("param")
+            part.setAttribute("name", "T")
+            part.setAttribute("type", "float")
+            acc2.appendChild(pars)
+            acc2.appendChild(part)
+            tc2.appendChild(acc2)
+            uvs.appendChild(fa)
+            uvs.appendChild(tc2)
+            me.appendChild(uvs)
+            # enduv
+            # vertcol
+            # from fbx exporter
+            vcols = self.__doc.createElement("source")
+            cn = 0
+            # list for vert alpha if found
+            alpha_found = 0
+            alpha_list = []
+            if object_.data.tessface_vertex_colors:
+                collayers = object_.data.tessface_vertex_colors
+                # TODO merge these two for loops
+                for collayer in collayers:
+                    ni = -1
+                    colname = str(collayer.name)
+                    if colname == "alpha":
+                        alpha_found = 1
+                        for fi, cf in enumerate(collayer.data):
+                            cbPrint(str(fi))
+                            if len(mesh.tessfaces[fi].vertices) == 4:
+                                colors = [cf.color1[:],
+                                          cf.color2[:],
+                                          cf.color3[:],
+                                          cf.color4[:]]
+                            else:
+                                colors = [cf.color1[:],
+                                          cf.color2[:],
+                                          cf.color3[:]]
+                            for colr in colors:
+                                tmp = [fi, colr[0]]
+
+                            alpha_list.append(tmp)
+
+                        for vca in alpha_list:
+                            cbPrint(str(vca))
+
+                for collayer in collayers:
+                    ni = -1
+                    ii = 0  # Count how many Colors we write
+                    vcol = ""
+                    colname = str(collayer.name)
+                    if colname == "alpha":
+                        cbPrint("Alpha.")
+                    else:
+                        for fi, cf in enumerate(collayer.data):
+                            if (len(mesh.tessfaces[fi].vertices) ==
+                                4):
+                                colors = cf.color1[:], cf.color2[:], cf.color3[:], cf.color4[:]
+                            else:
+                                colors = cf.color1[:], cf.color2[:], cf.color3[:]
+                            for colr in colors:
+                                if ni == -1:
+                                    if alpha_found == 1:
+                                        tmp = alpha_list[fi]
+                                        vcol += '%.6f %.6f %.6f ' % colr
+                                        vcol += '%.6f ' % tmp[1]
+                                        cbPrint(colr[0])
+                                    else:
+                                        vcol += '%.6f %.6f %.6f ' % colr
+                                    ni = 0
+                                else:
+                                    if ni == 7:
+                                        ni = 0
+                                    if alpha_found == 1:
+                                        tmp = alpha_list[fi]
+                                        vcol += '%.6f %.6f %.6f ' % colr
+                                        vcol += '%.6f ' % tmp[1]
+                                        cbPrint(colr[0])
+                                    else:
+                                        vcol += '%.6f %.6f %.6f ' % colr
+                                ni += 1
+                                ii += 1  # One more Color
+
+                                # thankyou fbx
+                        if cn == 1:
+                            vcolc1 = str((ii) * 4)
+                        else:
+                            vcolc1 = str((ii) * 3)
+                        # vcolc1=str((ii)*3)
+                        vcolc2 = str(ii)
+
+                vcols.setAttribute("id", "%s-colors" % (mname))
+                fa = self.__doc.createElement("float_array")
+                fa.setAttribute("id", "%s-colors-array" % (mname))
+                fa.setAttribute("count", "%s" % (vcolc1))
+                vcolp = self.__doc.createTextNode("%s" % (vcol))
+                fa.appendChild(vcolp)
+                tc2 = self.__doc.createElement("technique_common")
+                acc3 = self.__doc.createElement("accessor")
+                acc3.setAttribute("source", "#%s-colors-array" % (mname))
+                acc3.setAttribute("count", "%s" % (vcolc2))
+                if alpha_found == 1:
+                    acc3.setAttribute("stride", "4")
+                else:
+                    acc3.setAttribute("stride", "3")
+                parr = self.__doc.createElement("param")
+                parr.setAttribute("name", "R")
+                parr.setAttribute("type", "float")
+                parg = self.__doc.createElement("param")
+                parg.setAttribute("name", "G")
+                parg.setAttribute("type", "float")
+                parb = self.__doc.createElement("param")
+                parb.setAttribute("name", "B")
+                parb.setAttribute("type", "float")
+                para = self.__doc.createElement("param")
+                para.setAttribute("name", "A")
+                para.setAttribute("type", "float")
+                acc3.appendChild(parr)
+                acc3.appendChild(parg)
+                acc3.appendChild(parb)
+                if alpha_found == 1:
+                    acc3.appendChild(para)
+                alpha_found = 0
+                tc2.appendChild(acc3)
+                vcols.appendChild(fa)
+                vcols.appendChild(tc2)
+            me.appendChild(vcols)
+            # endvertcol
+            # vertices
+            vertic = self.__doc.createElement("vertices")
+            vertic.setAttribute("id", "%s-vertices" % (mname))
+            inputsem1 = self.__doc.createElement("input")
+            inputsem1.setAttribute("semantic", "POSITION")
+            inputsem1.setAttribute("source", "#%s-positions" % (mname))
+            vertic.appendChild(inputsem1)
+            me.appendChild(vertic)
+            # end vertices
+            # polylist
+            mat = mesh.materials[:]
+            start_time = clock()
+            if mat:
+                # yes lets go through them 1 at a time
+                for im in enumerate(mat):
+                    polyl = self.__doc.createElement("polylist")
+                    polyl.setAttribute("material", "%s" % (im[1].name))
+                    verts = ""
+                    face_count = ""
+                    face_counter = 0
+                    ni = 0
+                    texindex = 0
+                    nverts = ""
+                    for f in face_index_pairs:
+                        fi = f.vertices[:]
+                        if f.material_index == im[0]:
+                            nverts += str(len(f.vertices)) + " "
+                            face_count += str(
+                                "%s" % (face_counter))
+                            for v in f.vertices:
+                                verts += str(v) + " "
+                                if f.use_smooth:
+                                    if has_sharp_edges == 1:
+                                        verts += str("%s " % (ni))
+                                        ni += 1
+                                    else:
+                                        verts += str(v) + " "
+                                    # verts += str("%s "%(ni))
+                                    # ni += 1
+                                else:
+                                    verts += str("%s " % (ni))
+                                verts += str("%s " % (texindex))
+                                if mesh.vertex_colors:
+                                    verts += str(
+                                        "%s " % (texindex))
+                                texindex += 1
+
+                        if f.use_smooth:
+                            if has_sharp_edges != 1:
+                                ni += len(f.vertices)
+                        else:
+                            ni += 1  # #<--naughty naughty
+                        if f.material_index == im[0]:
+                            texindex = texindex
+                        else:
+                            texindex += len(fi)  # 4#3
+
+                    cbPrint(str(ni))
+                    verts += ""
+                    cbPrint('polylist took %.4f sec.' % (clock() - start_time))
+                    polyl.setAttribute("count", "%s" % (len(face_count)))
+                    inpv = self.__doc.createElement("input")
+                    inpv.setAttribute("semantic", "VERTEX")
+                    inpv.setAttribute("source", "#%s-vertices" % (mname))
+                    inpv.setAttribute("offset", "0")
+                    polyl.appendChild(inpv)
+                    inpn = self.__doc.createElement("input")
+                    inpn.setAttribute("semantic", "NORMAL")
+                    inpn.setAttribute("source", "#%s-normals" % (mname))
+                    inpn.setAttribute("offset", "1")
+                    polyl.appendChild(inpn)
+                    inpuv = self.__doc.createElement("input")
+                    inpuv.setAttribute("semantic", "TEXCOORD")
+                    inpuv.setAttribute("source", "#%s" % (uvid))
+                    # will allways be 2, vcolors can be 2 or 3
+                    inpuv.setAttribute("offset", "2")
+                    inpuv.setAttribute("set", "%s" % (mapslot))
+                    polyl.appendChild(inpuv)
+                    if mesh.vertex_colors:
+                        inpvcol = self.__doc.createElement("input")
+                        inpvcol.setAttribute("semantic", "COLOR")
+                        inpvcol.setAttribute("source", "#%s-colors" % (mname))
+                        # vcolors can be 2 or 3
+                        inpvcol.setAttribute("offset", "3")
+                        polyl.appendChild(inpvcol)
+                    vc = self.__doc.createElement("vcount")
+                    vcl = self.__doc.createTextNode("%s" % (nverts))
+                    vc.appendChild(vcl)
+                    pl = self.__doc.createElement("p")
+                    pltn = self.__doc.createTextNode("%s" % (verts))
+                    pl.appendChild(pltn)
+                    polyl.appendChild(vc)
+                    polyl.appendChild(pl)
+                    me.appendChild(polyl)
+
+                    # endpolylist
+            has_sharp_edges = 0
+            emt = self.__doc.createElement("extra")
+            emtt = self.__doc.createElement("technique")
+            emtt.setAttribute("profile", "MAYA")
+            dsd = self.__doc.createElement("double_sided")
+            dsdtn = self.__doc.createTextNode("1")
+            dsd.appendChild(dsdtn)
+            emtt.appendChild(dsd)
+            emt.appendChild(emtt)
+            me.appendChild(emt)
+            geo.appendChild(me)
+            libgeo.appendChild(geo)
+
+            # bpy.data.meshes.remove(mesh)
+
+    def __get_objects_for_library_geometries(self):
+        objects = []
+        for object_ in bpy.context.selected_objects:
+            if (object_.name[:6] != "_joint"):
+                if (object_.type == "MESH"):
+                    objects.append(object_)
+
+        return objects
 
     def __export_library_controllers(self, parent_element):
         libcont = self.__doc.createElement("library_controllers")
