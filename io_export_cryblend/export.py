@@ -2119,12 +2119,12 @@ class CrytekDaeExporter:
 
             if lnname[:8] == "animnode":
                 ande2 = 1
-                cbPrint(i["animname"])
-                cbPrint(i["startframe"])
-                cbPrint(i["endframe"])
                 actname = i["animname"]
                 sf = i["startframe"]
                 ef = i["endframe"]
+                cbPrint(actname)
+                cbPrint(sf)
+                cbPrint(ef)
                 anicl = self.__doc.createElement("animation_clip")
                 anicl.setAttribute("id", "%s-%s" % (actname, ename[14:]))
                 anicl.setAttribute("start", "%s" % (convert_time(sf)))
@@ -2134,46 +2134,17 @@ class CrytekDaeExporter:
                         if i.type == 'ARMATURE':
                             cbPrint("Object is armature, cannot process animations.")
                         elif i.animation_data.action:
-                            act = i.animation_data.action
-                            curves = act.fcurves
-                            frstrt = curves.data.frame_range[0]
-                            frend = curves.data.frame_range[1]
-                            anmlx = self.extract_anil(i, 'X')
-                            anmly = self.extract_anil(i, 'Y')
-                            anmlz = self.extract_anil(i, 'Z')
-                            anmrx = self.extract_anir(i, 'X')
-                            anmry = self.extract_anir(i, 'Y')
-                            anmrz = self.extract_anir(i, 'Z')
-                            instlx = self.__doc.createElement(
-                                "instance_animation")
-                            instlx.setAttribute("url", "#%s_location_X" % (i.name))
-                            anicl.appendChild(instlx)
-                            instly = self.__doc.createElement(
-                                "instance_animation")
-                            instly.setAttribute("url", "#%s_location_Y" % (i.name))
-                            anicl.appendChild(instly)
-                            instlz = self.__doc.createElement(
-                                "instance_animation")
-                            instlz.setAttribute("url", "#%s_location_Z" % (i.name))
-                            anicl.appendChild(instlz)
-                            instrx = self.__doc.createElement(
-                                "instance_animation")
-                            instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
-                            anicl.appendChild(instrx)
-                            instry = self.__doc.createElement(
-                                "instance_animation")
-                            instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
-                            anicl.appendChild(instry)
-                            instrz = self.__doc.createElement(
-                                "instance_animation")
-                            instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
-                            anicl.appendChild(instrz)
-                            libanm.appendChild(anmlx)
-                            libanm.appendChild(anmly)
-                            libanm.appendChild(anmlz)
-                            libanm.appendChild(anmrx)
-                            libanm.appendChild(anmry)
-                            libanm.appendChild(anmrz)
+
+                            for axis in self.__axises.keys():
+                                anm = self.extract_anil(i, axis)
+                                libanm.appendChild(anm)
+
+                            for axis in self.__axises.keys():
+                                anm = self.extract_anir(i, axis)
+                                libanm.appendChild(anm)
+
+                            self.__export_instance_animation_parameters(i,
+                                                                        anicl)
 
                 libanmcl.appendChild(anicl)
 
@@ -2206,103 +2177,37 @@ class CrytekDaeExporter:
                                     cbPrint(ai["animname"])
                                     cbPrint(ai["startframe"])
                                     cbPrint(ai["endframe"])
-                                    actname = ai["animname"]
-                                    sf = ai["startframe"]
-                                    ef = ai["endframe"]
-                                    anicl = self.__doc.createElement("animation_clip")
-                                    anicl.setAttribute("id", "%s-%s" % (actname, ename[14:]))
-                                    anicl.setAttribute("start", "%s" % (convert_time(sf)))
-                                    anicl.setAttribute("end", "%s" % (convert_time(ef)))
-                                    instlx = self.__doc.createElement(
-                                        "instance_animation")
-                                    instlx.setAttribute("url", "#%s_location_X" % (i.name))
-                                    anicl.appendChild(instlx)
-                                    instly = self.__doc.createElement(
-                                        "instance_animation")
-                                    instly.setAttribute("url", "#%s_location_Y" % (i.name))
-                                    anicl.appendChild(instly)
-                                    instlz = self.__doc.createElement(
-                                        "instance_animation")
-                                    instlz.setAttribute("url", "#%s_location_Z" % (i.name))
-                                    anicl.appendChild(instlz)
-                                    instrx = self.__doc.createElement(
-                                        "instance_animation")
-                                    instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
-                                    anicl.appendChild(instrx)
-                                    instry = self.__doc.createElement(
-                                        "instance_animation")
-                                    instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
-                                    anicl.appendChild(instry)
-                                    instrz = self.__doc.createElement(
-                                        "instance_animation")
-                                    instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
-                                    anicl.appendChild(instrz)
+                                    act_name = ai["animname"]
+                                    start_frame = ai["startframe"]
+                                    end_frame = ai["endframe"]
+
+                                    anicl = self.__export__animation_clip(
+                                                                i,
+                                                                ename,
+                                                                act_name,
+                                                                start_frame,
+                                                                end_frame)
                                     libanmcl.appendChild(anicl)
 
                             if ande == 0:
                                 if self.__config.merge_anm:
                                     if asw == 0:
-                                        anicl = self.__doc.createElement(
-                                            "animation_clip")
-                                        anicl.setAttribute("id", "%s-%s" % (act.name, ename[14:]))
-                                        anicl.setAttribute("start", "%s" % (convert_time(frstrt)))
-                                        anicl.setAttribute("end", "%s" % (convert_time(frend)))
-                                        instlx = self.__doc.createElement(
-                                            "instance_animation")
-                                        instlx.setAttribute("url", "#%s_location_X" % (i.name))
-                                        anicl.appendChild(instlx)
-                                        instly = self.__doc.createElement(
-                                            "instance_animation")
-                                        instly.setAttribute("url", "#%s_location_Y" % (i.name))
-                                        anicl.appendChild(instly)
-                                        instlz = self.__doc.createElement(
-                                            "instance_animation")
-                                        instlz.setAttribute("url", "#%s_location_Z" % (i.name))
-                                        anicl.appendChild(instlz)
-                                        instrx = self.__doc.createElement(
-                                            "instance_animation")
-                                        instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
-                                        anicl.appendChild(instrx)
-                                        instry = self.__doc.createElement(
-                                            "instance_animation")
-                                        instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
-                                        anicl.appendChild(instry)
-                                        instrz = self.__doc.createElement(
-                                            "instance_animation")
-                                        instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
-                                        anicl.appendChild(instrz)
+                                        anicl = self.__export__animation_clip(
+                                                                i,
+                                                                ename,
+                                                                act.name,
+                                                                frstrt,
+                                                                frend)
                                         asw = 1
                                     else:
                                         cbPrint("Merging clips.")
                                 else:
-                                    anicl = self.__doc.createElement("animation_clip")
-                                    anicl.setAttribute("id", "%s-%s" % (act.name, ename[14:]))
-                                    anicl.setAttribute("start", "%s" % (convert_time(frstrt)))
-                                    anicl.setAttribute("end", "%s" % (convert_time(frend)))
-                                    instlx = self.__doc.createElement(
-                                        "instance_animation")
-                                    instlx.setAttribute("url", "#%s_location_X" % (i.name))
-                                    anicl.appendChild(instlx)
-                                    instly = self.__doc.createElement(
-                                        "instance_animation")
-                                    instly.setAttribute("url", "#%s_location_Y" % (i.name))
-                                    anicl.appendChild(instly)
-                                    instlz = self.__doc.createElement(
-                                        "instance_animation")
-                                    instlz.setAttribute("url", "#%s_location_Z" % (i.name))
-                                    anicl.appendChild(instlz)
-                                    instrx = self.__doc.createElement(
-                                        "instance_animation")
-                                    instrx.setAttribute("url", "#%s_rotation_euler_X" % (i.name))
-                                    anicl.appendChild(instrx)
-                                    instry = self.__doc.createElement(
-                                        "instance_animation")
-                                    instry.setAttribute("url", "#%s_rotation_euler_Y" % (i.name))
-                                    anicl.appendChild(instry)
-                                    instrz = self.__doc.createElement(
-                                        "instance_animation")
-                                    instrz.setAttribute("url", "#%s_rotation_euler_Z" % (i.name))
-                                    anicl.appendChild(instrz)
+                                    anicl = self.__export__animation_clip(
+                                                                i,
+                                                                ename,
+                                                                act.name,
+                                                                frstrt,
+                                                                frend)
                         if asw == 0:
                             libanmcl.appendChild(anicl)
                         libanm.appendChild(anmlx)
@@ -2316,6 +2221,26 @@ class CrytekDaeExporter:
                 libanmcl.appendChild(anicl)
         parent_element.appendChild(libanmcl)
         parent_element.appendChild(libanm)
+
+    def __export__animation_clip(self, i, ename, act_name, start_frame, end_frame):
+        anicl = self.__doc.createElement("animation_clip")
+        anicl.setAttribute("id", "%s-%s" % (act_name, ename[14:]))
+        anicl.setAttribute("start", "%s" % (convert_time(start_frame)))
+        anicl.setAttribute("end", "%s" % (convert_time(end_frame)))
+        self.__export_instance_animation_parameters(i, anicl)
+
+        return anicl
+
+    def __export_instance_animation_parameters(self, i, anicl):
+        self.__export_instance_parameter(i, anicl, "location")
+        self.__export_instance_parameter(i, anicl, "rotation_euler")
+
+    def __export_instance_parameter(self, i, anicl, parameter):
+        for axis in self.__axises.keys():
+            inst = self.__doc.createElement("instance_animation")
+            inst.setAttribute("url", "#%s_%s_%s"
+                              % (i.name, parameter, axis))
+            anicl.appendChild(inst)
 
     def __export_library_visual_scenes(self, parent_element):
         current_element = self.__doc.createElement("library_visual_scenes")
