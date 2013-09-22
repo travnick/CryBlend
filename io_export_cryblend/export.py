@@ -36,11 +36,7 @@ from mathutils import Matrix, Vector
 from time import clock
 from xml.dom.minidom import Document
 import bpy
-import fnmatch
 import os
-import random
-import subprocess
-import sys
 import threading
 import time
 import xml.dom.minidom
@@ -53,311 +49,8 @@ AXISES = {
 }
 
 
-# the following func is from
-# http://ronrothman.com/
-#    public/leftbraned/xml-dom-minidom-toprettyxml-and-silly-whitespace/
-# modified to use the current ver of shipped python
-def fixed_writexml(self, writer, indent="", addindent="", newl=""):
-    # indent = current indentation
-    # addindent = indentation to add to higher levels
-    # newl = newline string
-        writer.write(indent + "<" + self.tagName)
-        attrs = self._get_attributes()
-        for a_name in sorted(attrs.keys()):
-            writer.write(" %s=\"" % a_name)
-            xml.dom.minidom._write_data(writer, attrs[a_name].value)
-            writer.write("\"")
-        if self.childNodes:
-            if (len(self.childNodes) == 1
-                and self.childNodes[0].nodeType
-                    == xml.dom.minidom.Node.TEXT_NODE):
-                writer.write(">")
-                self.childNodes[0].writexml(writer, "", "", "")
-                writer.write("</%s>%s" % (self.tagName, newl))
-                return
-            writer.write(">%s" % (newl))
-            for node in self.childNodes:
-                node.writexml(writer, indent + addindent, addindent, newl)
-            writer.write("%s</%s>%s" % (indent, self.tagName, newl))
-        else:
-            writer.write("/>%s" % (newl))
 # replace minidom's function with ours
-xml.dom.minidom.Element.writexml = fixed_writexml
-
-
-def write_to_file(config, doc, file_name, exe):
-    xml_string = doc.toprettyxml(indent="  ")
-    file = open(file_name, "w")
-    file.write(xml_string)
-    file.close()
-
-    dae_file_for_rc = get_absolute_path_for_current_system(file_name)
-    rc_params = ["/verbose", "/threads=cores"]
-    if config.refresh_rc:
-        rc_params.append("/refresh")
-
-    if config.run_rc or config.do_materials:
-        if config.do_materials:
-            rc_params.append("/createmtl=1")
-
-        rc_process = run_rc(exe, dae_file_for_rc, rc_params)
-
-        if config.do_materials:
-            mtl_fix_thread = threading.Thread(
-                target=fix_normalmap_in_mtls,
-                args=(rc_process, file_name)
-            )
-            mtl_fix_thread.start()
-
-    if config.make_layer:
-        layer = make_layer(file_name)
-        lyr_file_name = os.path.splitext(file_name)[0] + ".lyr"
-        file = open(lyr_file_name, 'w')
-        file.write(layer)
-        file.close()
-
-
-def make_layer(fname):
-    lName = "ExportedLayer"
-    layerDoc = Document()
-    # ObjectLayer
-    objLayer = layerDoc.createElement("ObjectLayer")
-    # Layer
-    layer = layerDoc.createElement("Layer")
-    layer.setAttribute('name', lName)
-    layer.setAttribute('GUID', generateGUID())
-    layer.setAttribute('FullName', lName)
-    layer.setAttribute('External', '0')
-    layer.setAttribute('Exportable', '1')
-    layer.setAttribute('ExportLayerPak', '1')
-    layer.setAttribute('DefaultLoaded', '0')
-    layer.setAttribute('HavePhysics', '1')
-    layer.setAttribute('Expanded', '0')
-    layer.setAttribute('IsDefaultColor', '1')
-    # Layer Objects
-    layerObjects = layerDoc.createElement("LayerObjects")
-    # Actual Objects
-    for group in bpy.context.blend_data.groups:
-        if group.objects > 1:
-            origin = 0, 0, 0
-            rotation = 1, 0, 0, 0
-        else:
-            origin = group.objects[0].location
-            rotation = group.objects[0].delta_rotation_quaternion
-        if 'CryExportNode' in group.name:
-            object_node = layerDoc.createElement("Object")
-            object_node.setAttribute('name', group.name[14:])
-            object_node.setAttribute('Type', 'Entity')
-            object_node.setAttribute('Id', generateGUID())
-            object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
-            object_node.setAttribute('Layer', lName)
-            positionString = "{!s}, {!s}, {!s}".format(
-                origin[0], origin[1], origin[2])
-            object_node.setAttribute('Pos', positionString)
-            rotationString = "{!s}, {!s}, {!s}, {!s}".format(
-                rotation[0], rotation[1],
-                rotation[2], rotation[3])
-            object_node.setAttribute('Rotate', rotationString)
-            object_node.setAttribute('EntityClass', 'BasicEntity')
-            object_node.setAttribute('FloorNumber', '-1')
-            object_node.setAttribute('RenderNearest', '0')
-            object_node.setAttribute('NoStaticDecals', '0')
-            object_node.setAttribute('CreatedThroughPool', '0')
-            object_node.setAttribute('MatLayersMask', '0')
-            object_node.setAttribute('OutdoorOnly', '0')
-            object_node.setAttribute('CastShadow', '1')
-            object_node.setAttribute('MotionBlurMultiplier', '1')
-            object_node.setAttribute('LodRatio', '100')
-            object_node.setAttribute('ViewDistRatio', '100')
-            object_node.setAttribute('HiddenInGame', '0')
-            properties = layerDoc.createElement("Properties")
-            properties.setAttribute('object_Model', '/Objects/'
-                                    + group.name[14:] + '.cgf')
-            properties.setAttribute('bCanTriggerAreas', '0')
-            properties.setAttribute('bExcludeCover', '0')
-            properties.setAttribute('DmgFactorWhenCollidingAI', '1')
-            properties.setAttribute('esFaction', '')
-            properties.setAttribute('bHeavyObject', '0')
-            properties.setAttribute('bInteractLargeObject', '0')
-            properties.setAttribute('bMissionCritical', '0')
-            properties.setAttribute('bPickable', '0')
-            properties.setAttribute('soclasses_SmartObjectClass', '')
-            properties.setAttribute('bUsable', '0')
-            properties.setAttribute('UseMessage', '0')
-            health = layerDoc.createElement("Health")
-            health.setAttribute('bInvulnerable', '1')
-            health.setAttribute('MaxHealth', '500')
-            health.setAttribute('bOnlyEnemyFire', '1')
-            interest = layerDoc.createElement("Interest")
-            interest.setAttribute('soaction_Action', '')
-            interest.setAttribute('bInteresting', '0')
-            interest.setAttribute('InterestLevel', '1')
-            interest.setAttribute('Pause', '15')
-            interest.setAttribute('Radius', '20')
-            interest.setAttribute('bShared', '0')
-            vOffset = layerDoc.createElement('vOffset')
-            vOffset.setAttribute('x', '0')
-            vOffset.setAttribute('y', '0')
-            vOffset.setAttribute('z', '0')
-            interest.appendChild(vOffset)
-            properties.appendChild(health)
-            properties.appendChild(interest)
-            object_node.appendChild(properties)
-            layerObjects.appendChild(object_node)
-
-    layer.appendChild(layerObjects)
-    objLayer.appendChild(layer)
-    layerDoc.appendChild(objLayer)
-    return layerDoc.toprettyxml(indent="  ")
-
-
-def get_absolute_path_for_current_system(file_path):
-    # 'z:' is for wine (linux, mac) path
-    # there should be better way to determine it
-    WINE_DEFAULT_DRIVE_LETTER = "z:"
-
-    [is_relative, file_path] = strip_blender_path_prefix(file_path)
-
-    if is_relative:
-        blend_file_path = os.path.dirname(bpy.data.filepath)
-        file_path = "%s/%s" % (blend_file_path, file_path)
-
-    file_path = os.path.abspath(file_path)
-
-    if not sys.platform == 'win32':
-        file_path = "%s%s" % (WINE_DEFAULT_DRIVE_LETTER, file_path)
-
-    return file_path
-
-
-def run_rc(rc_path, files_to_process, params=None):
-    cbPrint(rc_path)
-    process_params = [rc_path]
-
-    if isinstance(files_to_process, list):
-        process_params.extend(files_to_process)
-    else:
-        process_params.append(files_to_process)
-
-    process_params.extend(params)
-
-    cbPrint(params)
-    cbPrint(files_to_process)
-
-    try:
-        run_object = subprocess.Popen(process_params)
-    except:
-        raise exceptions.NoRcSelectedException
-
-    return run_object
-
-
-def fix_normalmap_in_mtls(rc_process, dae_file):
-    SUCCESS = 0
-
-    return_code = rc_process.wait()
-
-    if return_code == SUCCESS:
-        export_directory = os.path.dirname(dae_file)
-
-        mtl_files = get_mtl_files_in_directory(export_directory)
-
-        for mtl_file_name in mtl_files:
-            fix_normalmap_in_mtl(mtl_file_name)
-
-
-def get_mtl_files_in_directory(directory):
-    MTL_MATCH_STRING = "*.{!s}".format("mtl")
-
-    mtl_files = []
-    for file in os.listdir(directory):
-        if fnmatch.fnmatch(file, MTL_MATCH_STRING):
-            filepath = "{!s}/{!s}".format(directory, file)
-            mtl_files.append(filepath)
-
-    return mtl_files
-
-
-def fix_normalmap_in_mtl(mtl_file_name):
-    TMP_FILE_SUFFIX = ".tmp"
-    BAD_TAG_NAME = "<Texture Map=\"NormalMap\" File=\""
-    GOOD_TAG_NAME = "<Texture Map=\"Bumpmap\" File=\""
-
-    tmp_mtl_file_name = mtl_file_name + TMP_FILE_SUFFIX
-    mtl_old_file = open(mtl_file_name, "r")
-    mtl_new_file = open(tmp_mtl_file_name, "w")
-
-    for line in mtl_old_file:
-        line = line.replace(BAD_TAG_NAME, GOOD_TAG_NAME)
-        mtl_new_file.write(line)
-
-    mtl_old_file.close()
-    mtl_new_file.close()
-
-    os.remove(mtl_file_name)
-    os.rename(tmp_mtl_file_name, mtl_file_name)
-
-
-def generateGUID():
-    GUID = '{'
-    GUID += randomSector(8)
-    GUID += '-'
-    GUID += randomSector(4)
-    GUID += '-'
-    GUID += randomSector(4)
-    GUID += '-'
-    GUID += randomSector(4)
-    GUID += '-'
-    GUID += randomSector(12)
-    GUID += '}'
-    return GUID
-
-
-def randomSector(length):
-    charOptions = list(range(ord("0"), ord("9") + 1))
-    charOptions += list(range(ord("A"), ord("Z") + 1))
-    charOptionsLength = len(charOptions)
-    sector = ''
-    counter = 0
-    while counter < length:
-        charAsciiCode = charOptions[random.randrange(0, charOptionsLength)]
-        sector += chr(charAsciiCode)
-        counter += 1
-    return sector
-
-
-def convert_time(frx):
-    fps_b = bpy.context.scene.render.fps_base
-    fps = bpy.context.scene.render.fps
-    s = ((fps_b * frx) / fps)
-    return s
-
-
-# borrowed from obj exporter
-# modified by angelo j miner
-def veckey3d(v):
-    return (round(v.x / 32767.0),
-            round(v.y / 32767.0),
-            round(v.z / 32767.0))
-
-
-def veckey3d2(v):
-    return (v.x,
-            v.y,
-            v.z)
-
-
-def veckey3d21(v):
-    return (round(v.x, 6),
-            round(v.y, 6),
-            round(v.z, 6))
-
-
-def veckey3d3(vn, fn):
-    facenorm = fn
-    return (round((facenorm.x * vn.x) / 2),
-            round((facenorm.y * vn.y) / 2),
-            round((facenorm.z * vn.z) / 2))
+xml.dom.minidom.Element.writexml = utils.fixed_writexml
 
 
 class CrytekDaeExporter:
@@ -787,13 +480,13 @@ class CrytekDaeExporter:
                     khrx = keyx.handle_right[0]
                     khry = keyx.handle_right[1]
                     frame, value = keyx.co
-                    time = convert_time(frame)
+                    time = utils.convert_time(frame)
                     intx += ("%s " % (keyx.interpolation))
                     inpx += ("%.6f " % (time))
                     outpx += ("%.6f " % (value))
 
-                    intangfirst = convert_time(khlx)
-                    outangfirst = convert_time(khrx)
+                    intangfirst = utils.convert_time(khlx)
+                    outangfirst = utils.convert_time(khrx)
                     intangx += ("%.6f %.6f " % (intangfirst, khly))
                     outtangx += ("%.6f %.6f " % (outangfirst, khry))
                     ii += 1
@@ -968,12 +661,12 @@ class CrytekDaeExporter:
                     khrx = keyx.handle_right[0]
                     khry = keyx.handle_right[1]
                     frame, value = keyx.co
-                    time = convert_time(frame)
+                    time = utils.convert_time(frame)
                     intx += ("%s " % (keyx.interpolation))
                     inpx += ("%.6f " % (time))
                     outpx += ("%.6f " % (value * utils.toD))
-                    intangfirst = convert_time(khlx)
-                    outangfirst = convert_time(khrx)
+                    intangfirst = utils.convert_time(khlx)
+                    outangfirst = utils.convert_time(khrx)
                     intangx += ("%.6f %.6f " % (intangfirst, khly))
                     outtangx += ("%.6f %.6f " % (outangfirst, khry))
                     ii += 1
@@ -1212,7 +905,7 @@ class CrytekDaeExporter:
             else:
                 image_path = image.filepath
 
-            image_path = get_relative_path(image_path)
+            image_path = utils.get_relative_path(image_path)
 
             image_element = self.__doc.createElement("image")
             image_element.setAttribute("id", "%s" % image.name)
@@ -1230,7 +923,7 @@ class CrytekDaeExporter:
         return os.path.splitext(image_path)[0] + ".dds"
 
     def __convert_to_dds(self, images_to_convert):
-        rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
+        rc_params = ["/verbose", "/threads=cores", "/userdialog=1", "/pc"]
         if self.__config.refresh_rc:
             rc_params.append("/refresh")
 
@@ -1239,10 +932,11 @@ class CrytekDaeExporter:
         for image in images_to_convert:
             tiff_file_path = self.__get_tiff_image_path(image.filepath)
             self.__save_as_tiff(image, tiff_file_path)
-            tiff_image = get_absolute_path_for_current_system(tiff_file_path)
+            tiff_image = utils.get_absolute_path_for_current_system(
+                                                                tiff_file_path)
             tiff_images.append(tiff_image)
 
-            run_rc(self.__exe, tiff_image, rc_params)
+            utils.run_rc(self.__exe, tiff_image, rc_params)
 
     def __get_tiff_image_path(self, image_path):
         return os.path.splitext(image_path)[0] + ".tif"
@@ -1606,12 +1300,12 @@ class CrytekDaeExporter:
 
                         if ush == 1:
                             v = me_verts[v_idx]
-                            noKey = veckey3d21(f.normal)
+                            noKey = utils.veckey3d21(f.normal)
                             float_normals += '%.6f %.6f %.6f ' % noKey
                             iin += "1"
                         if ush == 2:
                             v = me_verts[v_idx]
-                            noKey = veckey3d21(v.normal)
+                            noKey = utils.veckey3d21(v.normal)
                             float_normals += '%.6f %.6f %.6f ' % noKey
                             iin += "1"
                         ush = 0
@@ -1646,7 +1340,7 @@ class CrytekDaeExporter:
                             fnly / len(fnc),
                             fnlz / len(fnc))
                     else:
-                        noKey = veckey3d21(f.normal)
+                        noKey = utils.veckey3d21(f.normal)
                         float_normals += '%.6f %.6f %.6f ' % noKey
                         iin += "1"  # for v_idx in f.vertices:
 
@@ -2172,8 +1866,8 @@ class CrytekDaeExporter:
                 cbPrint(ef)
                 anicl = self.__doc.createElement("animation_clip")
                 anicl.setAttribute("id", "%s-%s" % (actname, ename[14:]))
-                anicl.setAttribute("start", "%s" % (convert_time(sf)))
-                anicl.setAttribute("end", "%s" % (convert_time(ef)))
+                anicl.setAttribute("start", "%s" % (utils.convert_time(sf)))
+                anicl.setAttribute("end", "%s" % (utils.convert_time(ef)))
                 for i in bpy.context.selected_objects:
                     if i.animation_data:
                         if i.type == 'ARMATURE':
@@ -2268,8 +1962,8 @@ class CrytekDaeExporter:
     def __export__animation_clip(self, i, ename, act_name, start_frame, end_frame):
         anicl = self.__doc.createElement("animation_clip")
         anicl.setAttribute("id", "%s-%s" % (act_name, ename[14:]))
-        anicl.setAttribute("start", "%s" % (convert_time(start_frame)))
-        anicl.setAttribute("end", "%s" % (convert_time(end_frame)))
+        anicl.setAttribute("start", "%s" % (utils.convert_time(start_frame)))
+        anicl.setAttribute("end", "%s" % (utils.convert_time(end_frame)))
         self.__export_instance_animation_parameters(i, anicl)
 
         return anicl
@@ -2332,39 +2026,164 @@ class CrytekDaeExporter:
         parent_element.appendChild(scene)
 
 
-def get_relative_path(filepath):
-    [is_relative, filepath] = strip_blender_path_prefix(filepath)
+def write_to_file(config, doc, file_name, exe):
+    xml_string = doc.toprettyxml(indent="  ")
+    file = open(file_name, "w")
+    file.write(xml_string)
+    file.close()
 
-    if is_relative:
-        return filepath
-    else:
-        return make_relative_path(filepath)
+    dae_file_for_rc = utils.get_absolute_path_for_current_system(file_name)
+    rc_params = ["/verbose", "/threads=cores"]
+    if config.refresh_rc:
+        rc_params.append("/refresh")
+
+    if config.run_rc or config.do_materials:
+        if config.do_materials:
+            rc_params.append("/createmtl=1")
+
+        rc_process = utils.run_rc(exe, dae_file_for_rc, rc_params)
+
+        if config.do_materials:
+            mtl_fix_thread = threading.Thread(
+                target=fix_normalmap_in_mtls,
+                args=(rc_process, file_name)
+            )
+            mtl_fix_thread.start()
+
+    if config.make_layer:
+        layer = make_layer(file_name)
+        lyr_file_name = os.path.splitext(file_name)[0] + ".lyr"
+        file = open(lyr_file_name, 'w')
+        file.write(layer)
+        file.close()
 
 
-def strip_blender_path_prefix(path):
-    is_relative = False
-    BLENDER_RELATIVE_PATH_PREFIX = "//"
-    prefix_length = len(BLENDER_RELATIVE_PATH_PREFIX)
+def make_layer(fname):
+    lName = "ExportedLayer"
+    layerDoc = Document()
+    # ObjectLayer
+    objLayer = layerDoc.createElement("ObjectLayer")
+    # Layer
+    layer = layerDoc.createElement("Layer")
+    layer.setAttribute('name', lName)
+    layer.setAttribute('GUID', utils.generateGUID())
+    layer.setAttribute('FullName', lName)
+    layer.setAttribute('External', '0')
+    layer.setAttribute('Exportable', '1')
+    layer.setAttribute('ExportLayerPak', '1')
+    layer.setAttribute('DefaultLoaded', '0')
+    layer.setAttribute('HavePhysics', '1')
+    layer.setAttribute('Expanded', '0')
+    layer.setAttribute('IsDefaultColor', '1')
+    # Layer Objects
+    layerObjects = layerDoc.createElement("LayerObjects")
+    # Actual Objects
+    for group in bpy.context.blend_data.groups:
+        if group.objects > 1:
+            origin = 0, 0, 0
+            rotation = 1, 0, 0, 0
+        else:
+            origin = group.objects[0].location
+            rotation = group.objects[0].delta_rotation_quaternion
+        if 'CryExportNode' in group.name:
+            object_node = layerDoc.createElement("Object")
+            object_node.setAttribute('name', group.name[14:])
+            object_node.setAttribute('Type', 'Entity')
+            object_node.setAttribute('Id', utils.generateGUID())
+            object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
+            object_node.setAttribute('Layer', lName)
+            positionString = "{!s}, {!s}, {!s}".format(
+                origin[0], origin[1], origin[2])
+            object_node.setAttribute('Pos', positionString)
+            rotationString = "{!s}, {!s}, {!s}, {!s}".format(
+                rotation[0], rotation[1],
+                rotation[2], rotation[3])
+            object_node.setAttribute('Rotate', rotationString)
+            object_node.setAttribute('EntityClass', 'BasicEntity')
+            object_node.setAttribute('FloorNumber', '-1')
+            object_node.setAttribute('RenderNearest', '0')
+            object_node.setAttribute('NoStaticDecals', '0')
+            object_node.setAttribute('CreatedThroughPool', '0')
+            object_node.setAttribute('MatLayersMask', '0')
+            object_node.setAttribute('OutdoorOnly', '0')
+            object_node.setAttribute('CastShadow', '1')
+            object_node.setAttribute('MotionBlurMultiplier', '1')
+            object_node.setAttribute('LodRatio', '100')
+            object_node.setAttribute('ViewDistRatio', '100')
+            object_node.setAttribute('HiddenInGame', '0')
+            properties = layerDoc.createElement("Properties")
+            properties.setAttribute('object_Model', '/Objects/'
+                                    + group.name[14:] + '.cgf')
+            properties.setAttribute('bCanTriggerAreas', '0')
+            properties.setAttribute('bExcludeCover', '0')
+            properties.setAttribute('DmgFactorWhenCollidingAI', '1')
+            properties.setAttribute('esFaction', '')
+            properties.setAttribute('bHeavyObject', '0')
+            properties.setAttribute('bInteractLargeObject', '0')
+            properties.setAttribute('bMissionCritical', '0')
+            properties.setAttribute('bPickable', '0')
+            properties.setAttribute('soclasses_SmartObjectClass', '')
+            properties.setAttribute('bUsable', '0')
+            properties.setAttribute('UseMessage', '0')
+            health = layerDoc.createElement("Health")
+            health.setAttribute('bInvulnerable', '1')
+            health.setAttribute('MaxHealth', '500')
+            health.setAttribute('bOnlyEnemyFire', '1')
+            interest = layerDoc.createElement("Interest")
+            interest.setAttribute('soaction_Action', '')
+            interest.setAttribute('bInteresting', '0')
+            interest.setAttribute('InterestLevel', '1')
+            interest.setAttribute('Pause', '15')
+            interest.setAttribute('Radius', '20')
+            interest.setAttribute('bShared', '0')
+            vOffset = layerDoc.createElement('vOffset')
+            vOffset.setAttribute('x', '0')
+            vOffset.setAttribute('y', '0')
+            vOffset.setAttribute('z', '0')
+            interest.appendChild(vOffset)
+            properties.appendChild(health)
+            properties.appendChild(interest)
+            object_node.appendChild(properties)
+            layerObjects.appendChild(object_node)
 
-    if path.startswith(BLENDER_RELATIVE_PATH_PREFIX):
-        path = path[prefix_length:]
-        is_relative = True
+    layer.appendChild(layerObjects)
+    objLayer.appendChild(layer)
+    layerDoc.appendChild(objLayer)
+    return layerDoc.toprettyxml(indent="  ")
 
-    return (is_relative, path)
+
+def fix_normalmap_in_mtls(rc_process, dae_file):
+    SUCCESS = 0
+
+    return_code = rc_process.wait()
+
+    if return_code == SUCCESS:
+        export_directory = os.path.dirname(dae_file)
+
+        mtl_files = utils.get_mtl_files_in_directory(export_directory)
+
+        for mtl_file_name in mtl_files:
+            fix_normalmap_in_mtl(mtl_file_name)
 
 
-def make_relative_path(filepath):
-    blend_file_path = bpy.data.filepath
+def fix_normalmap_in_mtl(mtl_file_name):
+    TMP_FILE_SUFFIX = ".tmp"
+    BAD_TAG_NAME = "<Texture Map=\"NormalMap\" File=\""
+    GOOD_TAG_NAME = "<Texture Map=\"Bumpmap\" File=\""
 
-    if not blend_file_path:
-        raise exceptions.BlendNotSavedException
+    tmp_mtl_file_name = mtl_file_name + TMP_FILE_SUFFIX
+    mtl_old_file = open(mtl_file_name, "r")
+    mtl_new_file = open(tmp_mtl_file_name, "w")
 
-    try:
-        relative_path = os.path.relpath(filepath, blend_file_path)
-        return "\"%s\"" % relative_path
+    for line in mtl_old_file:
+        line = line.replace(BAD_TAG_NAME, GOOD_TAG_NAME)
+        mtl_new_file.write(line)
 
-    except ValueError:
-        raise exceptions.TextureAndBlendDiskMismatch(blend_file_path, filepath)
+    mtl_old_file.close()
+    mtl_new_file.close()
+
+    os.remove(mtl_file_name)
+    os.rename(tmp_mtl_file_name, mtl_file_name)
 
 
 def save(config, context, exe):
