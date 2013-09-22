@@ -32,7 +32,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 9, 9),
+    "version": (4, 9, 9, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -1330,6 +1330,12 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Generally a Good Idea",
             default=False,
             )
+    convert_source_inage_to_dds = BoolProperty(
+            name="Convert images to DDS",
+            description="Converts source textures to DDSs"
+                        + " while exporting materials",
+            default=False,
+            )
     refresh_rc = BoolProperty(
             name="Refresh RC output",
             description="Generally a Good Idea",
@@ -1359,6 +1365,7 @@ class Export(bpy.types.Operator, ExportHelper):
                 'avg_pface',
                 'run_rc',
                 'do_materials',
+                'convert_source_inage_to_dds',
                 'refresh_rc',
                 'include_ik',
                 'make_layer'

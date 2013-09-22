@@ -46,6 +46,13 @@ import time
 import xml.dom.minidom
 
 
+AXISES = {
+    'X': 0,
+    'Y': 1,
+    'Z': 2,
+}
+
+
 # the following func is from
 # http://ronrothman.com/
 #    public/leftbraned/xml-dom-minidom-toprettyxml-and-silly-whitespace/
@@ -56,8 +63,7 @@ def fixed_writexml(self, writer, indent="", addindent="", newl=""):
     # newl = newline string
         writer.write(indent + "<" + self.tagName)
         attrs = self._get_attributes()
-        a_names = sorted(attrs.keys())
-        for a_name in a_names:
+        for a_name in sorted(attrs.keys()):
             writer.write(" %s=\"" % a_name)
             xml.dom.minidom._write_data(writer, attrs[a_name].value)
             writer.write("\"")
@@ -85,7 +91,7 @@ def write_to_file(config, doc, file_name, exe):
     file.write(xml_string)
     file.close()
 
-    dae_file_for_rc = get_dae_path_for_rc(file_name)
+    dae_file_for_rc = get_absolute_path_for_current_system(file_name)
     rc_params = ["/verbose", "/threads=cores"]
     if config.refresh_rc:
         rc_params.append("/refresh")
@@ -205,26 +211,41 @@ def make_layer(fname):
     return layerDoc.toprettyxml(indent="  ")
 
 
-def get_dae_path_for_rc(daeFilePath):
+def get_absolute_path_for_current_system(file_path):
     # 'z:' is for wine (linux, mac) path
     # there should be better way to determine it
     WINE_DEFAULT_DRIVE_LETTER = "z:"
 
+    [is_relative, file_path] = strip_blender_path_prefix(file_path)
+
+    if is_relative:
+        blend_file_path = os.path.dirname(bpy.data.filepath)
+        file_path = "%s/%s" % (blend_file_path, file_path)
+
+    file_path = os.path.abspath(file_path)
+
     if not sys.platform == 'win32':
-        daeFilePath = WINE_DEFAULT_DRIVE_LETTER + daeFilePath
+        file_path = "%s%s" % (WINE_DEFAULT_DRIVE_LETTER, file_path)
 
-    return daeFilePath
+    return file_path
 
 
-def run_rc(rc_path, dae_path, params=None):
+def run_rc(rc_path, files_to_process, params=None):
     cbPrint(rc_path)
-    rc_params = " ".join(params)
+    process_params = [rc_path]
 
-    cbPrint(rc_params)
-    cbPrint(dae_path)
+    if isinstance(files_to_process, list):
+        process_params.extend(files_to_process)
+    else:
+        process_params.append(files_to_process)
+
+    process_params.extend(params)
+
+    cbPrint(params)
+    cbPrint(files_to_process)
 
     try:
-        run_object = subprocess.Popen([rc_path, rc_params, dae_path])
+        run_object = subprocess.Popen(process_params)
     except:
         raise exceptions.NoRcSelectedException
 
@@ -340,12 +361,6 @@ def veckey3d3(vn, fn):
 
 
 class CrytekDaeExporter:
-    __axises = {
-        'X': 0,
-        'Y': 1,
-        'Z': 2,
-    }
-
     def __init__(self, config, exe):
         self.__config = config
         self.__doc = Document()
@@ -755,7 +770,7 @@ class CrytekDaeExporter:
         for fcu in curves:
             # location
             # X
-            if fcu.data_path == 'location' and fcu.array_index == self.__axises[ax]:
+            if fcu.data_path == 'location' and fcu.array_index == AXISES[ax]:
                 anmlx = self.__doc.createElement("animation")
                 anmlx.setAttribute("id", i.name + "_location_" + ax)
                 fcus[fcu.array_index] = fcu
@@ -764,7 +779,7 @@ class CrytekDaeExporter:
                 inpx = ""
                 outpx = ""
                 intx = ""
-                temp = fcus[self.__axises[ax]].keyframe_points
+                temp = fcus[AXISES[ax]].keyframe_points
                 ii = 0
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
@@ -936,7 +951,7 @@ class CrytekDaeExporter:
         fcus = {}
         for fcu in curves:
         # rotation_euler
-            if fcu.data_path == 'rotation_euler' and fcu.array_index == self.__axises[ax]:
+            if fcu.data_path == 'rotation_euler' and fcu.array_index == AXISES[ax]:
                 anmrx = self.__doc.createElement("animation")
                 anmrx.setAttribute("id", i.name + "_rotation_euler_" + ax)
                 fcus[fcu.array_index] = fcu
@@ -945,7 +960,7 @@ class CrytekDaeExporter:
                 inpx = ""
                 outpx = ""
                 intx = ""
-                temp = fcus[self.__axises[ax]].keyframe_points
+                temp = fcus[AXISES[ax]].keyframe_points
                 ii = 0
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
@@ -1187,10 +1202,17 @@ class CrytekDaeExporter:
         library_images = self.__doc.createElement("library_images")
         parent_element.appendChild(library_images)
 
+        images_to_convert = []
+
         for image in self.__get_texture_images_for_selected_objects():
-            tiffFilePath = self.__get_tiff_image_path(image)
-            self.__save_as_tiff(image, tiffFilePath)
-            image_path = get_relative_path(tiffFilePath)
+            if self.__config.convert_source_inage_to_dds:
+                image_path = self.__get_dds_image_path(image.filepath)
+                images_to_convert.append(image)
+
+            else:
+                image_path = image.filepath
+
+            image_path = get_relative_path(image_path)
 
             image_element = self.__doc.createElement("image")
             image_element.setAttribute("id", "%s" % image.name)
@@ -1201,17 +1223,37 @@ class CrytekDaeExporter:
             image_element.appendChild(init_from)
             library_images.appendChild(image_element)
 
-    def __get_tiff_image_path(self, image):
-        tiffFilePath = os.path.splitext(image.filepath)[0] + ".tif"
-        return tiffFilePath
+        if self.__config.convert_source_inage_to_dds:
+            self.__convert_to_dds(images_to_convert)
 
-    def __save_as_tiff(self, image, tiffFilePath):
+    def __get_dds_image_path(self, image_path):
+        return os.path.splitext(image_path)[0] + ".dds"
+
+    def __convert_to_dds(self, images_to_convert):
+        rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
+        if self.__config.refresh_rc:
+            rc_params.append("/refresh")
+
+        tiff_images = []
+
+        for image in images_to_convert:
+            tiff_file_path = self.__get_tiff_image_path(image.filepath)
+            self.__save_as_tiff(image, tiff_file_path)
+            tiff_image = get_absolute_path_for_current_system(tiff_file_path)
+            tiff_images.append(tiff_image)
+
+            run_rc(self.__exe, tiff_image, rc_params)
+
+    def __get_tiff_image_path(self, image_path):
+        return os.path.splitext(image_path)[0] + ".tif"
+
+    def __save_as_tiff(self, image, tiff_file_path):
         if image.file_format is not 'TIFF':
             if self.__config.do_materials:
                 originalPath = image.filepath
 
                 try:
-                    image.filepath_raw = tiffFilePath
+                    image.filepath_raw = tiff_file_path
                     image.file_format = 'TIFF'
                     image.save()
                 finally:
@@ -2108,6 +2150,9 @@ class CrytekDaeExporter:
     def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
         libanm = self.__doc.createElement("library_animations")
+        parent_element.appendChild(libanmcl)
+        parent_element.appendChild(libanm)
+
         asw = 0
         ande = 0
         ande2 = 0
@@ -2135,11 +2180,11 @@ class CrytekDaeExporter:
                             cbPrint("Object is armature, cannot process animations.")
                         elif i.animation_data.action:
 
-                            for axis in self.__axises.keys():
+                            for axis in iter(AXISES):
                                 anm = self.extract_anil(i, axis)
                                 libanm.appendChild(anm)
 
-                            for axis in self.__axises.keys():
+                            for axis in iter(AXISES):
                                 anm = self.extract_anir(i, axis)
                                 libanm.appendChild(anm)
 
@@ -2219,8 +2264,6 @@ class CrytekDaeExporter:
 
             if asw == 1:
                 libanmcl.appendChild(anicl)
-        parent_element.appendChild(libanmcl)
-        parent_element.appendChild(libanm)
 
     def __export__animation_clip(self, i, ename, act_name, start_frame, end_frame):
         anicl = self.__doc.createElement("animation_clip")
@@ -2236,10 +2279,9 @@ class CrytekDaeExporter:
         self.__export_instance_parameter(i, anicl, "rotation_euler")
 
     def __export_instance_parameter(self, i, anicl, parameter):
-        for axis in self.__axises.keys():
+        for axis in iter(AXISES):
             inst = self.__doc.createElement("instance_animation")
-            inst.setAttribute("url", "#%s_%s_%s"
-                              % (i.name, parameter, axis))
+            inst.setAttribute("url", "#%s_%s_%s" % (i.name, parameter, axis))
             anicl.appendChild(inst)
 
     def __export_library_visual_scenes(self, parent_element):
@@ -2318,7 +2360,8 @@ def make_relative_path(filepath):
         raise exceptions.BlendNotSavedException
 
     try:
-        return os.path.relpath(filepath, blend_file_path)
+        relative_path = os.path.relpath(filepath, blend_file_path)
+        return "\"%s\"" % relative_path
 
     except ValueError:
         raise exceptions.TextureAndBlendDiskMismatch(blend_file_path, filepath)
