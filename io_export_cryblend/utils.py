@@ -9,7 +9,16 @@
 # Licence:     GPLv2+
 #------------------------------------------------------------------------------
 
-from io_export_cryblend import exceptions
+
+if "bpy" in locals():
+    import imp
+    if "exceptions" in locals():
+        imp.reload(exceptions)
+else:
+    import bpy
+    from io_export_cryblend import exceptions
+
+
 from io_export_cryblend.outPipe import cbPrint
 import bpy
 import fnmatch
@@ -161,18 +170,31 @@ def fix_transforms():
     ob.location.z /= 2.0
 
 
-def get_absolute_path_for_current_system(file_path):
-    # 'z:' is for wine (linux, mac) path
-    # there should be better way to determine it
-    WINE_DEFAULT_DRIVE_LETTER = "z:"
+def matrix_to_string(self, matrix):
+    result = ""
+    for row in matrix:
+        for col in row:
+            result += "{!s} ".format(col)
 
+    return result.strip()
+
+
+def get_absolute_path(file_path):
     [is_relative, file_path] = strip_blender_path_prefix(file_path)
 
     if is_relative:
         blend_file_path = os.path.dirname(bpy.data.filepath)
         file_path = "%s/%s" % (blend_file_path, file_path)
 
-    file_path = os.path.abspath(file_path)
+    return os.path.abspath(file_path)
+
+
+def get_absolute_path_for_rc(file_path):
+    # 'z:' is for wine (linux, mac) path
+    # there should be better way to determine it
+    WINE_DEFAULT_DRIVE_LETTER = "z:"
+
+    file_path = get_absolute_path(file_path)
 
     if not sys.platform == 'win32':
         file_path = "%s%s" % (WINE_DEFAULT_DRIVE_LETTER, file_path)
@@ -247,6 +269,10 @@ def run_rc(rc_path, files_to_process, params=None):
         raise exceptions.NoRcSelectedException
 
     return run_object
+
+
+def get_path_with_new_extension(image_path, extension):
+    return "%s.%s" % (os.path.splitext(image_path)[0], extension)
 
 
 # this is needed if you want to access more than the first def

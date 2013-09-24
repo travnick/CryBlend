@@ -29,13 +29,25 @@
 #------------------------------------------------------------------------------
 
 
+if "bpy" in locals():
+    import imp
+    if "utils" in locals():
+        imp.reload(utils)
+    if "exceptions" in locals():
+        imp.reload(exceptions)
+else:
+    import bpy
+    from io_export_cryblend import utils
+    from io_export_cryblend import exceptions
+
+
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend import exceptions, utils
+from io_export_cryblend.dds_converter import DdsConverterRunner
 from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector
 from time import clock
 from xml.dom.minidom import Document
-import bpy
 import os
 import threading
 import time
@@ -116,7 +128,7 @@ class CrytekDaeExporter:
                 object_.select = True
                 cbPrint(object_.name)
 
-    def GetObjectChildren(self, Parent):
+    def __get_object_children(self, Parent):
         return [Object for Object in Parent.children
                 if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
 
@@ -421,12 +433,12 @@ class CrytekDaeExporter:
                                     "Object already appended to parent.")
                                 else:
                                     nodeparent.appendChild(nodename)
-                            ChildList = self.GetObjectChildren(object_)
+                            ChildList = self.__get_object_children(object_)
                             self.vsp(ChildList, node1)
                     else:
                         if object_.type != 'ARMATURE':
                             node1.appendChild(nodename)
-                            ChildList = self.GetObjectChildren(object_)
+                            ChildList = self.__get_object_children(object_)
                             self.vsp(ChildList, node1)
 
                 else:
@@ -855,13 +867,6 @@ class CrytekDaeExporter:
             flarm4 = self.__doc.createTextNode("%s" % lmtx4)
             flar.appendChild(flarm4)
 
-    def __matrix_to_string(self, matrix):
-        result = ""
-        for row in matrix:
-            for col in row:
-                result += "{!s} ".format(col)
-        return result.strip()
-
     def __export_asset(self, parent_element):
         # Attributes are x=y values inside a tag
         asset = self.__doc.createElement("asset")
@@ -899,7 +904,8 @@ class CrytekDaeExporter:
 
         for image in self.__get_texture_images_for_selected_objects():
             if self.__config.convert_source_inage_to_dds:
-                image_path = self.__get_dds_image_path(image.filepath)
+                image_path = utils.get_path_with_new_extension(image.filepath,
+                                                               "dds")
                 images_to_convert.append(image)
 
             else:
@@ -917,41 +923,9 @@ class CrytekDaeExporter:
             library_images.appendChild(image_element)
 
         if self.__config.convert_source_inage_to_dds:
-            self.__convert_to_dds(images_to_convert)
-
-    def __get_dds_image_path(self, image_path):
-        return os.path.splitext(image_path)[0] + ".dds"
-
-    def __convert_to_dds(self, images_to_convert):
-        rc_params = ["/verbose", "/threads=cores", "/userdialog=1", "/pc"]
-        if self.__config.refresh_rc:
-            rc_params.append("/refresh")
-
-        tiff_images = []
-
-        for image in images_to_convert:
-            tiff_file_path = self.__get_tiff_image_path(image.filepath)
-            self.__save_as_tiff(image, tiff_file_path)
-            tiff_image = utils.get_absolute_path_for_current_system(
-                                                                tiff_file_path)
-            tiff_images.append(tiff_image)
-
-            utils.run_rc(self.__exe, tiff_image, rc_params)
-
-    def __get_tiff_image_path(self, image_path):
-        return os.path.splitext(image_path)[0] + ".tif"
-
-    def __save_as_tiff(self, image, tiff_file_path):
-        if image.file_format is not 'TIFF':
-            if self.__config.do_materials:
-                originalPath = image.filepath
-
-                try:
-                    image.filepath_raw = tiff_file_path
-                    image.file_format = 'TIFF'
-                    image.save()
-                finally:
-                    image.filepath = originalPath
+            converter = DdsConverterRunner(self.__exe)
+            converter.start_conversion(images_to_convert,
+                                       self.__config.refresh_rc)
 
     def __get_texture_images_for_selected_objects(self):
         images = []
@@ -1705,7 +1679,7 @@ class CrytekDaeExporter:
         skin_node = self.__doc.createElement("skin")
         skin_node.setAttribute("source", "#%s" % object_.name)
         contr.appendChild(skin_node)
-        mtx = self.__matrix_to_string(Matrix())
+        mtx = utils.matrix_to_string(Matrix())
         bsm = self.__doc.createElement("bind_shape_matrix")
         bsmv = self.__doc.createTextNode("%s" % mtx)
         bsm.appendChild(bsmv)
@@ -2032,7 +2006,7 @@ def write_to_file(config, doc, file_name, exe):
     file.write(xml_string)
     file.close()
 
-    dae_file_for_rc = utils.get_absolute_path_for_current_system(file_name)
+    dae_file_for_rc = utils.get_absolute_path_for_rc(file_name)
     rc_params = ["/verbose", "/threads=cores"]
     if config.refresh_rc:
         rc_params.append("/refresh")
