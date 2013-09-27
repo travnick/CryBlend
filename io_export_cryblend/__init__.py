@@ -28,11 +28,17 @@
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 
+try:
+    import pydevd
+    pydevd.settrace(stdoutToServer=True, stderrToServer=True, suspend=False)
+except ImportError:
+    pass
+
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 9, 9, 'dev'),
+    "version": (4, 10, 0, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -1330,10 +1336,16 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Generally a Good Idea",
             default=False,
             )
-    convert_source_inage_to_dds = BoolProperty(
+    convert_source_image_to_dds = BoolProperty(
             name="Convert images to DDS",
             description="Converts source textures to DDSs"
                         + " while exporting materials",
+            default=False,
+            )
+    save_tiff_during_conversion = BoolProperty(
+            name="Save tiff during conversion",
+            description="Saves tiff images that are generated"
+                        + "during conversion to DDS",
             default=False,
             )
     refresh_rc = BoolProperty(
@@ -1347,7 +1359,6 @@ class Export(bpy.types.Operator, ExportHelper):
                         + "upon export.",
             default=False,
             )
-
     make_layer = BoolProperty(
             name="Make .lyr file",
             description="Makes a .lyr to reassemble your scene"
@@ -1365,7 +1376,8 @@ class Export(bpy.types.Operator, ExportHelper):
                 'avg_pface',
                 'run_rc',
                 'do_materials',
-                'convert_source_inage_to_dds',
+                'convert_source_image_to_dds',
+                'save_tiff_during_conversion',
                 'refresh_rc',
                 'include_ik',
                 'make_layer'

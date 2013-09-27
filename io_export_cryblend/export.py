@@ -903,7 +903,7 @@ class CrytekDaeExporter:
         images_to_convert = []
 
         for image in self.__get_texture_images_for_selected_objects():
-            if self.__config.convert_source_inage_to_dds:
+            if self.__config.convert_source_image_to_dds:
                 image_path = utils.get_path_with_new_extension(image.filepath,
                                                                "dds")
                 images_to_convert.append(image)
@@ -922,10 +922,12 @@ class CrytekDaeExporter:
             image_element.appendChild(init_from)
             library_images.appendChild(image_element)
 
-        if self.__config.convert_source_inage_to_dds:
+        if self.__config.convert_source_image_to_dds:
             converter = DdsConverterRunner(self.__exe)
-            converter.start_conversion(images_to_convert,
-                                       self.__config.refresh_rc)
+            converter.start_conversion(
+                       images_to_convert,
+                       self.__config.refresh_rc,
+                       self.__config.save_tiff_during_conversion)
 
     def __get_texture_images_for_selected_objects(self):
         images = []
