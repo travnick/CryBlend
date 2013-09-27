@@ -831,12 +831,12 @@ class CrytekDaeExporter:
         return anmrx
 
     def __get_bone_names_for_idref(self, bones):
-        bones_for_idref = ""
+        bones_for_idref = []
 
         for bone in bones:
-            bones_for_idref += "{!s} ".format(bone.name)
+            bones_for_idref.append(bone.name)
 
-        return bones_for_idref.strip()
+        return " ".join(bones_for_idref)
 
     def __export_float_array(self, armature_bones, flar):
         for bone in armature_bones:
@@ -1210,16 +1210,16 @@ class CrytekDaeExporter:
             # positions
             sourcep = self.__doc.createElement("source")
             sourcep.setAttribute("id", "%s-positions" % (mname))
-            float_positions = ""
 
-            for v in me_verts:
-                float_positions += "%.6f %.6g %.6f " % v.co[:]
+            float_positions = []
+            for vertice in me_verts:
+                float_positions.append("%.6f %.6g %.6f" % vertice.co[:])
 
             cbPrint('vert loc took %.4f sec.' % (clock() - start_time))
             far = self.__doc.createElement("float_array")
             far.setAttribute("id", "%s-positions-array" % (mname))
             far.setAttribute("count", "%s" % (str(len(mesh.vertices) * 3)))
-            mpos = self.__doc.createTextNode("%s" % (float_positions))
+            mpos = self.__doc.createTextNode(" ".join(float_positions))
             far.appendChild(mpos)
             techcom = self.__doc.createElement("technique_common")
             acc = self.__doc.createElement("accessor")
