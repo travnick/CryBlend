@@ -1211,16 +1211,9 @@ class CrytekDaeExporter:
             sourcep = self.__doc.createElement("source")
             sourcep.setAttribute("id", "%s-positions" % (mname))
             float_positions = ""
-            iv = -1
+
             for v in me_verts:
-                if iv == -1:
-                    float_positions += "%.6f %.6g %.6f " % v.co[:]
-                    iv = 0
-                else:
-                    if iv == 7:
-                        iv = 0
-                    float_positions += "%.6f %.6g %.6f " % v.co[:]
-                iv += 1
+                float_positions += "%.6f %.6g %.6f " % v.co[:]
 
             cbPrint('vert loc took %.4f sec.' % (clock() - start_time))
             far = self.__doc.createElement("float_array")
