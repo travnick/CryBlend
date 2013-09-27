@@ -666,7 +666,8 @@ class CrytekDaeExporter:
                 outpx = ""
                 intx = ""
                 temp = fcus[AXISES[ax]].keyframe_points
-                ii = 0
+
+                ii = len(temp)
                 for keyx in temp:
                     khlx = keyx.handle_left[0]
                     khly = keyx.handle_left[1]
@@ -681,7 +682,7 @@ class CrytekDaeExporter:
                     outangfirst = utils.convert_time(khrx)
                     intangx += ("%.6f %.6f " % (intangfirst, khly))
                     outtangx += ("%.6f %.6f " % (outangfirst, khry))
-                    ii += 1
+
                 # input
                 sinpx = self.__doc.createElement("source")
                 sinpx.setAttribute("id", i.name + "_rotation_euler_" + ax + "-input")
