@@ -13,7 +13,9 @@
 from io_export_cryblend import utils
 from io_export_cryblend.outPipe import cbPrint
 import os
+import shutil
 import threading
+import tempfile
 
 
 class DdsConverterRunner:
@@ -34,16 +36,13 @@ class DdsConverterRunner:
 class _DdsConverter:
     def __init__(self, rc_exe):
         self.__rc_exe = rc_exe
-        self.__tmp_images = []
+        self.__tmp_images = {}
+        self.__tmp_dir = tempfile.mkdtemp("CryBlend")
 
     def __call__(self, images_to_convert, refresh_rc, save_tiff):
-        SUCCESS = 0
-
-        rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
-        if refresh_rc:
-            rc_params.append("/refresh")
 
         for image in images_to_convert:
+            rc_params = self.__get_rc_params(refresh_rc, image.filepath)
             tiff_image_path = self.__get_temp_tiff_image_path(image)
 
             tiff_image_for_rc = utils.get_absolute_path_for_rc(tiff_image_path)
@@ -52,44 +51,64 @@ class _DdsConverter:
                                       tiff_image_for_rc,
                                       rc_params)
 
-            return_code = rc_process.wait()
+            rc_process.wait()
 
-        if not save_tiff:
-            self.__remove_tmp_files()
+        if save_tiff:
+            self.__save_tiffs()
 
-        self.__tmp_images.clear()
+        self.__remove_tmp_files()
+
+    def __get_rc_params(self, refresh_rc, destination_path):
+        rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
+        if refresh_rc:
+            rc_params.append("/refresh")
+
+        image_directory = os.path.dirname(utils.get_absolute_path_for_rc(
+                destination_path))
+
+        rc_params.append("/targetroot={!s}".format(image_directory))
+
+        return rc_params
 
     def __get_temp_tiff_image_path(self, image):
         tiff_image_path = utils.get_path_with_new_extension(image.filepath,
                                                             "tif")
+        tiff_image_absolute_path = utils.get_absolute_path(tiff_image_path)
+        tiff_file_name = os.path.basename(tiff_image_path)
 
-        tiff_saved = self.__save_as_tiff_if_not_already_tiff(image,
-                                                             tiff_image_path)
+        tmp_file_path = os.path.join(self.__tmp_dir, tiff_file_name)
 
-        tiff_image_path = utils.get_absolute_path(tiff_image_path)
+        if tiff_image_path != image.filepath:
+            self.__save_as_tiff(image, tmp_file_path)
+            self.__tmp_images[tmp_file_path] = (tiff_image_absolute_path)
 
-        if tiff_saved:
-            self.__tmp_images.append(tiff_image_path)
+        return tmp_file_path
 
-        return tiff_image_path
+    def __save_as_tiff(self, image, tiff_file_path):
+        originalPath = image.filepath
 
-    def __save_as_tiff_if_not_already_tiff(self, image, tiff_file_path):
-        if image.filepath != tiff_file_path:
-            originalPath = image.filepath
+        try:
+            image.filepath_raw = tiff_file_path
+            image.file_format = 'TIFF'
+            image.save()
 
-            try:
-                image.filepath_raw = tiff_file_path
-                image.file_format = 'TIFF'
-                image.save()
-            finally:
-                image.filepath = originalPath
+        finally:
+            image.filepath = originalPath
 
-            return True
-
-        else:
-            return False
+    def __save_tiffs(self):
+        for tmp_image, dest_image in self.__tmp_images.items():
+            cbPrint("Moving tmp image: {!r} to {!r}".format(tmp_image,
+                                                            dest_image),
+                    'debug')
+            shutil.move(tmp_image, dest_image)
 
     def __remove_tmp_files(self):
-        for image in self.__tmp_images:
-            cbPrint("Removing tmp image: " + image)
-            os.remove(image)
+        for tmp_image in self.__tmp_images:
+            try:
+                cbPrint("Removing tmp image: {!r}".format(tmp_image), 'debug')
+                os.remove(tmp_image)
+            except FileNotFoundError:
+                pass
+
+        os.removedirs(self.__tmp_dir)
+        self.__tmp_images.clear()

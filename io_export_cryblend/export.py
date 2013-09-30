@@ -42,7 +42,6 @@ else:
 
 
 from bpy_extras.io_utils import ExportHelper
-from io_export_cryblend import exceptions, utils
 from io_export_cryblend.dds_converter import DdsConverterRunner
 from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector

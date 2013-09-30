@@ -28,11 +28,6 @@
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 
-try:
-    import pydevd
-    pydevd.settrace(stdoutToServer=True, stderrToServer=True, suspend=False)
-except ImportError:
-    pass
 
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
