@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 10, 0, 'dev'),
+    "version": (4, 10, 0, 1, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -75,55 +75,25 @@ import webbrowser
 
 # for help
 new = 2  # open in a new tab, if possible
-#
-# for config
-# rc = r'G:\apps\CryENGINE_PC_v3_4_0_3696_freeSDK\Bin32\rc\rc.exe'#temp
+
 rc = r''
 CONFIG_PATH = bpy.utils.user_resource('CONFIG', path='scripts', create=True)
 CONFIG_FILENAME = 'cryblend.cfg'
 CONFIG_FILEPATH = os.path.join(CONFIG_PATH, CONFIG_FILENAME)
-_CONFIG_TAGS_ = 'RC_LOCATION'.split()
+_CONFIG_TAGS_ = ['RC_LOCATION']
 _CONFIG_RC = {'RC_LOCATION': rc}  # 'find me your rc.exe'}
 config = configparser.ConfigParser()
 rc = r'c:\\'
 
 
-class Find_Rc(bpy.types.Operator, ExportHelper):
-    bl_label = "Find the Resource compiler"
-    bl_idname = "f_ind.rc"
-
-    filename_ext = ".exe"
-
-    # filter_glob = StringProperty(
-    #      default="*.exe",
-    #      options={'HIDDEN'}, subtype='FILE_PATH'
-    #      )
-    # rc = StringProperty(name="rc.exe location",default=rc,
-    # subtype='FILE_PATH')
-
-    # _CONFIG_RC = {'RC_LOCATION' : rc}
-    def execute(self, context):
-        # rc = self.filepath
-
-        # config['_CONFIG_RC'] = {'RC_LOCATION' : rc}
-
-        bpy.context.window_manager.RC_LOCATION = "%s" % (self.filepath)  # rc
-        #   bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
-        #   message = "Adding CryExportNode_'%s'" % (self.my_string)
-        #   self.report({'INFO'}, message)
-        cbPrint("Find the resource compiler.")
-        save_config()
-        return {'FINISHED'}
-
-    # def invoke(self, context, event):
-        # return context.window_manager.invoke_props_dialog(self)
-
-
 CONFIG = {}
 
 
-def load_config():  # PUBLIC API
-    # filepath = bpy.path.ensure_ext(self.filepath, "rc.exe")
+def load_config():
+
+    def update_function(self, context):
+        CONFIG[tag] = getattr(self, tag)
+
     global CONFIG
     if os.path.isfile(CONFIG_FILEPATH):
         try:
@@ -136,44 +106,59 @@ def load_config():  # PUBLIC API
 
     for tag in _CONFIG_RC:
         if tag not in CONFIG:
-            # bpy.ops.f_ind.rc()#Find_Rc.execute
             CONFIG[tag] = _CONFIG_RC[tag]
 
     # # setup temp hidden RNA  to expose the file paths ##
     for tag in _CONFIG_TAGS_:
         default = CONFIG[tag]
-        func = eval('lambda self,con: CONFIG.update( {"%s" : self.%s} )'
-                    % (tag, tag))
         if type(default) is bool:
             prop = BoolProperty(
                 name=tag, description='updates bool setting', default=default,
-                options={'SKIP_SAVE'}, update=func
+                options={'SKIP_SAVE'}, update=update_function
             )
         else:
             prop = StringProperty(
                 name=tag, description='updates path setting', maxlen=128,
-                default=default, options={'SKIP_SAVE'}, update=func
+                default=default, options={'SKIP_SAVE'}, update=update_function
             )
         setattr(bpy.types.WindowManager, tag, prop)
     return CONFIG
-CONFIG = load_config()
 
 
-def save_config():  # PUBLIC API
-    # CONFIG = load_config()
-    cbPrint('Saving configuration file.')
-    # for key in CONFIG: print( '%s =   %s' %(key, CONFIG[key]) )
+def save_config():
+    cbPrint('Saving configuration file.', 'debug')
     if os.path.isdir(CONFIG_PATH):
         try:
             with open(CONFIG_FILEPATH, 'wb') as f:
                 pickle.dump(CONFIG, f, -1)
-                # config.write(CONFIG, f)
                 cbPrint('Configuration file saved.')
         except:
             cbPrint('IO ERROR, can not write: %s' % CONFIG_FILEPATH, "warning")
     else:
         cbPrint('ERROR: configuration file path is missing %s'
                 % CONFIG_PATH, "warning")
+
+
+CONFIG = load_config()
+
+
+class Find_Rc(bpy.types.Operator, ExportHelper):
+    bl_label = "Find the Resource compiler"
+    bl_idname = "f_ind.rc"
+
+    filename_ext = ".exe"
+
+    def execute(self, context):
+        rc_path = "%s" % self.filepath
+        bpy.context.window_manager.RC_LOCATION = rc_path
+        cbPrint("Found RC at {!r}.".format(rc_path), 'debug')
+
+        save_config()
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        self.filepath = CONFIG['RC_LOCATION'] + "rc.exe"
+        return ExportHelper.invoke(self, context, event)
 
 
 class CryBlend_Cfg(bpy.types.Operator):
