@@ -10,7 +10,13 @@
 #------------------------------------------------------------------------------
 
 
-from io_export_cryblend import utils
+if "bpy" in locals():
+    import imp
+    imp.reload(utils)
+else:
+    import bpy
+    from io_export_cryblend import utils
+
 from io_export_cryblend.outPipe import cbPrint
 import os
 import shutil

@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 10, 0, 1, 'dev'),
+    "version": (4, 10, 0, 2, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -47,17 +47,12 @@ VERSION = bl_info["version"]
 
 if "bpy" in locals():
     import imp
-    if "add" in locals():
-        imp.reload(add)
-    if "export" in locals():
-        imp.reload(export)
-    if "exceptions" in locals():
-        imp.reload(exceptions)
+    imp.reload(add)
+    imp.reload(export)
+    imp.reload(exceptions)
 else:
     import bpy
-    from io_export_cryblend import add
-    from io_export_cryblend import export
-    from io_export_cryblend import exceptions
+    from io_export_cryblend import add, export, exceptions
 
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
     FloatProperty, StringProperty

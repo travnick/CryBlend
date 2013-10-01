@@ -12,8 +12,7 @@
 
 if "bpy" in locals():
     import imp
-    if "exceptions" in locals():
-        imp.reload(exceptions)
+    imp.reload(exceptions)
 else:
     import bpy
     from io_export_cryblend import exceptions

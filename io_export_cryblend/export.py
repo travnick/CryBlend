@@ -31,14 +31,11 @@
 
 if "bpy" in locals():
     import imp
-    if "utils" in locals():
-        imp.reload(utils)
-    if "exceptions" in locals():
-        imp.reload(exceptions)
+    imp.reload(utils)
+    imp.reload(exceptions)
 else:
     import bpy
-    from io_export_cryblend import utils
-    from io_export_cryblend import exceptions
+    from io_export_cryblend import utils, exceptions
 
 
 from bpy_extras.io_utils import ExportHelper
