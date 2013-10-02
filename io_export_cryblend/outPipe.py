@@ -25,16 +25,16 @@ class outPipe():
 
     def pump(self, message, message_type='info'):
         if message_type == 'info':
-            print("CryBlend Exporter: {!r}".format(message))
+            print("[Info] CryBlend: {!r}".format(message))
 
         elif message_type == 'debug':
-            print("CryBlend Debug: {!r}".format(message))
+            print("[Debug] CryBlend: {!r}".format(message))
 
         elif message_type == 'warning':
-            print("CryBlend Exporter Warning: {!r}".format(message))
+            print("[Warning] CryBlend: {!r}".format(message))
 
         elif message_type == 'error':
-            print("CryBlend Exporter Error: {!r}".format(message))
+            print("[Error] CryBlend: {!r}".format(message))
 
 oP = outPipe()
 
