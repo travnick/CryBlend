@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 10, 0, 2, 'dev'),
+    "version": (4, 10, 0, 3, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -57,6 +57,7 @@ else:
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
     FloatProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
+from io_export_cryblend.configuration import CONFIG, save_config
 from io_export_cryblend.outPipe import cbPrint
 import bmesh
 import bpy.ops
@@ -71,71 +72,6 @@ import webbrowser
 # for help
 new = 2  # open in a new tab, if possible
 
-rc = r''
-CONFIG_PATH = bpy.utils.user_resource('CONFIG', path='scripts', create=True)
-CONFIG_FILENAME = 'cryblend.cfg'
-CONFIG_FILEPATH = os.path.join(CONFIG_PATH, CONFIG_FILENAME)
-_CONFIG_TAGS_ = ['RC_LOCATION']
-_CONFIG_RC = {'RC_LOCATION': rc}  # 'find me your rc.exe'}
-config = configparser.ConfigParser()
-rc = r'c:\\'
-
-
-CONFIG = {}
-
-
-def load_config():
-
-    def update_function(self, context):
-        CONFIG[tag] = getattr(self, tag)
-
-    global CONFIG
-    if os.path.isfile(CONFIG_FILEPATH):
-        try:
-            with open(CONFIG_FILEPATH, 'rb') as f:
-                CONFIG = pickle.load(f)
-                # CONFIG = config.read( f )
-                cbPrint('Configuration file loaded.')
-        except:
-            cbPrint('IO ERROR, can not read: %s' % CONFIG_FILEPATH, 'warning')
-
-    for tag in _CONFIG_RC:
-        if tag not in CONFIG:
-            CONFIG[tag] = _CONFIG_RC[tag]
-
-    # # setup temp hidden RNA  to expose the file paths ##
-    for tag in _CONFIG_TAGS_:
-        default = CONFIG[tag]
-        if type(default) is bool:
-            prop = BoolProperty(
-                name=tag, description='updates bool setting', default=default,
-                options={'SKIP_SAVE'}, update=update_function
-            )
-        else:
-            prop = StringProperty(
-                name=tag, description='updates path setting', maxlen=128,
-                default=default, options={'SKIP_SAVE'}, update=update_function
-            )
-        setattr(bpy.types.WindowManager, tag, prop)
-    return CONFIG
-
-
-def save_config():
-    cbPrint('Saving configuration file.', 'debug')
-    if os.path.isdir(CONFIG_PATH):
-        try:
-            with open(CONFIG_FILEPATH, 'wb') as f:
-                pickle.dump(CONFIG, f, -1)
-                cbPrint('Configuration file saved.')
-        except:
-            cbPrint('IO ERROR, can not write: %s' % CONFIG_FILEPATH, "warning")
-    else:
-        cbPrint('ERROR: configuration file path is missing %s'
-                % CONFIG_PATH, "warning")
-
-
-CONFIG = load_config()
-
 
 class Find_Rc(bpy.types.Operator, ExportHelper):
     bl_label = "Find the Resource compiler"
@@ -144,15 +80,16 @@ class Find_Rc(bpy.types.Operator, ExportHelper):
     filename_ext = ".exe"
 
     def execute(self, context):
-        rc_path = "%s" % self.filepath
-        bpy.context.window_manager.RC_LOCATION = rc_path
-        cbPrint("Found RC at {!r}.".format(rc_path), 'debug')
+        CONFIG['RC_LOCATION'] = "%s" % self.filepath
+
+        cbPrint("Found RC at {!r}.".format(CONFIG['RC_LOCATION']), 'debug')
 
         save_config()
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        self.filepath = CONFIG['RC_LOCATION'] + "rc.exe"
+        self.filepath = ''.join([CONFIG['RC_LOCATION'], "rc.exe"])
+
         return ExportHelper.invoke(self, context, event)
 
 
