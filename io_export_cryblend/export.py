@@ -62,10 +62,15 @@ xml.dom.minidom.Element.writexml = utils.fixed_writexml
 
 
 class CrytekDaeExporter:
-    def __init__(self, config, exe):
+    def __init__(self, config):
         self.__config = config
         self.__doc = Document()
-        self.__exe = exe
+        self.__exe = config.rc_path
+        # If you have all your textures in 'Texture', then path shoulb be like:
+        # Textures/some/path
+        # so 'Textures' has to be removed from start path
+        self.__textures_parent_direcotry = os.path.dirname(os.path.normpath(
+                                                        config.textures_dir))
 
     def __get_bones(self, armature):
         return [bone for bone in armature.data.bones]
@@ -900,31 +905,34 @@ class CrytekDaeExporter:
         images_to_convert = []
 
         for image in self.__get_texture_images_for_selected_objects():
-            if self.__config.convert_source_image_to_dds:
-                image_path = utils.get_path_with_new_extension(image.filepath,
-                                                               "dds")
-                images_to_convert.append(image)
-
-            else:
-                image_path = image.filepath
-
-            image_path = utils.get_relative_path(image_path)
-
-            image_element = self.__doc.createElement("image")
-            image_element.setAttribute("id", "%s" % image.name)
-            image_element.setAttribute("name", "%s" % image.name)
-            init_from = self.__doc.createElement("init_from")
-            path_node = self.__doc.createTextNode("%s" % image_path)
-            init_from.appendChild(path_node)
-            image_element.appendChild(init_from)
+            image_element = self.__export_library_image(images_to_convert,
+                                                        image)
             library_images.appendChild(image_element)
 
         if self.__config.convert_source_image_to_dds:
-            converter = DdsConverterRunner(self.__exe)
-            converter.start_conversion(
-                       images_to_convert,
-                       self.__config.refresh_rc,
-                       self.__config.save_tiff_during_conversion)
+            self.__convert_images_to_dds(images_to_convert)
+
+    def __export_library_image(self, images_to_convert, image):
+        if self.__config.convert_source_image_to_dds:
+            image_path = utils.get_path_with_new_extension(image.filepath,
+                "dds")
+            images_to_convert.append(image)
+
+        else:
+            image_path = image.filepath
+
+        image_path = utils.get_relative_path(image_path,
+                                             self.__textures_parent_direcotry)
+
+        image_element = self.__doc.createElement("image")
+        image_element.setAttribute("id", "%s" % image.name)
+        image_element.setAttribute("name", "%s" % image.name)
+        init_from = self.__doc.createElement("init_from")
+        path_node = self.__doc.createTextNode("%s" % image_path)
+        init_from.appendChild(path_node)
+        image_element.appendChild(init_from)
+
+        return image_element
 
     def __get_texture_images_for_selected_objects(self):
         images = []
@@ -981,6 +989,12 @@ class CrytekDaeExporter:
 
     def is_valid_image(self, image):
         return image.has_data and image.filepath
+
+    def __convert_images_to_dds(self, images_to_convert):
+        converter = DdsConverterRunner(self.__exe)
+        converter.start_conversion(images_to_convert,
+                                   self.__config.refresh_rc,
+                                   self.__config.save_tiff_during_conversion)
 
     def __export_library_effects(self, parent_element):
         current_element = self.__doc.createElement("library_effects")
@@ -2152,12 +2166,12 @@ def fix_normalmap_in_mtl(mtl_file_name):
     os.rename(tmp_mtl_file_name, mtl_file_name)
 
 
-def save(config, context, exe):
+def save(config):
     # prevent wasting time for exporting if RC was not found
-    if not os.path.isfile(exe):
+    if not os.path.isfile(config.rc_path):
         raise exceptions.NoRcSelectedException
 
-    exporter = CrytekDaeExporter(config, exe)
+    exporter = CrytekDaeExporter(config)
     exporter.export()
 
 

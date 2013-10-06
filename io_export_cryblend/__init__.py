@@ -29,11 +29,12 @@
 #------------------------------------------------------------------------------
 
 
+
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 10, 0, 4, 'dev'),
+    "version": (4, 10, 0, 5, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -89,6 +90,27 @@ class Find_Rc(bpy.types.Operator, ExportHelper):
 
     def invoke(self, context, event):
         self.filepath = ''.join([CONFIG['RC_LOCATION'], "rc.exe"])
+
+        return ExportHelper.invoke(self, context, event)
+
+
+class SelectTexturesDirectory(bpy.types.Operator, ExportHelper):
+    bl_label = "Select textures directory"
+    bl_idname = "select_textures.dir"
+
+    filename_ext = ""
+
+    def execute(self, context):
+        CONFIG['TEXTURES_DIR'] = "%s" % self.filepath
+
+        cbPrint("Textures directory: {!r}.".format(CONFIG['TEXTURES_DIR']),
+                'debug')
+
+        save_config()
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        self.filepath = CONFIG['TEXTURES_DIR']
 
         return ExportHelper.invoke(self, context, event)
 
@@ -1277,6 +1299,11 @@ class Export(bpy.types.Operator, ExportHelper):
                         + "in the CryEngine 3",
             default=False,
             )
+    run_in_profiler = BoolProperty(
+            name="Profile CryBlend",
+            description="Select only if you want to profile CryBlend",
+            default=False,
+            )
 
     class Config:
         def __init__(self, config):
@@ -1298,12 +1325,21 @@ class Export(bpy.types.Operator, ExportHelper):
             for attribute in attributes:
                 setattr(self, attribute, getattr(config, attribute))
 
+            setattr(self, 'rc_path', CONFIG['RC_LOCATION'])
+            setattr(self, 'textures_dir', CONFIG['TEXTURES_DIR'])
+
     def execute(self, context):
-        exe = CONFIG['RC_LOCATION']
         cbPrint(CONFIG['RC_LOCATION'])
         try:
             config = Export.Config(config=self)
-            export.save(config, context, exe)
+
+            if self.run_in_profiler:
+                import cProfile
+                cProfile.runctx('export.save(config)', {},
+                                {'export': export, 'config': config})
+            else:
+                export.save(config)
+
             self.filepath = '//'
 
         except exceptions.CryBlendException as exception:
@@ -1509,6 +1545,7 @@ class CustomMenu(bpy.types.Menu):
         layout.separator()
         # layout.operator("fix_wh.trans", icon='ZOOM_ALL')
         layout.separator()
+        layout.operator("select_textures.dir", icon='IMASEL')
         layout.operator("f_ind.rc", icon='SCRIPTWIN')
         layout.separator()
         layout.separator()
@@ -1597,6 +1634,7 @@ def get_classes_to_register():
         Find_multiFaceLine,
         CryBlend_Cfg,
         Find_Rc,
+        SelectTexturesDirectory,
 
         Fix_wh_trans,
         Add_ANIM_Node,

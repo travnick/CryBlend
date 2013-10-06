@@ -201,13 +201,27 @@ def get_absolute_path_for_rc(file_path):
     return file_path
 
 
-def get_relative_path(filepath):
-    [is_relative, filepath] = strip_blender_path_prefix(filepath)
+def get_relative_path(filepath, start=None):
+    blend_file_directory = os.path.dirname(bpy.data.filepath)
+    [is_relative_to_blend_file, filepath] = strip_blender_path_prefix(filepath)
 
-    if is_relative:
-        return filepath
+    if not start:
+        if is_relative_to_blend_file:
+            return filepath
+
+        # path is not relative, so create path relative to blend file.
+        start = blend_file_directory
+
+        if not start:
+            raise exceptions.BlendNotSavedException
+
     else:
-        return make_relative_path(filepath)
+        # make absolute path to be able make relative to 'start'
+        if is_relative_to_blend_file:
+            filepath = os.path.normpath(os.path.join(blend_file_directory,
+                                                     filepath))
+
+    return make_relative_path(filepath, start)
 
 
 def strip_blender_path_prefix(path):
@@ -222,18 +236,13 @@ def strip_blender_path_prefix(path):
     return (is_relative, path)
 
 
-def make_relative_path(filepath):
-    blend_file_path = bpy.data.filepath
-
-    if not blend_file_path:
-        raise exceptions.BlendNotSavedException
-
+def make_relative_path(filepath, start):
     try:
-        relative_path = os.path.relpath(filepath, blend_file_path)
-        return "\"%s\"" % relative_path
+        relative_path = os.path.relpath(filepath, start)
+        return relative_path
 
     except ValueError:
-        raise exceptions.TextureAndBlendDiskMismatch(blend_file_path, filepath)
+        raise exceptions.TextureAndBlendDiskMismatch(start, filepath)
 
 
 def get_mtl_files_in_directory(directory):
