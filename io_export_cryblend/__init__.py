@@ -34,7 +34,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 10, 0, 5, 'dev'),
+    "version": (4, 10, 0, 6, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -101,7 +101,7 @@ class SelectTexturesDirectory(bpy.types.Operator, ExportHelper):
     filename_ext = ""
 
     def execute(self, context):
-        CONFIG['TEXTURES_DIR'] = "%s" % self.filepath
+        CONFIG['TEXTURES_DIR'] = "%s" % os.path.dirname(self.filepath)
 
         cbPrint("Textures directory: {!r}.".format(CONFIG['TEXTURES_DIR']),
                 'debug')
