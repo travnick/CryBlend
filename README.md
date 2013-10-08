@@ -14,6 +14,13 @@ Your_Blender_path\scripts\addons\
 
 Changelog:
 --------
+**4.11.0**
+Features:
+* Created new layout for exporting options.
+* Improved configuration handling.
+* Added converter to DDS.
+* Added button to save tiff.(DDS exporting)
+* Improved relative paths in .mtl.
 
 **4.9.9**
 Features:
@@ -58,7 +65,7 @@ Features:
 
 **4.9.2**
 Fixed:
-* Non relative paths to textures in .mlt file.
+* Non relative paths to textures in .mtl file.
 
 **4.9.1.1**
 Fixed:

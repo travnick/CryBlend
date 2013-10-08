@@ -29,12 +29,11 @@
 #------------------------------------------------------------------------------
 
 
-
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 10, 0, 8, 'dev'),
+    "version": (4, 11, "RC1"),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -44,7 +43,9 @@ bl_info = {
     "support": 'OFFICIAL',
     "category": "Import-Export"}
 
+
 VERSION = bl_info["version"]
+
 
 if "bpy" in locals():
     import imp
