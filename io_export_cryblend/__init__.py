@@ -34,7 +34,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 10, 0, 6, 'dev'),
+    "version": (4, 10, 0, 7, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -75,7 +75,7 @@ new = 2  # open in a new tab, if possible
 
 
 class Find_Rc(bpy.types.Operator, ExportHelper):
-    bl_label = "Find the Resource compiler"
+    bl_label = "Find The Resource Compiler"
     bl_idname = "f_ind.rc"
 
     filename_ext = ".exe"
@@ -95,7 +95,7 @@ class Find_Rc(bpy.types.Operator, ExportHelper):
 
 
 class SelectTexturesDirectory(bpy.types.Operator, ExportHelper):
-    bl_label = "Select textures directory"
+    bl_label = "Select Textures Directory"
     bl_idname = "select_textures.dir"
 
     filename_ext = ""
@@ -116,9 +116,9 @@ class SelectTexturesDirectory(bpy.types.Operator, ExportHelper):
 
 
 class CryBlend_Cfg(bpy.types.Operator):
-    '''operator: saves current cryblend configuration'''
+    '''operator: Saves current CryBlend configuration'''
     bl_idname = "save_config.file"
-    bl_label = "save config file"
+    bl_label = "Save Config File"
     bl_options = {'REGISTER'}
 
     @classmethod
@@ -189,7 +189,7 @@ class Get_Ridof_Nasty(bpy.types.Operator):
 class Find_multiFaceLine(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in
     it's mesh before running this.'''
-    bl_label = "Find lines with 3+ faces."
+    bl_label = "Find Lines With 3+ Faces."
     bl_idname = "find_multiface.lines"
 
     def execute(self, context):
@@ -285,7 +285,7 @@ class Add_ANIM_Node(bpy.types.Operator):  # , AddObjectHelper):
 # custom props
 # wheels
 class Add_wh_Prop(bpy.types.Operator):
-    bl_label = "Add wheel Properties"
+    bl_label = "Add Wheel Properties"
     bl_idname = "add_wh.props"
 
     def execute(self, context):
@@ -297,7 +297,7 @@ class Add_wh_Prop(bpy.types.Operator):
 
 # wheel transform fix
 class Fix_wh_trans(bpy.types.Operator):
-    bl_label = "Fix wheel Transforms"
+    bl_label = "Fix Wheel Transforms"
     bl_idname = "fix_wh.trans"
 
     def execute(self, context):
@@ -546,7 +546,7 @@ class Find_Underweight(bpy.types.Operator):
 
 
 class Remove_All_Weight(bpy.types.Operator):
-        bl_label = "Remove all weight from selected vertices"
+        bl_label = "Remove All Weight From Selected Vertices"
         bl_idname = "mesh_rep.removeall"
 
         def execute(self, context):
@@ -563,7 +563,7 @@ class Remove_All_Weight(bpy.types.Operator):
 
 
 class Remove_FakeBones(bpy.types.Operator):
-        bl_label = "Remove all FakeBones"
+        bl_label = "Remove All FakeBones"
         bl_idname = "cb.fake_bone_remove"
 
         def execute(self, context):
@@ -587,7 +587,7 @@ class Remove_FakeBones(bpy.types.Operator):
 
 
 class Find_No_UVs(bpy.types.Operator):
-        bl_label = "Find all objects with no UVs"
+        bl_label = "Find All Objects With No UVs"
         bl_idname = "cb.find_no_uvs"
 
         def execute(self, context):
@@ -853,7 +853,7 @@ def add_bone_geometry():
 class RenamePhysBones(bpy.types.Operator):
     '''Renames phys bones'''
     bl_idname = "cb.phys_bones_rename"
-    bl_label = "Rename Phys bones"
+    bl_label = "Rename Phys Bones"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -1232,7 +1232,7 @@ class Export(bpy.types.Operator, ExportHelper):
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
     export_type = EnumProperty(
-            name="File Type:",
+            name="File Type",
             description="Select a file type to export.",
             items=(
                 ("CGF", "CGF",
@@ -1245,63 +1245,63 @@ class Export(bpy.types.Operator, ExportHelper):
             default="CGF",
     )
     merge_anm = BoolProperty(
-            name="Merge anim",
-            description="For Animated Models--merge animations into 1",
+            name="Merge Animations",
+            description="For animated models - merge animations into 1.",
             default=False,
             )
     donot_merge = BoolProperty(
             name="Do Not Merge Nodes",
-            description="Generally a Good Idea",
+            description="Generally a good idea.",
             default=True,
             )
     avg_pface = BoolProperty(
-            name="Average Planar Face normals",
+            name="Average Planar Face Normals",
             description="Help align face normals that have normals"
-                        + "that are within 1 degree",
+                        + " that are within 1 degree.",
             default=False,
             )
     run_rc = BoolProperty(
-            name="Run Resource Compiler",
-            description="Generally a Good Idea",
+            name="Run RC",
+            description="Generally a good idea.",
             default=True,
             )
     do_materials = BoolProperty(
-            name="Run RC and Do Materials",
-            description="Generally a Good Idea",
+            name="Run RC And Do Materials",
+            description="Generally a good idea.",
             default=False,
             )
     convert_source_image_to_dds = BoolProperty(
-            name="Convert images to DDS",
-            description="Converts source textures to DDSs"
-                        + " while exporting materials",
+            name="Convert Images To DDS",
+            description="Converts source textures to DDS"
+                        + " while exporting materials.",
             default=False,
             )
     save_tiff_during_conversion = BoolProperty(
-            name="Save tiff during conversion",
-            description="Saves tiff images that are generated"
-                        + "during conversion to DDS",
+            name="Save TIFF During Conversion",
+            description="Saves TIFF images that are generated"
+                        + " during conversion to DDS.",
             default=False,
             )
     refresh_rc = BoolProperty(
-            name="Refresh RC output",
-            description="Generally a Good Idea",
+            name="Refresh RC Output",
+            description="Generally a good idea.",
             default=True,
             )
     include_ik = BoolProperty(
-            name="Include IK in Character",
+            name="Include IK In Character",
             description="Adds IK from your skeleton to the phys skeleton"
                         + "upon export.",
             default=False,
             )
     make_layer = BoolProperty(
-            name="Make .lyr file",
+            name="Make .lyr File",
             description="Makes a .lyr to reassemble your scene"
-                        + "in the CryEngine 3",
+                        + "in the CryEngine 3.",
             default=False,
             )
     run_in_profiler = BoolProperty(
             name="Profile CryBlend",
-            description="Select only if you want to profile CryBlend",
+            description="Select only if you want to profile CryBlend.",
             default=False,
             )
 
@@ -1347,6 +1347,33 @@ class Export(bpy.types.Operator, ExportHelper):
             bpy.ops.error.message('INVOKE_DEFAULT', message=exception.what())
 
         return {'FINISHED'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        box = layout.box()
+        box.label("General")
+        box.prop(self, "export_type")
+        box.prop(self, "donot_merge")
+        box.prop(self, "avg_pface")
+        box = layout.box()
+        box.prop(self, "run_rc")
+        box.prop(self, "refresh_rc")
+        box = layout.box()
+        box.label("Image and material")
+        box.prop(self, "do_materials")
+        box.prop(self, "convert_source_image_to_dds")
+        box.prop(self, "save_tiff_during_conversion")
+        box = layout.box()
+        box.label("Animation")
+        box.prop(self, "merge_anm")
+        box.prop(self, "include_ik")
+        box = layout.box()
+        box.label("CryEngine editor")
+        box.prop(self, "make_layer")
+        box = layout.box()
+        box.label("Developer tools")
+        box.prop(self, "run_in_profiler")
 
 
 class ErrorHandler(bpy.types.Operator):
