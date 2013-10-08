@@ -2018,7 +2018,7 @@ def write_to_file(config, doc, file_name, exe):
     file.close()
 
     dae_file_for_rc = utils.get_absolute_path_for_rc(file_name)
-    rc_params = ["/verbose", "/threads=cores"]
+    rc_params = ["/verbose", "/threads=processors"]
     if config.refresh_rc:
         rc_params.append("/refresh")
 
