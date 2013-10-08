@@ -69,8 +69,13 @@ class CrytekDaeExporter:
         # If you have all your textures in 'Texture', then path shoulb be like:
         # Textures/some/path
         # so 'Textures' has to be removed from start path
-        self.__textures_parent_direcotry = os.path.dirname(os.path.normpath(
-                                                        config.textures_dir))
+        normalized_path = os.path.normpath(config.textures_dir)
+        self.__textures_parent_directory = os.path.dirname(normalized_path)
+        cbPrint("Normalized textures direcotry: {!r}".format(normalized_path),
+                'debug')
+        cbPrint("Textures parent direcotry: {!r}".format(
+                                            self.__textures_parent_directory),
+                'debug')
 
     def __get_bones(self, armature):
         return [bone for bone in armature.data.bones]
@@ -922,7 +927,7 @@ class CrytekDaeExporter:
             image_path = image.filepath
 
         image_path = utils.get_relative_path(image_path,
-                                             self.__textures_parent_direcotry)
+                                             self.__textures_parent_directory)
 
         image_element = self.__doc.createElement("image")
         image_element.setAttribute("id", "%s" % image.name)
