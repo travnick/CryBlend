@@ -20,7 +20,17 @@ Features:
 * Improved configuration handling.
 * Added converter to DDS.
 * Added button to save tiff.(DDS exporting)
+* Added "Select textures directory" to CryBlend menu - helps with generating proper texture paths in .mtl files.
 * Improved relative paths in .mtl.
+* Added option "Profile CryBlend" that helps in tracking performance issues.
+* "Find the Resource Compiler" now shows current RC path.
+
+Improvements in code:
+* Configuration simplified and moved to separate module.
+* Replaced some string concatenation by creating a list of strings.
+* Removed useless code.
+* Refactored export.py:__export_library_animation_clips_and_animations() to reduce duplicated code.
+* And other changes.
 
 **4.9.9**
 Features:
