@@ -28,11 +28,12 @@
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 
+
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
     "blender": (2, 6, 8),
-    "version": (4, 9, 9),
+    "version": (4, 11),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -42,25 +43,23 @@ bl_info = {
     "support": 'OFFICIAL',
     "category": "Import-Export"}
 
+
 VERSION = bl_info["version"]
+
 
 if "bpy" in locals():
     import imp
-    if "add" in locals():
-        imp.reload(add)
-    if "export" in locals():
-        imp.reload(export)
-    if "exceptions" in locals():
-        imp.reload(exceptions)
+    imp.reload(add)
+    imp.reload(export)
+    imp.reload(exceptions)
 else:
     import bpy
-    from io_export_cryblend import add
-    from io_export_cryblend import export
-    from io_export_cryblend import exceptions
+    from io_export_cryblend import add, export, exceptions
 
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
     FloatProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
+from io_export_cryblend.configuration import CONFIG, save_config
 from io_export_cryblend.outPipe import cbPrint
 import bmesh
 import bpy.ops
@@ -74,111 +73,53 @@ import webbrowser
 
 # for help
 new = 2  # open in a new tab, if possible
-#
-# for config
-# rc = r'G:\apps\CryENGINE_PC_v3_4_0_3696_freeSDK\Bin32\rc\rc.exe'#temp
-rc = r''
-CONFIG_PATH = bpy.utils.user_resource('CONFIG', path='scripts', create=True)
-CONFIG_FILENAME = 'cryblend.cfg'
-CONFIG_FILEPATH = os.path.join(CONFIG_PATH, CONFIG_FILENAME)
-_CONFIG_TAGS_ = 'RC_LOCATION'.split()
-_CONFIG_RC = {'RC_LOCATION': rc}  # 'find me your rc.exe'}
-config = configparser.ConfigParser()
-rc = r'c:\\'
 
 
 class Find_Rc(bpy.types.Operator, ExportHelper):
-    bl_label = "Find the Resource compiler"
+    bl_label = "Find The Resource Compiler"
     bl_idname = "f_ind.rc"
 
     filename_ext = ".exe"
 
-    # filter_glob = StringProperty(
-    #      default="*.exe",
-    #      options={'HIDDEN'}, subtype='FILE_PATH'
-    #      )
-    # rc = StringProperty(name="rc.exe location",default=rc,
-    # subtype='FILE_PATH')
-
-    # _CONFIG_RC = {'RC_LOCATION' : rc}
     def execute(self, context):
-        # rc = self.filepath
+        CONFIG['RC_LOCATION'] = "%s" % self.filepath
 
-        # config['_CONFIG_RC'] = {'RC_LOCATION' : rc}
+        cbPrint("Found RC at {!r}.".format(CONFIG['RC_LOCATION']), 'debug')
 
-        bpy.context.window_manager.RC_LOCATION = "%s" % (self.filepath)  # rc
-        #   bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
-        #   message = "Adding CryExportNode_'%s'" % (self.my_string)
-        #   self.report({'INFO'}, message)
-        cbPrint("Find the resource compiler.")
         save_config()
         return {'FINISHED'}
 
-    # def invoke(self, context, event):
-        # return context.window_manager.invoke_props_dialog(self)
+    def invoke(self, context, event):
+        self.filepath = ''.join([CONFIG['RC_LOCATION'], "rc.exe"])
+
+        return ExportHelper.invoke(self, context, event)
 
 
-CONFIG = {}
+class SelectTexturesDirectory(bpy.types.Operator, ExportHelper):
+    bl_label = "Select Textures Directory"
+    bl_idname = "select_textures.dir"
 
+    filename_ext = ""
 
-def load_config():  # PUBLIC API
-    # filepath = bpy.path.ensure_ext(self.filepath, "rc.exe")
-    global CONFIG
-    if os.path.isfile(CONFIG_FILEPATH):
-        try:
-            with open(CONFIG_FILEPATH, 'rb') as f:
-                CONFIG = pickle.load(f)
-                # CONFIG = config.read( f )
-                cbPrint('Configuration file loaded.')
-        except:
-            cbPrint('IO ERROR, can not read: %s' % CONFIG_FILEPATH, 'warning')
+    def execute(self, context):
+        CONFIG['TEXTURES_DIR'] = "%s" % os.path.dirname(self.filepath)
 
-    for tag in _CONFIG_RC:
-        if tag not in CONFIG:
-            # bpy.ops.f_ind.rc()#Find_Rc.execute
-            CONFIG[tag] = _CONFIG_RC[tag]
+        cbPrint("Textures directory: {!r}.".format(CONFIG['TEXTURES_DIR']),
+                'debug')
 
-    # # setup temp hidden RNA  to expose the file paths ##
-    for tag in _CONFIG_TAGS_:
-        default = CONFIG[tag]
-        func = eval('lambda self,con: CONFIG.update( {"%s" : self.%s} )'
-                    % (tag, tag))
-        if type(default) is bool:
-            prop = BoolProperty(
-                name=tag, description='updates bool setting', default=default,
-                options={'SKIP_SAVE'}, update=func
-            )
-        else:
-            prop = StringProperty(
-                name=tag, description='updates path setting', maxlen=128,
-                default=default, options={'SKIP_SAVE'}, update=func
-            )
-        setattr(bpy.types.WindowManager, tag, prop)
-    return CONFIG
-CONFIG = load_config()
+        save_config()
+        return {'FINISHED'}
 
+    def invoke(self, context, event):
+        self.filepath = CONFIG['TEXTURES_DIR']
 
-def save_config():  # PUBLIC API
-    # CONFIG = load_config()
-    cbPrint('Saving configuration file.')
-    # for key in CONFIG: print( '%s =   %s' %(key, CONFIG[key]) )
-    if os.path.isdir(CONFIG_PATH):
-        try:
-            with open(CONFIG_FILEPATH, 'wb') as f:
-                pickle.dump(CONFIG, f, -1)
-                # config.write(CONFIG, f)
-                cbPrint('Configuration file saved.')
-        except:
-            cbPrint('IO ERROR, can not write: %s' % CONFIG_FILEPATH, "warning")
-    else:
-        cbPrint('ERROR: configuration file path is missing %s'
-                % CONFIG_PATH, "warning")
+        return ExportHelper.invoke(self, context, event)
 
 
 class CryBlend_Cfg(bpy.types.Operator):
-    '''operator: saves current cryblend configuration'''
+    '''operator: Saves current CryBlend configuration'''
     bl_idname = "save_config.file"
-    bl_label = "save config file"
+    bl_label = "Save Config File"
     bl_options = {'REGISTER'}
 
     @classmethod
@@ -249,7 +190,7 @@ class Get_Ridof_Nasty(bpy.types.Operator):
 class Find_multiFaceLine(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in
     it's mesh before running this.'''
-    bl_label = "Find lines with 3+ faces."
+    bl_label = "Find Lines With 3+ Faces."
     bl_idname = "find_multiface.lines"
 
     def execute(self, context):
@@ -345,7 +286,7 @@ class Add_ANIM_Node(bpy.types.Operator):  # , AddObjectHelper):
 # custom props
 # wheels
 class Add_wh_Prop(bpy.types.Operator):
-    bl_label = "Add wheel Properties"
+    bl_label = "Add Wheel Properties"
     bl_idname = "add_wh.props"
 
     def execute(self, context):
@@ -357,7 +298,7 @@ class Add_wh_Prop(bpy.types.Operator):
 
 # wheel transform fix
 class Fix_wh_trans(bpy.types.Operator):
-    bl_label = "Fix wheel Transforms"
+    bl_label = "Fix Wheel Transforms"
     bl_idname = "fix_wh.trans"
 
     def execute(self, context):
@@ -606,7 +547,7 @@ class Find_Underweight(bpy.types.Operator):
 
 
 class Remove_All_Weight(bpy.types.Operator):
-        bl_label = "Remove all weight from selected vertices"
+        bl_label = "Remove All Weight From Selected Vertices"
         bl_idname = "mesh_rep.removeall"
 
         def execute(self, context):
@@ -623,7 +564,7 @@ class Remove_All_Weight(bpy.types.Operator):
 
 
 class Remove_FakeBones(bpy.types.Operator):
-        bl_label = "Remove all FakeBones"
+        bl_label = "Remove All FakeBones"
         bl_idname = "cb.fake_bone_remove"
 
         def execute(self, context):
@@ -647,7 +588,7 @@ class Remove_FakeBones(bpy.types.Operator):
 
 
 class Find_No_UVs(bpy.types.Operator):
-        bl_label = "Find all objects with no UVs"
+        bl_label = "Find All Objects With No UVs"
         bl_idname = "cb.find_no_uvs"
 
         def execute(self, context):
@@ -913,7 +854,7 @@ def add_bone_geometry():
 class RenamePhysBones(bpy.types.Operator):
     '''Renames phys bones'''
     bl_idname = "cb.phys_bones_rename"
-    bl_label = "Rename Phys bones"
+    bl_label = "Rename Phys Bones"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -1145,28 +1086,22 @@ rotlist = []
 
 def add_kfl(self, context):
     scene = bpy.context.scene
+    object_ = None
     for a in bpy.context.scene.objects:
         if a.type == 'ARMATURE':
-            ob = a
+            object_ = a
     bpy.ops.screen.animation_play()
 
     def kfdat(frame, bonename, data):
         return frame, bonename, data
-    # loclist = []
-    # rotlist = []
-    obPresent = True
-    try:
-        testValue = ob
-    except:
-        obPresent = False
 
-    if obPresent:
+    if object_:
         for frame in range(scene.frame_end + 1):
             # frame = frame + 5
             '''do the inverse parent times current to get proper info here'''
             cbPrint("Stage 1 auto-keyframe.")
             scene.frame_set(frame)
-            for bone in ob.pose.bones:
+            for bone in object_.pose.bones:
                 if bone.parent:
                     if bone.parent.parent:
                         for bonep in bpy.context.scene.objects:
@@ -1202,7 +1137,7 @@ def add_kfl(self, context):
     # for frame in range(scene.frame_end + 1):
     #   print("stage2 auto keyframe")
         # scene.frame_set(frame)
-        # for bone in ob.pose.bones:
+        # for bone in object_.pose.bones:
         #   for i in bpy.context.scene.objects:
             #   if i.name == bone.name:
                 #   for fr in loclist:
@@ -1229,27 +1164,18 @@ def add_kfl(self, context):
 def add_kf(self, context):
     scene = bpy.context.scene
     sfc = scene.frame_current
+    object_ = None
     for a in bpy.context.scene.objects:
         if a.type == 'ARMATURE':
-            ob = a
-    # for kf in loclist[sfc]:
-    #   print(kf)
+            object_ = a
+            break
 
-    obPresent = True
-    try:
-        testValue = ob
-    except:
-        obPresent = False
-
-    if obPresent:
-        for bone in ob.pose.bones:
+    if object_:
+        for bone in object_.pose.bones:
             i = bpy.context.scene.objects.get(bone.name)
-            # for i in bpy.context.scene.objects:
-                # if i.name == bone.name:
             if i is not None:
                 # TODO: merge those two for loops
                 for fr in loclist:
-                #   print(fr)
                     if fr[0] == sfc:
                         if fr[1] == bone.name:
                             cbPrint(fr[2])
@@ -1307,7 +1233,7 @@ class Export(bpy.types.Operator, ExportHelper):
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
     export_type = EnumProperty(
-            name="File Type:",
+            name="File Type",
             description="Select a file type to export.",
             items=(
                 ("CGF", "CGF",
@@ -1319,63 +1245,64 @@ class Export(bpy.types.Operator, ExportHelper):
             ),
             default="CGF",
     )
-
-    # is_caf = BoolProperty(
-            # name="Caf",
-            # description="For Animated Models, Skeletal,animation",
-            # default=False,
-            # )
-    # fr_start = IntProperty(
-            # name = "First Frame",
-            # default = 1, min = 0, max = 10,
-            # description = "An example integer"
-            # )
-
     merge_anm = BoolProperty(
-            name="Merge anim",
-            description="For Animated Models--merge animations into 1",
+            name="Merge Animations",
+            description="For animated models - merge animations into 1.",
             default=False,
             )
     donot_merge = BoolProperty(
             name="Do Not Merge Nodes",
-            description="Generally a Good Idea",
+            description="Generally a good idea.",
             default=True,
             )
     avg_pface = BoolProperty(
-            name="Average Planar Face normals",
+            name="Average Planar Face Normals",
             description="Help align face normals that have normals"
-                        + "that are within 1 degree",
+                        + " that are within 1 degree.",
             default=False,
             )
-    # sh_edge = BoolProperty(
-    #   name="Smooth with sharp edges",
-    #   description="Temp hack to export smooth shaded models"
-    #                + "with sharp edges",
-    #     default=False,
-    #   )
-
     run_rc = BoolProperty(
-            name="Run Resource Compiler",
-            description="Generally a Good Idea",
+            name="Run RC",
+            description="Generally a good idea.",
             default=True,
             )
-    run_rc_and_do_materials = BoolProperty(
-            name="Run RC and Do Materials",
-            description="Generally a Good Idea",
+    do_materials = BoolProperty(
+            name="Run RC And Do Materials",
+            description="Generally a good idea.",
             default=False,
             )
-
+    convert_source_image_to_dds = BoolProperty(
+            name="Convert Images To DDS",
+            description="Converts source textures to DDS"
+                        + " while exporting materials.",
+            default=False,
+            )
+    save_tiff_during_conversion = BoolProperty(
+            name="Save TIFF During Conversion",
+            description="Saves TIFF images that are generated"
+                        + " during conversion to DDS.",
+            default=False,
+            )
+    refresh_rc = BoolProperty(
+            name="Refresh RC Output",
+            description="Generally a good idea.",
+            default=True,
+            )
     include_ik = BoolProperty(
-            name="Include IK in Character",
+            name="Include IK In Character",
             description="Adds IK from your skeleton to the phys skeleton"
                         + "upon export.",
             default=False,
             )
-
     make_layer = BoolProperty(
-            name="Make .lyr file",
+            name="Make .lyr File",
             description="Makes a .lyr to reassemble your scene"
-                        + "in the CryEngine 3",
+                        + "in the CryEngine 3.",
+            default=False,
+            )
+    run_in_profiler = BoolProperty(
+            name="Profile CryBlend",
+            description="Select only if you want to profile CryBlend.",
             default=False,
             )
 
@@ -1388,7 +1315,10 @@ class Export(bpy.types.Operator, ExportHelper):
                 'donot_merge',
                 'avg_pface',
                 'run_rc',
-                'run_rc_and_do_materials',
+                'do_materials',
+                'convert_source_image_to_dds',
+                'save_tiff_during_conversion',
+                'refresh_rc',
                 'include_ik',
                 'make_layer'
             )
@@ -1396,12 +1326,21 @@ class Export(bpy.types.Operator, ExportHelper):
             for attribute in attributes:
                 setattr(self, attribute, getattr(config, attribute))
 
+            setattr(self, 'rc_path', CONFIG['RC_LOCATION'])
+            setattr(self, 'textures_dir', CONFIG['TEXTURES_DIR'])
+
     def execute(self, context):
-        exe = CONFIG['RC_LOCATION']
         cbPrint(CONFIG['RC_LOCATION'])
         try:
             config = Export.Config(config=self)
-            export.save(config, context, exe)
+
+            if self.run_in_profiler:
+                import cProfile
+                cProfile.runctx('export.save(config)', {},
+                                {'export': export, 'config': config})
+            else:
+                export.save(config)
+
             self.filepath = '//'
 
         except exceptions.CryBlendException as exception:
@@ -1409,6 +1348,33 @@ class Export(bpy.types.Operator, ExportHelper):
             bpy.ops.error.message('INVOKE_DEFAULT', message=exception.what())
 
         return {'FINISHED'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        box = layout.box()
+        box.label("General")
+        box.prop(self, "export_type")
+        box.prop(self, "donot_merge")
+        box.prop(self, "avg_pface")
+        box = layout.box()
+        box.prop(self, "run_rc")
+        box.prop(self, "refresh_rc")
+        box = layout.box()
+        box.label("Image and material")
+        box.prop(self, "do_materials")
+        box.prop(self, "convert_source_image_to_dds")
+        box.prop(self, "save_tiff_during_conversion")
+        box = layout.box()
+        box.label("Animation")
+        box.prop(self, "merge_anm")
+        box.prop(self, "include_ik")
+        box = layout.box()
+        box.label("CryEngine editor")
+        box.prop(self, "make_layer")
+        box = layout.box()
+        box.label("Developer tools")
+        box.prop(self, "run_in_profiler")
 
 
 class ErrorHandler(bpy.types.Operator):
@@ -1607,6 +1573,7 @@ class CustomMenu(bpy.types.Menu):
         layout.separator()
         # layout.operator("fix_wh.trans", icon='ZOOM_ALL')
         layout.separator()
+        layout.operator("select_textures.dir", icon='IMASEL')
         layout.operator("f_ind.rc", icon='SCRIPTWIN')
         layout.separator()
         layout.separator()
@@ -1695,6 +1662,7 @@ def get_classes_to_register():
         Find_multiFaceLine,
         CryBlend_Cfg,
         Find_Rc,
+        SelectTexturesDirectory,
 
         Fix_wh_trans,
         Add_ANIM_Node,

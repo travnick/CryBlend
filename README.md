@@ -14,6 +14,23 @@ Your_Blender_path\scripts\addons\
 
 Changelog:
 --------
+**4.11.0**
+Features:
+* Created new layout for exporting options.
+* Improved configuration handling.
+* Added converter to DDS.
+* Added button to save tiff.(DDS exporting)
+* Added "Select textures directory" to CryBlend menu - helps with generating proper texture paths in .mtl files.
+* Improved relative paths in .mtl.
+* Added option "Profile CryBlend" that helps in tracking performance issues.
+* "Find the Resource Compiler" now shows current RC path.
+
+Improvements in code:
+* Configuration simplified and moved to separate module.
+* Replaced some string concatenation by creating a list of strings.
+* Removed useless code.
+* Refactored export.py:__export_library_animation_clips_and_animations() to reduce duplicated code.
+* And other changes.
 
 **4.9.9**
 Features:
@@ -58,7 +75,7 @@ Features:
 
 **4.9.2**
 Fixed:
-* Non relative paths to textures in .mlt file.
+* Non relative paths to textures in .mtl file.
 
 **4.9.1.1**
 Fixed:
