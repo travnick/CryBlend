@@ -29,7 +29,6 @@
 #------------------------------------------------------------------------------
 
 
-
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner & Duo Oratar",
@@ -44,7 +43,9 @@ bl_info = {
     "support": 'OFFICIAL',
     "category": "Import-Export"}
 
+
 VERSION = bl_info["version"]
+
 
 if "bpy" in locals():
     import imp
