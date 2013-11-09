@@ -169,7 +169,7 @@ def fix_transforms():
     ob.location.z /= 2.0
 
 
-def matrix_to_string(self, matrix):
+def matrix_to_string(matrix):
     result = ""
     for row in matrix:
         for col in row:

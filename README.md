@@ -14,21 +14,25 @@ Your_Blender_path\scripts\addons\
 
 Changelog:
 --------
+**4.11.1**
+Fixes:
+* Fixed bug in matrix_to_string function (#24).
+
 **4.11.0**
 Features:
-* Created new layout for exporting options.
-* Improved configuration handling.
-* Added converter to DDS.
-* Added button to save tiff.(DDS exporting)
-* Added "Select textures directory" to CryBlend menu - helps with generating proper texture paths in .mtl files.
-* Improved relative paths in .mtl.
-* Added option "Profile CryBlend" that helps in tracking performance issues.
-* "Find the Resource Compiler" now shows current RC path.
+* Created new layout for exporting options (#22).
+* Improved configuration handling (#20).
+* Added converter to DDS (#12).
+* Added button to save tiff (DDS exporting) (#18).
+* Added "Select textures directory" to CryBlend menu - helps with generating proper texture paths in .mtl files (#16).
+* Improved relative paths in .mtl (#16).
+* Added option "Profile CryBlend" that helps in tracking performance issues  (#16).
+* "Find the Resource Compiler" now shows current RC path (#20).
 
 Improvements in code:
-* Configuration simplified and moved to separate module.
-* Replaced some string concatenation by creating a list of strings.
-* Removed useless code.
+* Configuration simplified and moved to separate module (#20).
+* Replaced some string concatenation by creating a list of strings (#19).
+* Removed useless code  (#6).
 * Refactored export.py:__export_library_animation_clips_and_animations() to reduce duplicated code.
 * And other changes.
 
