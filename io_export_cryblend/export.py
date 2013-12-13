@@ -132,19 +132,20 @@ class CrytekDaeExporter:
         for group in bpy.context.blend_data.groups:
             for object_ in group.objects:
                 object_.select = True
-                cbPrint(object_.name)
+                cbPrint("{!r} selected.".format(object_.name))
 
     def __get_object_children(self, Parent):
         return [Object for Object in Parent.children
                 if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
 
     def wbl(self, pname, bones, obj, node1):
-        cbPrint(len(bones), "bones")
+        cbPrint("{!r} bones".format(len(bones)))
         boneExtendedNames = []
         for bone in bones:
             bprnt = bone.parent
             if bprnt:
-                cbPrint(bone.name, bone.parent.name)
+                cbPrint("Bone {!r} has parent {!r}".format(bone.name,
+                                                           bone.parent.name))
             bname = bone.name
             nodename = self.__doc.createElement("node")
 
@@ -1619,7 +1620,6 @@ class CrytekDaeExporter:
 
                 vw += "%s " % str(vcount)
                 vcount += 1
-                cbPrint("Doing weights.")
 
             vcntr += "%s " % len(v.groups)
 

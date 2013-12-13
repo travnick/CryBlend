@@ -3,6 +3,7 @@
 #------------------------------------------------------------------------------
 
 
+from io_export_cryblend import exceptions
 from logging import basicConfig, info, debug, warning, DEBUG
 
 
@@ -35,6 +36,10 @@ class outPipe():
 
         elif message_type == 'error':
             print("[Error] CryBlend: {!r}".format(message))
+
+        else:
+            raise exceptions.CryBlendException("No such message type {!r}".
+                                    format(message_type))
 
 oP = outPipe()
 
