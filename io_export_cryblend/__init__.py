@@ -59,7 +59,7 @@ else:
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
     FloatProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
-from io_export_cryblend.configuration import CONFIG, save_config
+from io_export_cryblend.configuration import Configuration
 from io_export_cryblend.outPipe import cbPrint
 import bmesh
 import bpy.ops
@@ -81,7 +81,7 @@ class PathSelectTemplate(ExportHelper):
     def execute(self, context):
         self.process(self.filepath)
 
-        save_config()
+        Configuration.save()
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -97,11 +97,11 @@ class FindRc(bpy.types.Operator, PathSelectTemplate):
     bl_idname = "cb.find_rc"
 
     filename_ext = ".exe"
-    default_filepath = CONFIG['RC_LOCATION']
+    default_filepath = Configuration.rc_path
 
     def process(self, filepath):
-        CONFIG['RC_LOCATION'] = "%s" % filepath
-        cbPrint("Found RC at {!r}.".format(CONFIG['RC_LOCATION']), 'debug')
+        Configuration.rc_path = "%s" % filepath
+        cbPrint("Found RC at {!r}.".format(Configuration.rc_path), 'debug')
 
 
 class FindRcForTextureConversion(bpy.types.Operator, PathSelectTemplate):
@@ -113,12 +113,13 @@ to be able to export your textures as dds files'''
     bl_idname = "cb.find_rc_for_texture_conversion"
 
     filename_ext = ".exe"
-    default_filepath = CONFIG['RC_FOR_TEXTURES_CONVERSION']
+    default_filepath = Configuration.rc_for_texture_conversion_path
 
     def process(self, filepath):
-        CONFIG['RC_FOR_TEXTURES_CONVERSION'] = "%s" % filepath
+        Configuration.rc_for_texture_conversion_path = "%s" % filepath
         cbPrint("Found RC at {!r}.".format(
-                                CONFIG['RC_FOR_TEXTURES_CONVERSION']), 'debug')
+                        Configuration.rc_for_texture_conversion_path),
+                'debug')
 
 
 class SelectTexturesDirectory(bpy.types.Operator, PathSelectTemplate):
@@ -129,11 +130,12 @@ for textures in .mtl file.'''
     bl_idname = "select_textures.dir"
 
     filename_ext = ""
-    default_filepath = CONFIG['TEXTURES_DIR']
+    default_filepath = Configuration.textures_directory
 
     def process(self, filepath):
-        CONFIG['TEXTURES_DIR'] = "%s" % os.path.dirname(filepath)
-        cbPrint("Textures directory: {!r}.".format(CONFIG['TEXTURES_DIR']),
+        Configuration.textures_directory = "%s" % os.path.dirname(filepath)
+        cbPrint("Textures directory: {!r}.".format(
+                                            Configuration.textures_directory),
                 'debug')
 
 
@@ -185,9 +187,9 @@ class CryBlend_Cfg(bpy.types.Operator):
     def invoke(self, context, event):
         save_config()
         # Report.reset()
-        # Report.messages.append('SAVED %s' %CONFIG_FILEPATH)
+        # Report.messages.append('SAVED %s' %__CONFIG_FILEPATH)
         # Report.show()
-        cbPrint('Saved %s' % CONFIG_FILEPATH)
+        cbPrint('Saved %s' % __CONFIG_FILEPATH)
         return {'FINISHED'}
 
 
@@ -1382,13 +1384,13 @@ class Export(bpy.types.Operator, ExportHelper):
             for attribute in attributes:
                 setattr(self, attribute, getattr(config, attribute))
 
-            setattr(self, 'rc_path', CONFIG['RC_LOCATION'])
+            setattr(self, 'rc_path', Configuration.rc_path)
             setattr(self, 'rc_for_textures_conversion_path',
-                    CONFIG['RC_FOR_TEXTURES_CONVERSION'])
-            setattr(self, 'textures_dir', CONFIG['TEXTURES_DIR'])
+                    Configuration.rc_for_texture_conversion_path)
+            setattr(self, 'textures_dir', Configuration.textures_directory)
 
     def execute(self, context):
-        cbPrint(CONFIG['RC_LOCATION'], 'debug')
+        cbPrint(Configuration.rc_path, 'debug')
         try:
             config = Export.Config(config=self)
 
