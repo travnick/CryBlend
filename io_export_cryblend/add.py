@@ -21,7 +21,7 @@ import bpy_extras
 # animnode for animation name and frame range slection
 def add_animnode(self, context):
     bpy.ops.object.add(type='EMPTY')
-    anode = bpy.context.object
+    anode = bpy.context.active_object
     anode.name = 'animnode'
     anode["animname"] = "door open"
     anode["startframe"] = 1
@@ -32,7 +32,7 @@ def add_animnode(self, context):
 # joint
 def add_joint(self, context):
     bpy.ops.mesh.primitive_cube_add()
-    ob = bpy.context.object
+    ob = bpy.context.active_object
     ob.draw_type = "BOUNDS"
     ob.show_x_ray = True
     ob.name = '_jointNUM'

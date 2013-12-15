@@ -65,7 +65,7 @@ class CrytekDaeExporter:
     def __init__(self, config):
         self.__config = config
         self.__doc = Document()
-        self.__exe = config.rc_path
+
         # If you have all your textures in 'Texture', then path shoulb be like:
         # Textures/some/path
         # so 'Textures' has to be removed from start path
@@ -126,7 +126,9 @@ class CrytekDaeExporter:
         self.__export_library_visual_scenes(root_element)
         self.__export_scene(root_element)
 
-        write_to_file(self.__config, self.__doc, filepath, self.__exe)
+        write_to_file(self.__config,
+                      self.__doc, filepath,
+                      self.__config.rc_path)
 
     def __select_all_export_nodes(self):
         for group in bpy.context.blend_data.groups:
@@ -847,7 +849,8 @@ class CrytekDaeExporter:
         return image.has_data and image.filepath
 
     def __convert_images_to_dds(self, images_to_convert):
-        converter = DdsConverterRunner(self.__exe)
+        converter = DdsConverterRunner(
+                                self.__config.rc_for_textures_conversion_path)
         converter.start_conversion(images_to_convert,
                                    self.__config.refresh_rc,
                                    self.__config.save_tiff_during_conversion)

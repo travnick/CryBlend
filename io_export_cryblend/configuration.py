@@ -20,6 +20,7 @@ CONFIG_PATH = bpy.utils.user_resource('CONFIG', path='scripts', create=True)
 CONFIG_FILENAME = 'cryblend.cfg'
 CONFIG_FILEPATH = os.path.join(CONFIG_PATH, CONFIG_FILENAME)
 _DEFAULT_CONFIGURATION = {'RC_LOCATION': r'',
+                          'RC_FOR_TEXTURES_CONVERSION': r'',
                           'TEXTURES_DIR': r''}
 
 

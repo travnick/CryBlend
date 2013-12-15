@@ -31,9 +31,9 @@
 
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
-    "author": "Angelo J. Miner & Duo Oratar",
+    "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
     "blender": (2, 6, 8),
-    "version": (4, 11, 1, 1, 'dev'),
+    "version": (4, 11, 1, 2, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -75,45 +75,101 @@ import webbrowser
 new = 2  # open in a new tab, if possible
 
 
-class Find_Rc(bpy.types.Operator, ExportHelper):
-    bl_label = "Find The Resource Compiler"
-    bl_idname = "f_ind.rc"
-
-    filename_ext = ".exe"
+class PathSelectTemplate(ExportHelper):
+    check_existing = True
 
     def execute(self, context):
-        CONFIG['RC_LOCATION'] = "%s" % self.filepath
-
-        cbPrint("Found RC at {!r}.".format(CONFIG['RC_LOCATION']), 'debug')
+        self.process(self.filepath)
 
         save_config()
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        self.filepath = ''.join([CONFIG['RC_LOCATION'], "rc.exe"])
+        self.filepath = self.default_filepath
 
         return ExportHelper.invoke(self, context, event)
 
 
-class SelectTexturesDirectory(bpy.types.Operator, ExportHelper):
+class FindRc(bpy.types.Operator, PathSelectTemplate):
+    '''Select the Resource Compiler executable'''
+
+    bl_label = "Find The Resource Compiler"
+    bl_idname = "cb.find_rc"
+
+    filename_ext = ".exe"
+    default_filepath = CONFIG['RC_LOCATION']
+
+    def process(self, filepath):
+        CONFIG['RC_LOCATION'] = "%s" % filepath
+        cbPrint("Found RC at {!r}.".format(CONFIG['RC_LOCATION']), 'debug')
+
+
+class FindRcForTextureConversion(bpy.types.Operator, PathSelectTemplate):
+    '''Select if you are using RC from cryengine \
+newer than 3.4.5. Provide RC path from cryengine 3.4.5 \
+to be able to export your textures as dds files'''
+
+    bl_label = "Find The Resource Compiler For Texture Conversion"
+    bl_idname = "cb.find_rc_for_texture_conversion"
+
+    filename_ext = ".exe"
+    default_filepath = CONFIG['RC_FOR_TEXTURES_CONVERSION']
+
+    def process(self, filepath):
+        CONFIG['RC_FOR_TEXTURES_CONVERSION'] = "%s" % filepath
+        cbPrint("Found RC at {!r}.".format(
+                                CONFIG['RC_FOR_TEXTURES_CONVERSION']), 'debug')
+
+
+class SelectTexturesDirectory(bpy.types.Operator, PathSelectTemplate):
+    '''This path will be used to create relative path \
+for textures in .mtl file.'''
+
     bl_label = "Select Textures Directory"
     bl_idname = "select_textures.dir"
 
     filename_ext = ""
+    default_filepath = CONFIG['TEXTURES_DIR']
 
-    def execute(self, context):
-        CONFIG['TEXTURES_DIR'] = "%s" % os.path.dirname(self.filepath)
-
+    def process(self, filepath):
+        CONFIG['TEXTURES_DIR'] = "%s" % os.path.dirname(filepath)
         cbPrint("Textures directory: {!r}.".format(CONFIG['TEXTURES_DIR']),
                 'debug')
 
-        save_config()
-        return {'FINISHED'}
 
-    def invoke(self, context, event):
-        self.filepath = CONFIG['TEXTURES_DIR']
+class MenuTemplate():
+    class Operator:
+        def __init__(self, name="", icon=''):
+            self.name = name
+            self.icon = icon
 
-        return ExportHelper.invoke(self, context, event)
+    operators = None
+    label = None
+
+    def draw(self, context):
+        layout = self.layout
+
+        if self.label:
+            layout.label(text=self.label)
+            layout.separator()
+
+        for operator in self.operators:
+            layout.operator(operator.name, icon=operator.icon)
+
+
+class CryBlendConfigurationPaths(bpy.types.Menu, MenuTemplate):
+    bl_idname = "CryBlendConfigurationPaths"
+    bl_label = "Set CryBlend Paths"
+    label = bl_label
+
+    operators = (
+         MenuTemplate.Operator(name="cb.find_rc",
+                               icon='SCRIPTWIN'),
+         MenuTemplate.Operator(name="cb.find_rc_for_texture_conversion",
+                               icon='SCRIPTWIN'),
+         MenuTemplate.Operator(name="select_textures.dir",
+                               icon='IMASEL'),
+     )
 
 
 class CryBlend_Cfg(bpy.types.Operator):
@@ -159,8 +215,8 @@ class Open_UDP_Wp(bpy.types.Operator):
 
 
 class Get_Ridof_Nasty(bpy.types.Operator):
-    '''Select the object to test in object mode with nothing selected in
-    it's mesh before running this.'''
+    '''Select the object to test in object mode with nothing selected in \
+it's mesh before running this.'''
     bl_label = "Find Degenerate Faces"
     bl_idname = "find_deg.faces"
 
@@ -188,8 +244,8 @@ class Get_Ridof_Nasty(bpy.types.Operator):
 
 # Duo Oratar
 class Find_multiFaceLine(bpy.types.Operator):
-    '''Select the object to test in object mode with nothing selected in
-    it's mesh before running this.'''
+    '''Select the object to test in object mode with nothing selected in \
+it's mesh before running this.'''
     bl_label = "Find Lines With 3+ Faces."
     bl_idname = "find_multiface.lines"
 
@@ -262,7 +318,7 @@ class Add_ANIM_Node(bpy.types.Operator):  # , AddObjectHelper):
         # bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
         ob = bpy.context.active_object
         bpy.ops.object.add(type='EMPTY')
-        anode = bpy.context.object
+        anode = bpy.context.active_object
         anode.name = 'animnode'
         anode["animname"] = self.my_string  # "door open"
         anode["startframe"] = self.my_floats  # 1
@@ -1327,10 +1383,12 @@ class Export(bpy.types.Operator, ExportHelper):
                 setattr(self, attribute, getattr(config, attribute))
 
             setattr(self, 'rc_path', CONFIG['RC_LOCATION'])
+            setattr(self, 'rc_for_textures_conversion_path',
+                    CONFIG['RC_FOR_TEXTURES_CONVERSION'])
             setattr(self, 'textures_dir', CONFIG['TEXTURES_DIR'])
 
     def execute(self, context):
-        cbPrint(CONFIG['RC_LOCATION'])
+        cbPrint(CONFIG['RC_LOCATION'], 'debug')
         try:
             config = Export.Config(config=self)
 
@@ -1530,11 +1588,7 @@ class Cust_props_add(bpy.types.Menu):
                         text="Add Properties to your Vehicle Wheels.")
 
 
-class CustomMenu(bpy.types.Menu):
-    # bl_space_type = 'INFO'#testing
-    bl_label = "CryBlend Menu"
-    bl_idname = "OBJECT_MT_custom_menu"
-
+class Tools():
     def draw(self, context):
         userpref = context.user_preferences
         paths = userpref.filepaths
@@ -1573,9 +1627,8 @@ class CustomMenu(bpy.types.Menu):
         layout.separator()
         # layout.operator("fix_wh.trans", icon='ZOOM_ALL')
         layout.separator()
-        layout.operator("select_textures.dir", icon='IMASEL')
-        layout.operator("f_ind.rc", icon='SCRIPTWIN')
-        layout.separator()
+
+        layout.menu("CryBlendConfigurationPaths", icon='PREFERENCES')
         layout.separator()
         # layout.label(text="Export to CryEngine", icon='GAME')
         layout.operator("export_to.game", icon='GAME')
@@ -1592,14 +1645,31 @@ class CustomMenu(bpy.types.Menu):
         #                           )save_config.file
 
 
+class ToolsMenu(Tools, bpy.types.Menu):
+    bl_label = "CryBlend Menu"
+    bl_idname = "OBJECT_MT_custom_menu"
+
+
+class ToolsPanel(Tools, bpy.types.Panel):
+    bl_idname = "OBJECT_PT_custom_panel"
+    bl_label = "CryBlend Tools"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'render_layer'
+
+
 def draw_item(self, context):
     layout = self.layout
-    layout.menu(CustomMenu.bl_idname)
+    layout.menu(ToolsMenu.bl_idname)
 
 
 def get_classes_to_register():
     classes = (
-        CustomMenu,
+        ToolsPanel,
+        ToolsMenu,
+        FindRcForTextureConversion,
+        CryBlendConfigurationPaths,
+
         Add_CE_Node,
         Add_BO_Joint,
         Export,
@@ -1661,7 +1731,7 @@ def get_classes_to_register():
 
         Find_multiFaceLine,
         CryBlend_Cfg,
-        Find_Rc,
+        FindRc,
         SelectTexturesDirectory,
 
         Fix_wh_trans,
@@ -1701,4 +1771,4 @@ if __name__ == "__main__":
     register()
 
     # The menu can also be called from scripts
-    bpy.ops.wm.call_menu(name=CustomMenu.bl_idname)
+    bpy.ops.wm.call_menu(name=ToolsMenu.bl_idname)
