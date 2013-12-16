@@ -33,6 +33,10 @@ class __Configuration:
     def rc_path(self):
         return self.__CONFIG['RC_LOCATION']
 
+    @rc_path.setter
+    def rc_path(self, value):
+        self.__CONFIG['RC_LOCATION'] = value
+
     @property
     def rc_for_texture_conversion_path(self):
         if (not self.__CONFIG['RC_FOR_TEXTURES_CONVERSION']):
@@ -40,9 +44,17 @@ class __Configuration:
 
         return self.__CONFIG['RC_FOR_TEXTURES_CONVERSION']
 
+    @rc_for_texture_conversion_path.setter
+    def rc_for_texture_conversion_path(self, value):
+        self.__CONFIG['RC_FOR_TEXTURES_CONVERSION'] = value
+
     @property
     def textures_directory(self):
         return self.__CONFIG['TEXTURES_DIR']
+
+    @textures_directory.setter
+    def textures_directory(self, value):
+        self.__CONFIG['TEXTURES_DIR'] = value
 
     def save(self):
         cbPrint("Saving configuration file.", 'debug')
