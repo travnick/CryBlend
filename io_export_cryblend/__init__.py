@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
     "blender": (2, 6, 8),
-    "version": (4, 11, 1, 3, 'dev'),
+    "version": (4, 11, 1, 4, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -1652,14 +1652,6 @@ class ToolsMenu(Tools, bpy.types.Menu):
     bl_idname = "OBJECT_MT_custom_menu"
 
 
-class ToolsPanel(Tools, bpy.types.Panel):
-    bl_idname = "OBJECT_PT_custom_panel"
-    bl_label = "CryBlend Tools"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = 'render_layer'
-
-
 def draw_item(self, context):
     layout = self.layout
     layout.menu(ToolsMenu.bl_idname)
@@ -1667,7 +1659,6 @@ def draw_item(self, context):
 
 def get_classes_to_register():
     classes = (
-        ToolsPanel,
         ToolsMenu,
         FindRcForTextureConversion,
         CryBlendConfigurationPaths,
