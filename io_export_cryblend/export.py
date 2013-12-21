@@ -863,93 +863,93 @@ class CrytekDaeExporter:
             self.__export_library_effects_material(material, current_element)
 
     def __export_library_effects_material(self, material, current_element):
-        dtex = 0
-        stex = 0
-        ntex = 0
-        dimage = ""
-        simage = ""
-        nimage = ""
+        diffuse_count = 0
+        specular_count = 0
+        normal_map_count = 0
+        diffuse_image = ""
+        specular_image = ""
+        normal_map_image = ""
+
         texture_slots = self.__get_texture_slots_for_material(material)
         for texture_slot in texture_slots:
             image = texture_slot.texture.image
+
             if texture_slot.use_map_color_diffuse:
-                dtex = 1
-                dimage = image.name
+                diffuse_count += 1
+                diffuse_image = image.name
                 dnpsurf = self.__doc.createElement("newparam")
                 dnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                dsrf = self.__doc.createElement("surface")
-                dsrf.setAttribute("type", "2D")
-                if1 = self.__doc.createElement("init_from")
-                if1tn = self.__doc.createTextNode("%s" % (image.name))
-                if1.appendChild(if1tn)
-                dsrf.appendChild(if1)
-                dnpsurf.appendChild(dsrf)
+                surface_node = self.__doc.createElement("surface")
+                surface_node.setAttribute("type", "2D")
+                init_from_node = self.__doc.createElement("init_from")
+                temp_node = self.__doc.createTextNode(image.name)
+                init_from_node.appendChild(temp_node)
+                surface_node.appendChild(init_from_node)
+                dnpsurf.appendChild(surface_node)
                 dnpsamp = self.__doc.createElement("newparam")
                 dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                dsamp = self.__doc.createElement("sampler2D")
-                if2 = self.__doc.createElement("source")
-                if2tn = self.__doc.createTextNode(
-                    "%s-surface" % (image.name))
-                if2.appendChild(if2tn)
-                dsamp.appendChild(if2)
-                dnpsamp.appendChild(dsamp)
+                sampler_node = self.__doc.createElement("sampler2D")
+                source_node = self.__doc.createElement("source")
+                temp_node = self.__doc.createTextNode(
+                                                "%s-surface" % (image.name))
+                source_node.appendChild(temp_node)
+                sampler_node.appendChild(source_node)
+                dnpsamp.appendChild(sampler_node)
             if texture_slot.use_map_color_spec:
-                stex = 1
-                simage = image.name
+                specular_count += 1
+                specular_image = image.name
                 snpsurf = self.__doc.createElement("newparam")
                 snpsurf.setAttribute("sid", "%s-surface" % image.name)
-                ssrf = self.__doc.createElement("surface")
-                ssrf.setAttribute("type", "2D")
-                sif1 = self.__doc.createElement("init_from")
-                sif1tn = self.__doc.createTextNode(
-                    "%s" % (image.name))
-                sif1.appendChild(sif1tn)
-                ssrf.appendChild(sif1)
-                snpsurf.appendChild(ssrf)
+                surface_node = self.__doc.createElement("surface")
+                surface_node.setAttribute("type", "2D")
+                init_from_node = self.__doc.createElement("init_from")
+                temp_node = self.__doc.createTextNode(image.name)
+                init_from_node.appendChild(temp_node)
+                surface_node.appendChild(init_from_node)
+                snpsurf.appendChild(surface_node)
                 snpsamp = self.__doc.createElement("newparam")
                 snpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                ssamp = self.__doc.createElement("sampler2D")
-                sif2 = self.__doc.createElement("source")
-                sif2tn = self.__doc.createTextNode(
-                    "%s-surface" % (image.name))
-                sif2.appendChild(sif2tn)
-                ssamp.appendChild(sif2)
-                snpsamp.appendChild(ssamp)
+                sampler_node = self.__doc.createElement("sampler2D")
+                source_node = self.__doc.createElement("source")
+                temp_node = self.__doc.createTextNode(
+                                                "%s-surface" % (image.name))
+                source_node.appendChild(temp_node)
+                sampler_node.appendChild(source_node)
+                snpsamp.appendChild(sampler_node)
             if texture_slot.use_map_normal:
-                ntex = 1
-                nimage = image.name
+                normal_map_count += 1
+                normal_map_image = image.name
                 nnpsurf = self.__doc.createElement("newparam")
                 nnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                nsrf = self.__doc.createElement("surface")
-                nsrf.setAttribute("type", "2D")
-                nif1 = self.__doc.createElement("init_from")
-                nif1tn = self.__doc.createTextNode(
-                    "%s" % (image.name))
-                nif1.appendChild(nif1tn)
-                nsrf.appendChild(nif1)
-                nnpsurf.appendChild(nsrf)
+                surface_node = self.__doc.createElement("surface")
+                surface_node.setAttribute("type", "2D")
+                init_from_node = self.__doc.createElement("init_from")
+                temp_node = self.__doc.createTextNode(image.name)
+                init_from_node.appendChild(temp_node)
+                surface_node.appendChild(init_from_node)
+                nnpsurf.appendChild(surface_node)
                 nnpsamp = self.__doc.createElement("newparam")
                 nnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                nsamp = self.__doc.createElement("sampler2D")
-                if2 = self.__doc.createElement("source")
-                if2tn = self.__doc.createTextNode(
-                    "%s-surface" % (image.name))
-                if2.appendChild(if2tn)
-                nsamp.appendChild(if2)
-                nnpsamp.appendChild(nsamp)
+                sampler_node = self.__doc.createElement("sampler2D")
+                source_node = self.__doc.createElement("source")
+                temp_node = self.__doc.createTextNode(
+                                                "%s-surface" % (image.name))
+                source_node.appendChild(temp_node)
+                sampler_node.appendChild(source_node)
+                nnpsamp.appendChild(sampler_node)
 
-        effid = self.__doc.createElement("effect")
-        effid.setAttribute("id", "%s_fx" % (material.name))
-        prof_com = self.__doc.createElement("profile_COMMON")
-        if dtex == 1:
-            prof_com.appendChild(dnpsurf)
-            prof_com.appendChild(dnpsamp)
-        if stex == 1:
-            prof_com.appendChild(snpsurf)
-            prof_com.appendChild(snpsamp)
-        if ntex == 1:
-            prof_com.appendChild(nnpsurf)
-            prof_com.appendChild(nnpsamp)
+        effect_node = self.__doc.createElement("effect")
+        effect_node.setAttribute("id", "%s_fx" % (material.name))
+        profile_node = self.__doc.createElement("profile_COMMON")
+        if diffuse_count:
+            profile_node.appendChild(dnpsurf)
+            profile_node.appendChild(dnpsamp)
+        if specular_count:
+            profile_node.appendChild(snpsurf)
+            profile_node.appendChild(snpsamp)
+        if normal_map_count:
+            profile_node.appendChild(nnpsurf)
+            profile_node.appendChild(nnpsamp)
         tech_com = self.__doc.createElement("technique")
         tech_com.setAttribute("sid", "common")
         phong = self.__doc.createElement("phong")
@@ -971,9 +971,9 @@ class CrytekDaeExporter:
         color.appendChild(ambcol)
         amb.appendChild(color)
         dif = self.__doc.createElement("diffuse")
-        if dtex == 1:
+        if diffuse_count:
             dtexr = self.__doc.createElement("texture")
-            dtexr.setAttribute("texture", "%s-sampler" % dimage)
+            dtexr.setAttribute("texture", "%s-sampler" % diffuse_image)
             dif.appendChild(dtexr)
         else:
             color = self.__doc.createElement("color")
@@ -985,9 +985,9 @@ class CrytekDaeExporter:
             color.appendChild(difcol)
             dif.appendChild(color)
         spec = self.__doc.createElement("specular")
-        if stex == 1:
+        if specular_count:
             stexr = self.__doc.createElement("texture")
-            stexr.setAttribute("texture", "%s-sampler" % simage)
+            stexr.setAttribute("texture", "%s-sampler" % specular_image)
             spec.appendChild(stexr)
         else:
             color = self.__doc.createElement("color")
@@ -1018,14 +1018,14 @@ class CrytekDaeExporter:
         phong.appendChild(spec)
         phong.appendChild(shin)
         phong.appendChild(ioref)
-        if ntex == 1:
+        if normal_map_count:
             bump = self.__doc.createElement("normal")
             ntexr = self.__doc.createElement("texture")
-            ntexr.setAttribute("texture", "%s-sampler" % nimage)
+            ntexr.setAttribute("texture", "%s-sampler" % normal_map_image)
             bump.appendChild(ntexr)
             phong.appendChild(bump)
         tech_com.appendChild(phong)
-        prof_com.appendChild(tech_com)
+        profile_node.appendChild(tech_com)
         extra = self.__doc.createElement("extra")
         techn = self.__doc.createElement("technique")
         techn.setAttribute("profile", "GOOGLEEARTH")
@@ -1034,8 +1034,8 @@ class CrytekDaeExporter:
         ds.appendChild(dsval)
         techn.appendChild(ds)
         extra.appendChild(techn)
-        prof_com.appendChild(extra)
-        effid.appendChild(prof_com)
+        profile_node.appendChild(extra)
+        effect_node.appendChild(profile_node)
         extra = self.__doc.createElement("extra")
         techn = self.__doc.createElement("technique")
         techn.setAttribute("profile", "MAX3D")
@@ -1044,8 +1044,8 @@ class CrytekDaeExporter:
         ds.appendChild(dsval)
         techn.appendChild(ds)
         extra.appendChild(techn)
-        effid.appendChild(extra)
-        current_element.appendChild(effid)
+        effect_node.appendChild(extra)
+        current_element.appendChild(effect_node)
 
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
