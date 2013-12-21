@@ -938,6 +938,10 @@ class CrytekDaeExporter:
                 sampler_node.appendChild(source_node)
                 nnpsamp.appendChild(sampler_node)
 
+        self.__raise_exception_if_textures_have_same_type(diffuse_count,
+                                                          specular_count,
+                                                          normal_map_count)
+
         effect_node = self.__doc.createElement("effect")
         effect_node.setAttribute("id", "%s_fx" % (material.name))
         profile_node = self.__doc.createElement("profile_COMMON")
@@ -1046,6 +1050,24 @@ class CrytekDaeExporter:
         extra.appendChild(techn)
         effect_node.appendChild(extra)
         current_element.appendChild(effect_node)
+
+    def __raise_exception_if_textures_have_same_type(self,
+                                                     diffuse_count,
+                                                     specular_count,
+                                                     normal_map_count):
+        ERROR_TEMPLATE = "There is more than one texture of type {!r}."
+        error_messages = []
+
+        if diffuse_count > 1:
+            error_messages.append(ERROR_TEMPLATE.format("diffuse"))
+        if specular_count > 1:
+            error_messages.append(ERROR_TEMPLATE.format("specular"))
+        if normal_map_count > 1:
+            error_messages.append(ERROR_TEMPLATE.format("normal map"))
+
+        if error_messages:
+            raise exceptions.CryBlendException("\n".join(error_messages) + "\n"
+                                        + "Please correct that and try again.")
 
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
