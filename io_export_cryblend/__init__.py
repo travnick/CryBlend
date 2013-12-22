@@ -37,12 +37,13 @@ bl_info = {
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
-    "wiki_url": "http://wiki.blender.org/index.php/Extensions:2.5/Py/Scripts/"
-        "Import-Export/CryEngine3",
+    "wiki_url": "https://github.com/travnick/CryBlend/wiki",
     "tracker_url": "https://github.com/travnick/CryBlend/issues?state=open",
     "support": 'OFFICIAL',
     "category": "Import-Export"}
 
+# old wiki url: http://wiki.blender.org/
+# index.php/Extensions:2.5/Py/Scripts/Import-Export/CryEngine3
 
 VERSION = bl_info["version"]
 
