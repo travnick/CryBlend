@@ -232,7 +232,8 @@ class CrytekDaeExporter:
                     # <scale sid="scale">
                     sc = self.__doc.createElement("scale")
                     sc.setAttribute("sid", "scale")
-                    scn = self.__doc.createTextNode(" ".join(object_.scale))
+                    scn = self.__doc.createTextNode(
+                            utils.floats_to_string(object_.scale, " ", "%s"))
                     sc.appendChild(scn)
                     nodename.appendChild(trans)
                     nodename.appendChild(rotz)
@@ -324,7 +325,8 @@ class CrytekDaeExporter:
                 # <scale sid="scale">
                 sc = self.__doc.createElement("scale")
                 sc.setAttribute("sid", "scale")
-                scn = self.__doc.createTextNode(" ".join(object_.scale))
+                scn = self.__doc.createTextNode(
+                            utils.floats_to_string(object_.scale, " ", "%s"))
                 sc.appendChild(scn)
                 nodename.appendChild(trans)
                 nodename.appendChild(rotz)
