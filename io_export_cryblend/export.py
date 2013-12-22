@@ -825,7 +825,43 @@ class CrytekDaeExporter:
             if texture_slot and texture_slot.texture.type == 'IMAGE':
                 texture_slots.append(texture_slot)
 
+        self.__is_texture_slot_valid(texture_slots)
+
         return texture_slots
+
+    def __is_texture_slot_valid(self, texture_slots):
+        texture_types = self.__count_texture_types(texture_slots)
+
+        self.__raise_exception_if_textures_have_same_type(texture_types)
+
+    def __count_texture_types(self, texture_slots):
+        texture_types = {
+            'DIFFUSE': 0,
+            'SPECULAR': 0,
+            'NORMAL MAP': 0
+        }
+
+        for texture_slot in texture_slots:
+            if texture_slot.use_map_color_diffuse:
+                texture_types['DIFFUSE'] += 1
+            if texture_slot.use_map_color_spec:
+                texture_types['SPECULAR'] += 1
+            if texture_slot.use_map_normal:
+                texture_types['NORMAL MAP'] += 1
+
+        return texture_types
+
+    def __raise_exception_if_textures_have_same_type(self, texture_types):
+        ERROR_TEMPLATE = "There is more than one texture of type {!r}."
+        error_messages = []
+
+        for type_name, type_count in  texture_types.items():
+            if type_count > 1:
+                error_messages.append(ERROR_TEMPLATE.format(type_name.lower()))
+
+        if error_messages:
+            raise exceptions.CryBlendException("\n".join(error_messages) + "\n"
+                                        + "Please correct that and try again.")
 
     def __get_textures_for_texture_slots(self, texture_slots):
         return [texture_slot.texture for texture_slot in texture_slots]
@@ -858,6 +894,10 @@ class CrytekDaeExporter:
         texture_slots = self.__get_texture_slots_for_material(material)
         for texture_slot in texture_slots:
             image = texture_slot.texture.image
+
+            if not image:
+                raise exceptions.CryBlendException(
+                            "One of texture slots has no image assigned.")
 
             if texture_slot.use_map_color_diffuse:
                 diffuse_count += 1
@@ -922,10 +962,6 @@ class CrytekDaeExporter:
                 source_node.appendChild(temp_node)
                 sampler_node.appendChild(source_node)
                 nnpsamp.appendChild(sampler_node)
-
-        self.__raise_exception_if_textures_have_same_type(diffuse_count,
-                                                          specular_count,
-                                                          normal_map_count)
 
         effect_node = self.__doc.createElement("effect")
         effect_node.setAttribute("id", "%s_fx" % (material.name))
@@ -1038,24 +1074,6 @@ class CrytekDaeExporter:
         extra.appendChild(techn)
         effect_node.appendChild(extra)
         current_element.appendChild(effect_node)
-
-    def __raise_exception_if_textures_have_same_type(self,
-                                                     diffuse_count,
-                                                     specular_count,
-                                                     normal_map_count):
-        ERROR_TEMPLATE = "There is more than one texture of type {!r}."
-        error_messages = []
-
-        if diffuse_count > 1:
-            error_messages.append(ERROR_TEMPLATE.format("diffuse"))
-        if specular_count > 1:
-            error_messages.append(ERROR_TEMPLATE.format("specular"))
-        if normal_map_count > 1:
-            error_messages.append(ERROR_TEMPLATE.format("normal map"))
-
-        if error_messages:
-            raise exceptions.CryBlendException("\n".join(error_messages) + "\n"
-                                        + "Please correct that and try again.")
 
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
