@@ -9,6 +9,8 @@
 # Licence:     GPLv2+
 #------------------------------------------------------------------------------
 
+# <pep8-80 compliant>
+
 
 if "bpy" in locals():
     import imp
@@ -98,16 +100,6 @@ def veckey3d3(vn, fn):
     return (round((facenorm.x * vn.x) / 2),
             round((facenorm.y * vn.y) / 2),
             round((facenorm.z * vn.z) / 2))
-
-
-def fix_transforms():
-    ob = bpy.context.selected_objects
-    ob.location.x = (ob.bound_box[0][0] + ob.bound_box[1][0])
-    ob.location.x /= 2.0
-    ob.location.y = (ob.bound_box[2][0] + ob.bound_box[3][0])
-    ob.location.y /= 2.0
-    ob.location.z = (ob.bound_box[4][0] + ob.bound_box[5][0])
-    ob.location.z /= 2.0
 
 
 def matrix_to_string(matrix):

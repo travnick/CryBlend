@@ -9,6 +9,8 @@
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 
+# <pep8-80 compliant>
+
 
 from bpy.props import *
 from bpy_extras.io_utils import ExportHelper

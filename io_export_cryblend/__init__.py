@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
     "blender": (2, 6, 8),
-    "version": (4, 11, 1, 7, 'dev'),
+    "version": (4, 11, 1, 8, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -266,20 +266,16 @@ it's mesh before running this.'''
 # Menu Classes
 # Interfaces with defs in external .py
 #------------------------------------------------------------------------------
-class Add_BO_Joint(bpy.types.Operator):  # , AddObjectHelper):
+class Add_BO_Joint(bpy.types.Operator):
     bl_label = "Add Joint"
     bl_idname = "add_bo.joint"
 
     def execute(self, context):
-        # from . import helper
         return add.add_joint(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 # Add_CE_Node so short it doesn't really need to be in add
-class Add_CE_Node(bpy.types.Operator):  # , AddObjectHelper):
+class Add_CE_Node(bpy.types.Operator):
     bl_label = "Add CryExportNode"
     bl_idname = "add_cryexport.node"
     my_string = StringProperty(name="CryExportNode name")
@@ -295,27 +291,27 @@ class Add_CE_Node(bpy.types.Operator):  # , AddObjectHelper):
         return context.window_manager.invoke_props_dialog(self)
 
 
-class Add_ANIM_Node(bpy.types.Operator):  # , AddObjectHelper):
+class Add_ANIM_Node(bpy.types.Operator):
     bl_label = "Add AnimNode"
     bl_idname = "add_anim.node"
     my_string = StringProperty(name="Animation Name")
-    my_floats = FloatProperty(name="Start Frame")
-    my_floate = FloatProperty(name="End Frame")
+    start_frame = FloatProperty(name="Start Frame")
+    end_frame = FloatProperty(name="End Frame")
 
     def execute(self, context):
-        # bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
-        ob = bpy.context.active_object
+        object_ = bpy.context.active_object
+
+        # add selects added object
         bpy.ops.object.add(type='EMPTY')
-        anode = bpy.context.active_object
-        anode.name = 'animnode'
-        anode["animname"] = self.my_string  # "door open"
-        anode["startframe"] = self.my_floats  # 1
-        anode["endframe"] = self.my_floate  # 1
-#      anode.select = False
-#      anode.select = True
-        if ob:
-            ob.select = True
-            bpy.context.scene.objects.active = ob
+        empty_object = bpy.context.active_object
+        empty_object.name = 'animnode'
+        empty_object["animname"] = self.my_string
+        empty_object["startframe"] = self.start_frame
+        empty_object["endframe"] = self.end_frame
+
+        if object_:
+            object_.select = True
+            bpy.context.scene.objects.active = object_
 
         bpy.ops.object.parent_set(type='OBJECT')
         message = "Adding AnimNode '%s'" % (self.my_string)
@@ -335,9 +331,6 @@ class Add_wh_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_w_phl(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 # wheel transform fix
@@ -347,13 +340,10 @@ class Fix_wh_trans(bpy.types.Operator):
 
     def execute(self, context):
         ob = bpy.context.active_object
-        ob.location.x = (ob.bound_box[0][0] + ob.bound_box[1][0])
-        ob.location.x /= 2.0
-        ob.location.y = (ob.bound_box[2][0] + ob.bound_box[3][0])
-        ob.location.y /= 2.0
-        ob.location.z = (ob.bound_box[4][0] + ob.bound_box[5][0])
-        ob.location.z /= 2.0
-        # return utils.fix_transforms
+        ob.location.x = (ob.bound_box[0][0] + ob.bound_box[1][0]) / 2.0
+        ob.location.y = (ob.bound_box[2][0] + ob.bound_box[3][0]) / 2.0
+        ob.location.z = (ob.bound_box[4][0] + ob.bound_box[5][0]) / 2.0
+
         return {'FINISHED'}
 
 
@@ -365,9 +355,6 @@ class Add_rm_e_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_e_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_rm_m_Prop(bpy.types.Operator):
@@ -376,9 +363,6 @@ class Add_rm_m_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_m_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_rm_d_Prop(bpy.types.Operator):
@@ -387,9 +371,6 @@ class Add_rm_d_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_d_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_rm_p_Prop(bpy.types.Operator):
@@ -398,9 +379,6 @@ class Add_rm_p_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_rm_p_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 # joint
@@ -410,9 +388,6 @@ class Add_j_gpc_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_gpc_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_pcb_Prop(bpy.types.Operator):
@@ -421,9 +396,6 @@ class Add_j_pcb_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_pcb_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_b_Prop(bpy.types.Operator):
@@ -432,9 +404,6 @@ class Add_j_b_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_b_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_t_Prop(bpy.types.Operator):
@@ -443,9 +412,6 @@ class Add_j_t_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_t_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_pull_Prop(bpy.types.Operator):
@@ -454,9 +420,6 @@ class Add_j_pull_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_pull_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_push_Prop(bpy.types.Operator):
@@ -465,9 +428,6 @@ class Add_j_push_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_push_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_shift_Prop(bpy.types.Operator):
@@ -476,9 +436,6 @@ class Add_j_shift_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_shift_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_climit_Prop(bpy.types.Operator):
@@ -487,9 +444,6 @@ class Add_j_climit_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_climit_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_cminang_Prop(bpy.types.Operator):
@@ -498,9 +452,6 @@ class Add_j_cminang_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_cminang_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_cmaxang_Prop(bpy.types.Operator):
@@ -509,9 +460,6 @@ class Add_j_cmaxang_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_cmaxang_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_cdamp_Prop(bpy.types.Operator):
@@ -520,9 +468,6 @@ class Add_j_cdamp_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_cdamp_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_j_ccol_Prop(bpy.types.Operator):
@@ -531,9 +476,6 @@ class Add_j_ccol_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_j_ccol_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 # jointed breakables
@@ -657,9 +599,6 @@ class Add_Def_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_skel_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 # mat phys
@@ -669,9 +608,6 @@ class Add_M_Pd(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_default(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_M_PND(bpy.types.Operator):
@@ -680,9 +616,6 @@ class Add_M_PND(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_pnd(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_M_None(bpy.types.Operator):
@@ -691,9 +624,6 @@ class Add_M_None(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_none(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_M_Obstr(bpy.types.Operator):
@@ -702,9 +632,6 @@ class Add_M_Obstr(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_obstr(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_M_NoCol(bpy.types.Operator):
@@ -713,9 +640,6 @@ class Add_M_NoCol(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_phys_nocol(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 # CGF/CGA/CHR
@@ -725,9 +649,6 @@ class Add_neo_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_neo_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_orm_Prop(bpy.types.Operator):
@@ -736,9 +657,6 @@ class Add_orm_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_orm_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_colp_Prop(bpy.types.Operator):
@@ -747,9 +665,6 @@ class Add_colp_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_colp_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_b_Prop(bpy.types.Operator):
@@ -758,9 +673,6 @@ class Add_b_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_b_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_cyl_Prop(bpy.types.Operator):
@@ -769,9 +681,6 @@ class Add_cyl_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_cyl_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_caps_Prop(bpy.types.Operator):
@@ -780,9 +689,6 @@ class Add_caps_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_caps_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_sph_Prop(bpy.types.Operator):
@@ -791,9 +697,6 @@ class Add_sph_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_sph_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_nap_Prop(bpy.types.Operator):
@@ -802,9 +705,6 @@ class Add_nap_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_nap_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_nhr_Prop(bpy.types.Operator):
@@ -813,9 +713,6 @@ class Add_nhr_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_nhr_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_dyn_Prop(bpy.types.Operator):
@@ -824,9 +721,6 @@ class Add_dyn_Prop(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_dyn_p(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 # fakebones
 # todo:
@@ -906,8 +800,7 @@ class RenamePhysBones(bpy.types.Operator):
             if ('_Phys' == obj.name[-5:]
                 and obj.type == 'ARMATURE'):
                 for bone in obj.data.bones:
-                    oldName = bone.name
-                    bone.name = oldName + '_Phys'
+                    bone.name += '_Phys'
 
         return {'FINISHED'}
 
@@ -1086,8 +979,8 @@ class AddFakeBone(bpy.types.Operator):
             if om.users == 0:
                 bpy.data.meshes.remove(om)
 
-        ob = bpy.context.scene.objects
-        for arm in ob:
+        scene_objects = bpy.context.scene.objects
+        for arm in scene_objects:
             if arm.type == 'ARMATURE':
 
                 for pbone in arm.pose.bones:
@@ -1112,7 +1005,7 @@ class AddFakeBone(bpy.types.Operator):
                     from bpy_extras import object_utils
                     object_utils.object_data_add(context, mesh, operator=self)
                     bpy.ops.mesh.uv_texture_add()
-                    for fb in ob:
+                    for fb in scene_objects:
                         if fb.name == pbone.name:
                             fb["fakebone"] = "fakebone"
                     bpy.context.scene.objects.active = arm
@@ -1136,9 +1029,6 @@ def add_kfl(self, context):
             object_ = a
     bpy.ops.screen.animation_play()
 
-    def kfdat(frame, bonename, data):
-        return frame, bonename, data
-
     if object_:
         for frame in range(scene.frame_end + 1):
             # frame = frame + 5
@@ -1156,24 +1046,24 @@ def add_kfl(self, context):
                                 bonecm = bonec.matrix_local
                         animatrix = bonepm.inverted() * bonecm
                         lm, rm, sm = animatrix.decompose()
-                        ltmp = kfdat(frame, bone.name, lm)
-                        rtmp = kfdat(frame, bone.name, rm.to_euler())
+                        ltmp = [frame, bone.name, lm]
+                        rtmp = [frame, bone.name, rm.to_euler()]
                         loclist.append(ltmp)
                         rotlist.append(rtmp)
                     else:
                         for i in bpy.context.scene.objects:
                             if i.name == bone.name:
                                 lm, rm, sm = i.matrix_local.decompose()
-                                ltmp = kfdat(frame, bone.name, lm)
-                                rtmp = kfdat(frame, bone.name, rm.to_euler())
+                                ltmp = [frame, bone.name, lm]
+                                rtmp = [frame, bone.name, rm.to_euler()]
                                 loclist.append(ltmp)
                                 rotlist.append(rtmp)
                 else:
                     for i in bpy.context.scene.objects:
                         if i.name == bone.name:
                             lm, rm, sm = i.matrix_local.decompose()
-                            ltmp = kfdat(frame, bone.name, lm)
-                            rtmp = kfdat(frame, bone.name, rm.to_euler())
+                            ltmp = [frame, bone.name, lm]
+                            rtmp = [frame, bone.name, rm.to_euler()]
                             loclist.append(ltmp)
                             rotlist.append(rtmp)
         bpy.ops.screen.animation_play()
@@ -1218,7 +1108,7 @@ def add_kf(self, context):
         for bone in object_.pose.bones:
             i = bpy.context.scene.objects.get(bone.name)
             if i is not None:
-                # TODO: merge those two for loops
+                # TODO: merge those two for loops if possible
                 for fr in loclist:
                     if fr[0] == sfc:
                         if fr[1] == bone.name:
@@ -1242,9 +1132,6 @@ class Make_key_framelist(bpy.types.Operator):
 
     def execute(self, context):
         return add_kfl(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
 
 
 class Add_fkey_frame(bpy.types.Operator):
@@ -1253,21 +1140,6 @@ class Add_fkey_frame(bpy.types.Operator):
 
     def execute(self, context):
         return add_kf(self, context)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
-
-
-# exporter
-# systemconsole
-# class Toggle_sys_con(bpy.types.Operator):
-    # bl_label = "Toggle System Console"
-    # bl_idname = "tog_sys.con"
-    # def execute(self, context):
-        # return bpy.ops.wm.console_toggle()
-        # self.report({'INFO'}, message)
-        # cbPrint(message)
-        # return {'FINISHED'}
 
 
 class Export(bpy.types.Operator, ExportHelper):
@@ -1403,21 +1275,26 @@ class Export(bpy.types.Operator, ExportHelper):
         box.prop(self, "export_type")
         box.prop(self, "donot_merge")
         box.prop(self, "avg_pface")
+
         box = layout.box()
         box.prop(self, "run_rc")
         box.prop(self, "refresh_rc")
+
         box = layout.box()
         box.label("Image and material")
         box.prop(self, "do_materials")
         box.prop(self, "convert_source_image_to_dds")
         box.prop(self, "save_tiff_during_conversion")
+
         box = layout.box()
         box.label("Animation")
         box.prop(self, "merge_anm")
         box.prop(self, "include_ik")
+
         box = layout.box()
         box.label("CryEngine editor")
         box.prop(self, "make_layer")
+
         box = layout.box()
         box.label("Developer tools")
         box.prop(self, "run_in_profiler")
@@ -1638,11 +1515,6 @@ class ToolsMenu(Tools, bpy.types.Menu):
     bl_idname = "OBJECT_MT_custom_menu"
 
 
-def draw_item(self, context):
-    layout = self.layout
-    layout.menu(ToolsMenu.bl_idname)
-
-
 def get_classes_to_register():
     classes = (
         ToolsMenu,
@@ -1726,6 +1598,11 @@ def get_classes_to_register():
     )
 
     return classes
+
+
+def draw_item(self, context):
+    layout = self.layout
+    layout.menu(ToolsMenu.bl_idname)
 
 
 def register():

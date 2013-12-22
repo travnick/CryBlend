@@ -9,6 +9,8 @@
 # Licence:     GPLv2+
 #------------------------------------------------------------------------------
 
+# <pep8-80 compliant>
+
 
 import bpy
 from io_export_cryblend.outPipe import cbPrint
