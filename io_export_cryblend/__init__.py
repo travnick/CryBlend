@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
     "blender": (2, 6, 8),
-    "version": (4, 11, 1, 6, 'dev'),
+    "version": (4, 11, 1, 7, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -186,11 +186,7 @@ class CryBlend_Cfg(bpy.types.Operator):
         return True
 
     def invoke(self, context, event):
-        save_config()
-        # Report.reset()
-        # Report.messages.append('SAVED %s' %__CONFIG_FILEPATH)
-        # Report.show()
-        cbPrint('Saved %s' % __CONFIG_FILEPATH)
+        Configuration.save()
         return {'FINISHED'}
 
 
@@ -204,17 +200,6 @@ class Open_UDP_Wp(bpy.types.Operator):
         self.report({'INFO'}, self.message)
         cbPrint(self.message)
         return {'FINISHED'}
-
-
-# class Open_Donate_Wp(bpy.types.Operator):
-    # bl_label = "Open Web Page to donate to the cause"
-    # bl_idname = "open_donate.wp"
-    # def execute(self, context):
-        # url = "https://sites.google.com/site/cryblend/"
-        # webbrowser.open(url,new=new)
-        # #self.report({'INFO'}, message)
-        # #print(message)
-        # return {'FINISHED'}
 
 
 class Get_Ridof_Nasty(bpy.types.Operator):

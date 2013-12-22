@@ -58,14 +58,19 @@ class __Configuration:
 
     def save(self):
         cbPrint("Saving configuration file.", 'debug')
+
         if os.path.isdir(self.__CONFIG_PATH):
             try:
                 with open(self.__CONFIG_FILEPATH, 'wb') as f:
                     pickle.dump(self.__CONFIG, f, -1)
                     cbPrint("Configuration file saved.")
+
+                cbPrint('Saved %s' % self.__CONFIG_FILEPATH)
+
             except:
                 cbPrint("[IO] can not write: %s" % self.__CONFIG_FILEPATH,
                         'error')
+
         else:
             cbPrint("Configuration file path is missing %s"
                     % self.__CONFIG_PATH,

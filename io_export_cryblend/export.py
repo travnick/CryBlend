@@ -709,6 +709,7 @@ class CrytekDaeExporter:
                 float_array.appendChild(self.__doc.createTextNode(row_string))
 
     def __negate_z_axis_of_matrix(self, matrix_local):
+        # TODO: find out what that code is suppose to do
         for i in range(0, 3):
             matrix_local[i][3] = -matrix_local[i][3]
 

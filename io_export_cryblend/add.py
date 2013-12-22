@@ -258,45 +258,35 @@ def add_dyn_p(self, context):
 def add_phys_default(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physDefault"
-        me.active_material.name = mat
+        me.active_material.name += "__physDefault"
     return{'FINISHED'}
 
 
 def add_phys_none(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physNone"
-        me.active_material.name = mat
+        me.active_material.name += "__physNone"
     return{'FINISHED'}
 
 
 def add_phys_pnd(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physProxyNoDraw"
-        me.active_material.name = mat
+        me.active_material.name += "__physProxyNoDraw"
     return{'FINISHED'}
 
 
 def add_phys_obstr(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physObstruct"
-        me.active_material.name = mat
+        me.active_material.name += "__physObstruct"
     return{'FINISHED'}
 
 
 def add_phys_nocol(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physNoCollide"
-        me.active_material.name = mat
+        me.active_material.name += "__physNoCollide"
     return{'FINISHED'}
 
 # this is needed if you want to access more than the first def
