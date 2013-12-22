@@ -44,9 +44,11 @@ from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector
 from time import clock
 from xml.dom.minidom import Document
+import copy
 import os
 import threading
 import time
+import uuid
 import xml.dom.minidom
 
 
@@ -230,11 +232,7 @@ class CrytekDaeExporter:
                     # <scale sid="scale">
                     sc = self.__doc.createElement("scale")
                     sc.setAttribute("sid", "scale")
-                    sx = str(object_.scale[0])
-                    sy = str(object_.scale[1])
-                    sz = str(object_.scale[2])
-                    scn = self.__doc.createTextNode("%s"
-                                             % utils.addthree(sx, sy, sz))
+                    scn = self.__doc.createTextNode(" ".join(object_.scale))
                     sc.appendChild(scn)
                     nodename.appendChild(trans)
                     nodename.appendChild(rotz)
@@ -326,10 +324,7 @@ class CrytekDaeExporter:
                 # <scale sid="scale">
                 sc = self.__doc.createElement("scale")
                 sc.setAttribute("sid", "scale")
-                sx = str(object_.scale[0])
-                sy = str(object_.scale[1])
-                sz = str(object_.scale[2])
-                scn = self.__doc.createTextNode(utils.addthree(sx, sy, sz))
+                scn = self.__doc.createTextNode(" ".join(object_.scale))
                 sc.appendChild(scn)
                 nodename.appendChild(trans)
                 nodename.appendChild(rotz)
@@ -477,19 +472,19 @@ class CrytekDaeExporter:
                             node1.appendChild(nodename)
         return node1
 
-    def extract_anil(self, object_, axis):
+    def __get_animation_location(self, object_, axis):
         attribute_type = "location"
         multiplier = 1
         target = "{!s}{!s}{!s}".format(object_.name, "/translation.", axis)
 
-        animation_element = self.__extract_animation_attribute(object_,
-                                                               axis,
-                                                               attribute_type,
-                                                               multiplier,
-                                                               target)
+        animation_element = self.__get_animation_attribute(object_,
+                                                           axis,
+                                                           attribute_type,
+                                                           multiplier,
+                                                           target)
         return animation_element
 
-    def extract_anir(self, object_, axis):
+    def __get_animation_rotation(self, object_, axis):
         attribute_type = "rotation_euler"
         multiplier = utils.toD
         target = "{!s}{!s}{!s}{!s}".format(object_.name,
@@ -497,19 +492,19 @@ class CrytekDaeExporter:
                                            axis,
                                            ".ANGLE")
 
-        animation_element = self.__extract_animation_attribute(object_,
-                                                               axis,
-                                                               attribute_type,
-                                                               multiplier,
-                                                               target)
+        animation_element = self.__get_animation_attribute(object_,
+                                                           axis,
+                                                           attribute_type,
+                                                           multiplier,
+                                                           target)
         return animation_element
 
-    def __extract_animation_attribute(self,
-                                      object_,
-                                      axis,
-                                      attribute_type,
-                                      multiplier,
-                                      target):
+    def __get_animation_attribute(self,
+                                  object_,
+                                  axis,
+                                  attribute_type,
+                                  multiplier,
+                                  target):
         id_prefix = "{!s}_{!s}_{!s}".format(object_.name, attribute_type, axis)
         source_prefix = "#{!s}".format(id_prefix)
 
@@ -691,41 +686,31 @@ class CrytekDaeExporter:
         return animation_element
 
     def __get_bone_names_for_idref(self, bones):
-        bones_for_idref = []
+        return " ".join(bone.name for bone in bones)
 
-        for bone in bones:
-            bones_for_idref.append(bone.name)
-
-        return " ".join(bones_for_idref)
-
-    def __export_float_array(self, armature_bones, flar):
+    def __export_float_array(self, armature_bones, float_array):
         for bone in armature_bones:
-            rmatrix = 0
+            matrix_local = 0
+            # TODO: this loop is probably useless
             for scene_object in bpy.context.scene.objects:
                 if scene_object.name == bone.name:
-                    rmatrix = scene_object.matrix_local
+                    matrix_local = copy.deepcopy(scene_object.matrix_local)
                     break
 
-            if rmatrix == 0:
+            if matrix_local == 0:
                 return
 
-            cbPrint("rmatrix%s" % rmatrix)
-            lmtx1 = "%.6f %.6f %.6f %.6f " % (rmatrix[0][0], rmatrix[0][1],
-                rmatrix[0][2], -rmatrix[0][3])
-            lmtx2 = "%.6f %.6f %.6f %.6f " % (rmatrix[1][0], rmatrix[1][1],
-                rmatrix[1][2], (rmatrix[1][3] * -1))
-            lmtx3 = "%.6f %.6f %.6f %.6f " % (rmatrix[2][0], rmatrix[2][1],
-                rmatrix[2][2], -rmatrix[2][3])
-            lmtx4 = "%.6f %.6f %.6f %.6f " % (rmatrix[3][0], rmatrix[3][1],
-                rmatrix[3][2], rmatrix[3][3])
-            flarm1 = self.__doc.createTextNode("%s" % lmtx1)
-            flar.appendChild(flarm1)
-            flarm2 = self.__doc.createTextNode("%s" % lmtx2)
-            flar.appendChild(flarm2)
-            flarm3 = self.__doc.createTextNode("%s" % lmtx3)
-            flar.appendChild(flarm3)
-            flarm4 = self.__doc.createTextNode("%s" % lmtx4)
-            flar.appendChild(flarm4)
+            cbPrint("matrix_local %s" % matrix_local, 'debug')
+
+            self.__negate_z_axis_of_matrix(matrix_local)
+
+            for row in matrix_local:
+                row_string = utils.floats_to_string(row)
+                float_array.appendChild(self.__doc.createTextNode(row_string))
+
+    def __negate_z_axis_of_matrix(self, matrix_local):
+        for i in range(0, 3):
+            matrix_local[i][3] = -matrix_local[i][3]
 
     def __export_asset(self, parent_element):
         # Attributes are x=y values inside a tag
@@ -960,18 +945,21 @@ class CrytekDaeExporter:
         emis = self.__doc.createElement("emission")
         color = self.__doc.createElement("color")
         color.setAttribute("sid", "emission")
-        cot = utils.getcol(material.emit, material.emit, material.emit, 1.0)
-        emit = self.__doc.createTextNode("%s" % (cot))
+        cot = utils.color_to_string(material.emit,
+                                    material.emit,
+                                    material.emit,
+                                    1.0)
+        emit = self.__doc.createTextNode(cot)
         color.appendChild(emit)
         emis.appendChild(color)
         amb = self.__doc.createElement("ambient")
         color = self.__doc.createElement("color")
         color.setAttribute("sid", "ambient")
-        cot = utils.getcol(material.ambient,
-                           material.ambient,
-                           material.ambient,
-                           1.0)
-        ambcol = self.__doc.createTextNode("%s" % (cot))
+        cot = utils.color_to_string(material.ambient,
+                                    material.ambient,
+                                    material.ambient,
+                                    1.0)
+        ambcol = self.__doc.createTextNode(cot)
         color.appendChild(ambcol)
         amb.appendChild(color)
         dif = self.__doc.createElement("diffuse")
@@ -982,10 +970,11 @@ class CrytekDaeExporter:
         else:
             color = self.__doc.createElement("color")
             color.setAttribute("sid", "diffuse")
-            cot = utils.getcol(material.diffuse_color.r,
-                material.diffuse_color.g,
-                material.diffuse_color.b, 1.0)
-            difcol = self.__doc.createTextNode("%s" % (cot))
+            cot = utils.color_to_string(material.diffuse_color.r,
+                                        material.diffuse_color.g,
+                                        material.diffuse_color.b,
+                                        1.0)
+            difcol = self.__doc.createTextNode(cot)
             color.appendChild(difcol)
             dif.appendChild(color)
         spec = self.__doc.createElement("specular")
@@ -996,24 +985,23 @@ class CrytekDaeExporter:
         else:
             color = self.__doc.createElement("color")
             color.setAttribute("sid", "specular")
-            cot = utils.getcol(material.specular_color.r,
-                material.specular_color.g,
-                material.specular_color.b, 1.0)
-            speccol = self.__doc.createTextNode("%s" % (cot))
+            cot = utils.color_to_string(material.specular_color.r,
+                                        material.specular_color.g,
+                                        material.specular_color.b,
+                                        1.0)
+            speccol = self.__doc.createTextNode(cot)
             color.appendChild(speccol)
             spec.appendChild(color)
         shin = self.__doc.createElement("shininess")
         flo = self.__doc.createElement("float")
         flo.setAttribute("sid", "shininess")
-        cot = material.specular_hardness
-        shinval = self.__doc.createTextNode("%s" % (cot))
+        shinval = self.__doc.createTextNode("%s" % material.specular_hardness)
         flo.appendChild(shinval)
         shin.appendChild(flo)
         ioref = self.__doc.createElement("index_of_refraction")
         flo = self.__doc.createElement("float")
         flo.setAttribute("sid", "index_of_refraction")
-        cot = material.alpha
-        iorval = self.__doc.createTextNode("%s" % (cot))
+        iorval = self.__doc.createTextNode("%s" % material.alpha)
         flo.appendChild(iorval)
         ioref.appendChild(flo)
         phong.appendChild(emis)
@@ -1541,7 +1529,7 @@ class CrytekDaeExporter:
         return objects
 
     def __export_library_controllers(self, parent_element):
-        libcont = self.__doc.createElement("library_controllers")
+        library_node = self.__doc.createElement("library_controllers")
 
         for selected_object in bpy.context.selected_objects:
             if not "_boneGeometry" in selected_object.name:
@@ -1549,121 +1537,48 @@ class CrytekDaeExporter:
                 armatures = self.__get_armatures(selected_object)
 
                 if armatures:
-                    self.__process_bones(libcont, selected_object, armatures)
+                    self.__process_bones(library_node,
+                                         selected_object,
+                                         armatures)
 
-        parent_element.appendChild(libcont)
+        parent_element.appendChild(library_node)
 
     def __get_armatures(self, object_):
         return [modifier for modifier in object_.modifiers
                 if modifier.type == "ARMATURE"]
 
-    def __process_bones(self, libcont, object_, armatures):
+    def __process_bones(self, parent_node, object_, armatures):
         armature = armatures[0].object
 
-        contr = self.__doc.createElement("controller")
-        contr.setAttribute("id", "%s_%s" % (armature.name, object_.name))
-        libcont.appendChild(contr)
+        controller_node = self.__doc.createElement("controller")
+        parent_node.appendChild(controller_node)
+
+        controller_node.setAttribute("id", "%s_%s" % (armature.name,
+                                                      object_.name))
         skin_node = self.__doc.createElement("skin")
         skin_node.setAttribute("source", "#%s" % object_.name)
-        contr.appendChild(skin_node)
-        mtx = utils.matrix_to_string(Matrix())
+        controller_node.appendChild(skin_node)
         bsm = self.__doc.createElement("bind_shape_matrix")
-        bsmv = self.__doc.createTextNode("%s" % mtx)
+        bsmv = self.__doc.createTextNode(utils.matrix_to_string(Matrix()))
         bsm.appendChild(bsmv)
         skin_node.appendChild(bsm)
-        src = self.__doc.createElement("source")
-        src.setAttribute("id", "%s_%s_joints" % (armature.name, object_.name))
 
         armature_bones = self.__get_bones(armature)
-        idar = self.__doc.createElement("IDREF_array")
-        idar.setAttribute("id", "%s_%s_joints_array"
-                          % (armature.name, object_.name))
-        idar.setAttribute("count", "%s" % len(armature_bones))
-        blist = self.__get_bone_names_for_idref(armature_bones)
 
-        cbPrint(blist)
-        jnl = self.__doc.createTextNode("%s" % blist)
-        idar.appendChild(jnl)
-        src.appendChild(idar)
-        tcom = self.__doc.createElement("technique_common")
-        acc = self.__doc.createElement("accessor")
-        acc.setAttribute("source", "#%s_%s_joints_array"
-                         % (armature.name, object_.name))
-        acc.setAttribute("count", "%s" % len(armature_bones))
-        acc.setAttribute("stride", "1")
-        paran = self.__doc.createElement("param")
-        paran.setAttribute("type", "IDREF")
-        acc.appendChild(paran)
-        tcom.appendChild(acc)
-        src.appendChild(tcom)
-        skin_node.appendChild(src)
-        source_node = self.__doc.createElement("source")
-        source_node.setAttribute("id", "%s_%s_matrices"
-                                 % (armature.name, object_.name))
+        self.__process_bones_joints(object_.name,
+                                    skin_node,
+                                    armature.name,
+                                    armature_bones)
 
-        float_array_node = self.__doc.createElement("float_array")
-        float_array_node.setAttribute("id", "%s_%s_matrices_array"
-                                      % (armature.name, object_.name))
-        float_array_node.setAttribute("count", "%s"
-                                      % (len(armature_bones) * 16))
+        self.__process_bones_matrices(object_.name,
+                                      skin_node,
+                                      armature.name,
+                                      armature_bones)
 
-        self.__export_float_array(armature_bones, float_array_node)
-        source_node.appendChild(float_array_node)
-
-        tcommat = self.__doc.createElement("technique_common")
-        accm = self.__doc.createElement("accessor")
-        accm.setAttribute("source", "#%s_%s_matrices_array"
-                          % (armature.name, object_.name))
-        accm.setAttribute("count", "%s" % (len(armature_bones)))
-        accm.setAttribute("stride", "16")
-        paranm = self.__doc.createElement("param")
-        paranm.setAttribute("type", "float4x4")
-        accm.appendChild(paranm)
-        tcommat.appendChild(accm)
-        source_node.appendChild(tcommat)
-        skin_node.appendChild(source_node)
-        srcw = self.__doc.createElement("source")
-        srcw.setAttribute("id", "%s_%s_weights"
-                          % (armature.name, object_.name))
-        flarw = self.__doc.createElement("float_array")
-        flarw.setAttribute("id", "%s_%s_weights_array"
-                           % (armature.name, object_.name))
-        wa = ""
-        vw = ""
-        me = object_.data
-        vcntr = ""
-        vcount = 0
-
-        for v in me.vertices:
-            for g in v.groups:
-                wa += "%.6f " % g.weight
-                for gr in object_.vertex_groups:
-                    if gr.index == g.group:
-                        for bone_id, bone in enumerate(armature_bones):
-                            if bone.name == gr.name:
-                                vw += "%s " % bone_id
-
-                vw += "%s " % str(vcount)
-                vcount += 1
-
-            vcntr += "%s " % len(v.groups)
-
-        flarw.setAttribute("count", "%s" % vcount)
-        lfarwa = self.__doc.createTextNode("%s" % wa)
-        flarw.appendChild(lfarwa)
-        tcomw = self.__doc.createElement("technique_common")
-        accw = self.__doc.createElement("accessor")
-        accw.setAttribute("source", "#%s_%s_weights_array"
-                          % (armature.name, object_.name))
-        accw.setAttribute("count", "%s" % vcount)
-        accw.setAttribute("stride", "1")
-        paranw = self.__doc.createElement("param")
-        paranw.setAttribute("type", "float")
-        accw.appendChild(paranw)
-        tcomw.appendChild(accw)
-        srcw.appendChild(flarw)
-        srcw.appendChild(tcomw)
-        skin_node.appendChild(srcw)
+        vertex_groups_lengths, vw = self.__process_bones_weights(object_,
+                                                 skin_node,
+                                                 armature.name,
+                                                 armature_bones)
 
         jnts = self.__doc.createElement("joints")
         is1 = self.__doc.createElement("input")
@@ -1671,35 +1586,165 @@ class CrytekDaeExporter:
         is1.setAttribute("source", "#%s_%s_joints"
                          % (armature.name, object_.name))
         jnts.appendChild(is1)
+
         is2 = self.__doc.createElement("input")
         is2.setAttribute("semantic", "INV_BIND_MATRIX")
         is2.setAttribute("source", "#%s_%s_matrices"
                          % (armature.name, object_.name))
         jnts.appendChild(is2)
         skin_node.appendChild(jnts)
+
         vertw = self.__doc.createElement("vertex_weights")
-        vertw.setAttribute("count", "%s" % len(me.vertices))
+        vertw.setAttribute("count", "%s" % len(object_.data.vertices))
+
         is3 = self.__doc.createElement("input")
         is3.setAttribute("semantic", "JOINT")
         is3.setAttribute("offset", "0")
         is3.setAttribute("source", "#%s_%s_joints"
                          % (armature.name, object_.name))
         vertw.appendChild(is3)
+
         is4 = self.__doc.createElement("input")
         is4.setAttribute("semantic", "WEIGHT")
         is4.setAttribute("offset", "1")
         is4.setAttribute("source", "#%s_%s_weights"
                          % (armature.name, object_.name))
         vertw.appendChild(is4)
+
         vcnt = self.__doc.createElement("vcount")
-        vcnt1 = self.__doc.createTextNode("%s" % vcntr)
+        vcnt1 = self.__doc.createTextNode(vertex_groups_lengths)
         vcnt.appendChild(vcnt1)
         vertw.appendChild(vcnt)
+
         vlst = self.__doc.createElement("v")
-        vlst1 = self.__doc.createTextNode("%s" % vw)
+        vlst1 = self.__doc.createTextNode(vw)
         vlst.appendChild(vlst1)
         vertw.appendChild(vlst)
         skin_node.appendChild(vertw)
+
+    def __process_bones_joints(self,
+                               object_name,
+                               skin_node,
+                               armature_name,
+                               armature_bones):
+        source_node = self.__doc.createElement("source")
+        source_node.setAttribute("id", "%s_%s_joints" % (armature_name,
+                                                         object_name))
+
+        skin_node.appendChild(source_node)
+
+        idref_array_node = self.__doc.createElement("IDREF_array")
+        idref_array_node.setAttribute("id", "%s_%s_joints_array"
+                                      % (armature_name, object_name))
+        idref_array_node.setAttribute("count", "%s" % len(armature_bones))
+        bone_names = self.__get_bone_names_for_idref(armature_bones)
+
+        cbPrint(bone_names)
+
+        idref_array_node.appendChild(self.__doc.createTextNode(bone_names))
+        source_node.appendChild(idref_array_node)
+
+        technique_node = self.__doc.createElement("technique_common")
+        accessor_node = self.__doc.createElement("accessor")
+        accessor_node.setAttribute("source", "#%s_%s_joints_array"
+                                   % (armature_name, object_name))
+        accessor_node.setAttribute("count", "%s" % len(armature_bones))
+        accessor_node.setAttribute("stride", "1")
+
+        param_node = self.__doc.createElement("param")
+        param_node.setAttribute("type", "IDREF")
+        accessor_node.appendChild(param_node)
+        technique_node.appendChild(accessor_node)
+        source_node.appendChild(technique_node)
+
+    def __process_bones_matrices(self,
+                                 object_name,
+                                 skin_node,
+                                 armature_name,
+                                 armature_bones):
+        source_matrices_node = self.__doc.createElement("source")
+        source_matrices_node.setAttribute("id", "%s_%s_matrices"
+                                          % (armature_name, object_name))
+
+        skin_node.appendChild(source_matrices_node)
+
+        float_array_node = self.__doc.createElement("float_array")
+        float_array_node.setAttribute("id", "%s_%s_matrices_array"
+                                      % (armature_name, object_name))
+        float_array_node.setAttribute("count", "%s"
+                                      % (len(armature_bones) * 16))
+        self.__export_float_array(armature_bones, float_array_node)
+        source_matrices_node.appendChild(float_array_node)
+
+        technique_node = self.__doc.createElement("technique_common")
+        accessor_node = self.__doc.createElement("accessor")
+        accessor_node.setAttribute("source", "#%s_%s_matrices_array"
+                                   % (armature_name, object_name))
+        accessor_node.setAttribute("count", "%s" % (len(armature_bones)))
+        accessor_node.setAttribute("stride", "16")
+        param_node = self.__doc.createElement("param")
+        param_node.setAttribute("type", "float4x4")
+        accessor_node.appendChild(param_node)
+        technique_node.appendChild(accessor_node)
+        source_matrices_node.appendChild(technique_node)
+
+    def __process_bones_weights(self,
+                                object_,
+                                skin_node,
+                                armature_name,
+                                armature_bones):
+        source_node = self.__doc.createElement("source")
+        source_node.setAttribute("id", "%s_%s_weights"
+                                         % (armature_name, object_.name))
+
+        skin_node.appendChild(source_node)
+
+        float_array = self.__doc.createElement("float_array")
+        float_array.setAttribute("id", "%s_%s_weights_array"
+                                 % (armature_name, object_.name))
+
+        group_weights = []
+        vw = ""
+        vertex_groups_lengths = []
+        vertex_count = 0
+
+        # TODO: review that loop to find bugs and useless code
+        for vertex in object_.data.vertices:
+            for group in vertex.groups:
+                group_weights.append(group.weight)
+                for vertex_group in object_.vertex_groups:
+                    if vertex_group.index == group.group:
+                        for bone_id, bone in enumerate(armature_bones):
+                            if bone.name == vertex_group.name:
+                                vw += "%s " % bone_id
+
+                vw += "%s " % vertex_count
+                vertex_count += 1
+
+            vertex_groups_lengths.append("%s" % len(vertex.groups))
+
+        float_array.setAttribute("count", "%s" % vertex_count)
+        lfarwa = self.__doc.createTextNode(
+                        utils.floats_to_string(group_weights, " ", "%.6f"))
+
+        float_array.appendChild(lfarwa)
+
+        technique_node = self.__doc.createElement("technique_common")
+
+        accessor_node = self.__doc.createElement("accessor")
+        accessor_node.setAttribute("source", "#%s_%s_weights_array"
+                                      % (armature_name, object_.name))
+        accessor_node.setAttribute("count", "%s" % vertex_count)
+        accessor_node.setAttribute("stride", "1")
+
+        param_node = self.__doc.createElement("param")
+        param_node.setAttribute("type", "float")
+        accessor_node.appendChild(param_node)
+        technique_node.appendChild(accessor_node)
+        source_node.appendChild(float_array)
+        source_node.appendChild(technique_node)
+
+        return " ".join(vertex_groups_lengths), vw
 
     def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
@@ -1735,11 +1780,11 @@ class CrytekDaeExporter:
                         elif i.animation_data.action:
 
                             for axis in iter(AXISES):
-                                anm = self.extract_anil(i, axis)
+                                anm = self.__get_animation_location(i, axis)
                                 libanm.appendChild(anm)
 
                             for axis in iter(AXISES):
-                                anm = self.extract_anir(i, axis)
+                                anm = self.__get_animation_rotation(i, axis)
                                 libanm.appendChild(anm)
 
                             self.__export_instance_animation_parameters(i,
@@ -1762,12 +1807,12 @@ class CrytekDaeExporter:
                             curves = act.fcurves
                             frstrt = curves.data.frame_range[0]
                             frend = curves.data.frame_range[1]
-                            anmlx = self.extract_anil(i, 'X')
-                            anmly = self.extract_anil(i, 'Y')
-                            anmlz = self.extract_anil(i, 'Z')
-                            anmrx = self.extract_anir(i, 'X')
-                            anmry = self.extract_anir(i, 'Y')
-                            anmrz = self.extract_anir(i, 'Z')
+                            anmlx = self.__get_animation_location(i, 'X')
+                            anmly = self.__get_animation_location(i, 'Y')
+                            anmlz = self.__get_animation_location(i, 'Z')
+                            anmrx = self.__get_animation_rotation(i, 'X')
+                            anmry = self.__get_animation_rotation(i, 'Y')
+                            anmrz = self.__get_animation_rotation(i, 'Z')
                             # animationclip name and framerange
                             for ai in i.children:
                                 aname = str(ai.name)
@@ -1926,7 +1971,7 @@ def make_layer(fname):
     # Layer
     layer = layerDoc.createElement("Layer")
     layer.setAttribute('name', lName)
-    layer.setAttribute('GUID', utils.generateGUID())
+    layer.setAttribute('GUID', uuid.uuid4())
     layer.setAttribute('FullName', lName)
     layer.setAttribute('External', '0')
     layer.setAttribute('Exportable', '1')
@@ -1949,7 +1994,7 @@ def make_layer(fname):
             object_node = layerDoc.createElement("Object")
             object_node.setAttribute('name', group.name[14:])
             object_node.setAttribute('Type', 'Entity')
-            object_node.setAttribute('Id', utils.generateGUID())
+            object_node.setAttribute('Id', uuid.uuid4())
             object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
             object_node.setAttribute('Layer', lName)
             positionString = "{!s}, {!s}, {!s}".format(

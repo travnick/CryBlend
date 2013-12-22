@@ -33,39 +33,8 @@ import xml.dom.minidom
 toD = 180.0 / math.pi
 
 
-def getcol(r, g, b, a):
-    s = " "
-    s += " " + str(r)
-    s += " " + str(g)
-    s += " " + str(b)
-    s += " " + str(a)
-    s += " "
-    return s
-
-
-def addthreenames(x, y, z):
-    s = " "
-    s += "" + str(x)
-    s += "-" + str(y)
-    s += "-" + str(z)
-    s = " "
-    return s
-
-
-def addthree(x, y, z):
-    s = " "
-    s += " " + str(x)
-    s += " " + str(y)
-    s += " " + str(z)
-    s += " "
-    return s
-
-
-def facevcount(fv):
-    s = " "
-    s += " " + str(len(fv))
-    s = " "
-    return s
+def color_to_string(r, g, b, a):
+    return "%s %s %s %s" % (r, g, b, a)
 
 
 def convert_time(frx):
@@ -102,34 +71,6 @@ def fixed_writexml(self, writer, indent="", addindent="", newl=""):
             writer.write("%s</%s>%s" % (indent, self.tagName, newl))
         else:
             writer.write("/>%s" % (newl))
-
-
-def generateGUID():
-    GUID = '{'
-    GUID += randomSector(8)
-    GUID += '-'
-    GUID += randomSector(4)
-    GUID += '-'
-    GUID += randomSector(4)
-    GUID += '-'
-    GUID += randomSector(4)
-    GUID += '-'
-    GUID += randomSector(12)
-    GUID += '}'
-    return GUID
-
-
-def randomSector(length):
-    charOptions = list(range(ord("0"), ord("9") + 1))
-    charOptions += list(range(ord("A"), ord("Z") + 1))
-    charOptionsLength = len(charOptions)
-    sector = ''
-    counter = 0
-    while counter < length:
-        charAsciiCode = charOptions[random.randrange(0, charOptionsLength)]
-        sector += chr(charAsciiCode)
-        counter += 1
-    return sector
 
 
 # borrowed from obj exporter
@@ -170,12 +111,15 @@ def fix_transforms():
 
 
 def matrix_to_string(matrix):
-    result = ""
+    rows = []
     for row in matrix:
-        for col in row:
-            result += "{!s} ".format(col)
+        rows.append(" ".join("%s" % column for column in row))
 
-    return result.strip()
+    return " ".join(rows)
+
+
+def floats_to_string(floats, separator=" ", precision="%.6f"):
+    return separator.join(precision % x for x in floats)
 
 
 def get_absolute_path(file_path):
