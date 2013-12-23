@@ -1,5 +1,8 @@
 # Changelog:
 
+## 4.12.1
+* Just version number fix.
+
 ## 4.12
 #### Features:
 * Added support for rc 3.4.5 to handle textures conversion to DDS while using rc from 3.5.4.
