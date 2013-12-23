@@ -8,11 +8,13 @@
 * Added support for rc 3.4.5 to handle textures conversion to DDS while using rc from 3.5.4.
 * Added error message if many texture slots have same texture type.
 * Added error message if texture slot has no texture.
+
 #### Code features:
 * Merged functions extract_aniXX.
 * Fixed usage of cbPrint().
 * Refactored configuration handler.
 * Code clean up, renamed variables, extracted methods etc.
+
 #### Fixes:
 * Layer creation does not crash and maybe generates correct layers.
 * Fixed buggy implementation of GUID (UUID) generator.
