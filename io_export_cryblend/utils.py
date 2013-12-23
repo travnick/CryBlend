@@ -75,6 +75,20 @@ def fixed_writexml(self, writer, indent="", addindent="", newl=""):
             writer.write("/>%s" % (newl))
 
 
+def get_uuid():
+    GUID = "{%s-%s-%s-%s-%s}" % (random_hex_sector(8),
+                                 random_hex_sector(4),
+                                 random_hex_sector(4),
+                                 random_hex_sector(4),
+                                 random_hex_sector(12))
+    return GUID
+
+
+def random_hex_sector(length):
+    fixed_lenght_hex_format = "%0" + str(length) + "x" 
+    return fixed_lenght_hex_format % random.randrange(16 ** length)
+
+
 # borrowed from obj exporter
 # modified by angelo j miner
 def veckey3d(v):

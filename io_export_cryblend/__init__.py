@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
     "blender": (2, 6, 8),
-    "version": (4, 11, 1, 10, 'dev'),
+    "version": (4, 12, 0, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -85,11 +85,6 @@ class PathSelectTemplate(ExportHelper):
         Configuration.save()
         return {'FINISHED'}
 
-    def invoke(self, context, event):
-        self.filepath = self.default_filepath
-
-        return ExportHelper.invoke(self, context, event)
-
 
 class FindRc(bpy.types.Operator, PathSelectTemplate):
     '''Select the Resource Compiler executable'''
@@ -98,11 +93,15 @@ class FindRc(bpy.types.Operator, PathSelectTemplate):
     bl_idname = "cb.find_rc"
 
     filename_ext = ".exe"
-    default_filepath = Configuration.rc_path
 
     def process(self, filepath):
         Configuration.rc_path = "%s" % filepath
         cbPrint("Found RC at {!r}.".format(Configuration.rc_path), 'debug')
+
+    def invoke(self, context, event):
+        self.filepath = Configuration.rc_path
+
+        return ExportHelper.invoke(self, context, event)
 
 
 class FindRcForTextureConversion(bpy.types.Operator, PathSelectTemplate):
@@ -114,13 +113,17 @@ to be able to export your textures as dds files'''
     bl_idname = "cb.find_rc_for_texture_conversion"
 
     filename_ext = ".exe"
-    default_filepath = Configuration.rc_for_texture_conversion_path
 
     def process(self, filepath):
         Configuration.rc_for_texture_conversion_path = "%s" % filepath
         cbPrint("Found RC at {!r}.".format(
                         Configuration.rc_for_texture_conversion_path),
                 'debug')
+
+    def invoke(self, context, event):
+        self.filepath = Configuration.rc_for_texture_conversion_path
+
+        return ExportHelper.invoke(self, context, event)
 
 
 class SelectTexturesDirectory(bpy.types.Operator, PathSelectTemplate):
@@ -131,13 +134,17 @@ for textures in .mtl file.'''
     bl_idname = "select_textures.dir"
 
     filename_ext = ""
-    default_filepath = Configuration.textures_directory
 
     def process(self, filepath):
         Configuration.textures_directory = "%s" % os.path.dirname(filepath)
         cbPrint("Textures directory: {!r}.".format(
                                             Configuration.textures_directory),
                 'debug')
+
+    def invoke(self, context, event):
+        self.filepath = Configuration.textures_directory
+
+        return ExportHelper.invoke(self, context, event)
 
 
 class MenuTemplate():
