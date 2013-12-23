@@ -381,12 +381,10 @@ class CrytekDaeExporter:
                 techcry = self.__doc.createElement("technique")
                 techcry.setAttribute("profile", "CryEngine")
                 prop2 = self.__doc.createElement("properties")
-                cprop = ""
                 # Tagging properties onto the end of the item, I think.
                 for ai in object_.rna_type.id_data.items():
                     if ai:
-                        cprop = ("%s" % (ai[1]))
-                        cryprops = self.__doc.createTextNode("%s" % (cprop))
+                        cryprops = self.__doc.createTextNode("%s" % ai[1])
                         prop2.appendChild(cryprops)
                 techcry.appendChild(prop2)
                 if (name[:6] == "_joint"):
@@ -1118,7 +1116,7 @@ class CrytekDaeExporter:
 
             cbPrint('vert loc took %.4f sec.' % (clock() - start_time))
             far = self.__doc.createElement("float_array")
-            far.setAttribute("id", "%s-positions-array" % (mname))
+            far.setAttribute("id", "%s-positions-array" % mname)
             far.setAttribute("count", "%s" % (str(len(mesh.vertices) * 3)))
             mpos = self.__doc.createTextNode(" ".join(float_positions))
             far.appendChild(mpos)
@@ -1445,7 +1443,7 @@ class CrytekDaeExporter:
                 # yes lets go through them 1 at a time
                 for im in enumerate(mat):
                     polyl = self.__doc.createElement("polylist")
-                    polyl.setAttribute("material", "%s" % (im[1].name))
+                    polyl.setAttribute("material", im[1].name)
                     verts = ""
                     face_count = ""
                     face_counter = 0
@@ -1992,7 +1990,7 @@ def make_layer(fname):
     # Layer
     layer = layerDoc.createElement("Layer")
     layer.setAttribute('name', lName)
-    layer.setAttribute('GUID', uuid.uuid4())
+    layer.setAttribute('GUID', str(uuid.uuid4()))
     layer.setAttribute('FullName', lName)
     layer.setAttribute('External', '0')
     layer.setAttribute('Exportable', '1')
@@ -2005,25 +2003,24 @@ def make_layer(fname):
     layerObjects = layerDoc.createElement("LayerObjects")
     # Actual Objects
     for group in bpy.context.blend_data.groups:
-        if group.objects > 1:
+        if len(group.objects) > 1:
             origin = 0, 0, 0
             rotation = 1, 0, 0, 0
         else:
             origin = group.objects[0].location
             rotation = group.objects[0].delta_rotation_quaternion
+
         if 'CryExportNode' in group.name:
             object_node = layerDoc.createElement("Object")
             object_node.setAttribute('name', group.name[14:])
             object_node.setAttribute('Type', 'Entity')
-            object_node.setAttribute('Id', uuid.uuid4())
+            object_node.setAttribute('Id', str(uuid.uuid4()))
             object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
             object_node.setAttribute('Layer', lName)
-            positionString = "{!s}, {!s}, {!s}".format(
-                origin[0], origin[1], origin[2])
+            cbPrint(origin)
+            positionString = "%s, %s, %s" % origin[:]
             object_node.setAttribute('Pos', positionString)
-            rotationString = "{!s}, {!s}, {!s}, {!s}".format(
-                rotation[0], rotation[1],
-                rotation[2], rotation[3])
+            rotationString = "%s, %s, %s, %s" % rotation[:]
             object_node.setAttribute('Rotate', rotationString)
             object_node.setAttribute('EntityClass', 'BasicEntity')
             object_node.setAttribute('FloorNumber', '-1')
@@ -2038,8 +2035,8 @@ def make_layer(fname):
             object_node.setAttribute('ViewDistRatio', '100')
             object_node.setAttribute('HiddenInGame', '0')
             properties = layerDoc.createElement("Properties")
-            properties.setAttribute('object_Model', '/Objects/'
-                                    + group.name[14:] + '.cgf')
+            properties.setAttribute('object_Model', '/Objects/%s.cgf'
+                                    % group.name[14:])
             properties.setAttribute('bCanTriggerAreas', '0')
             properties.setAttribute('bExcludeCover', '0')
             properties.setAttribute('DmgFactorWhenCollidingAI', '1')
