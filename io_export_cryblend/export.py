@@ -48,7 +48,6 @@ import copy
 import os
 import threading
 import time
-import uuid
 import xml.dom.minidom
 
 
@@ -1990,7 +1989,7 @@ def make_layer(fname):
     # Layer
     layer = layerDoc.createElement("Layer")
     layer.setAttribute('name', lName)
-    layer.setAttribute('GUID', str(uuid.uuid4()))
+    layer.setAttribute('GUID', utils.get_uuid())
     layer.setAttribute('FullName', lName)
     layer.setAttribute('External', '0')
     layer.setAttribute('Exportable', '1')
@@ -2014,7 +2013,7 @@ def make_layer(fname):
             object_node = layerDoc.createElement("Object")
             object_node.setAttribute('name', group.name[14:])
             object_node.setAttribute('Type', 'Entity')
-            object_node.setAttribute('Id', str(uuid.uuid4()))
+            object_node.setAttribute('Id', utils.get_uuid())
             object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
             object_node.setAttribute('Layer', lName)
             cbPrint(origin)
