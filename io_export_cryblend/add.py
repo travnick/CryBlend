@@ -9,6 +9,8 @@
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 
+# <pep8-80 compliant>
+
 
 from bpy.props import *
 from bpy_extras.io_utils import ExportHelper
@@ -21,7 +23,7 @@ import bpy_extras
 # animnode for animation name and frame range slection
 def add_animnode(self, context):
     bpy.ops.object.add(type='EMPTY')
-    anode = bpy.context.object
+    anode = bpy.context.active_object
     anode.name = 'animnode'
     anode["animname"] = "door open"
     anode["startframe"] = 1
@@ -32,7 +34,7 @@ def add_animnode(self, context):
 # joint
 def add_joint(self, context):
     bpy.ops.mesh.primitive_cube_add()
-    ob = bpy.context.object
+    ob = bpy.context.active_object
     ob.draw_type = "BOUNDS"
     ob.show_x_ray = True
     ob.name = '_jointNUM'
@@ -258,45 +260,35 @@ def add_dyn_p(self, context):
 def add_phys_default(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physDefault"
-        me.active_material.name = mat
+        me.active_material.name += "__physDefault"
     return{'FINISHED'}
 
 
 def add_phys_none(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physNone"
-        me.active_material.name = mat
+        me.active_material.name += "__physNone"
     return{'FINISHED'}
 
 
 def add_phys_pnd(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physProxyNoDraw"
-        me.active_material.name = mat
+        me.active_material.name += "__physProxyNoDraw"
     return{'FINISHED'}
 
 
 def add_phys_obstr(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physObstruct"
-        me.active_material.name = mat
+        me.active_material.name += "__physObstruct"
     return{'FINISHED'}
 
 
 def add_phys_nocol(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        mat = me.active_material.name
-        mat += "__physNoCollide"
-        me.active_material.name = mat
+        me.active_material.name += "__physNoCollide"
     return{'FINISHED'}
 
 # this is needed if you want to access more than the first def
