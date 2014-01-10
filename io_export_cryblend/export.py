@@ -39,6 +39,7 @@ else:
 
 
 from bpy_extras.io_utils import ExportHelper
+from datetime import datetime
 from io_export_cryblend.dds_converter import DdsConverterRunner
 from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector
@@ -724,11 +725,12 @@ class CrytekDaeExporter:
         auth.appendChild(authname)
         authtool = self.__doc.createElement("authoring_tool")
         authtname = self.__doc.createTextNode(
-            "CryENGINE exporter for Blender" +
-            "v%s by angjminer, extended by Duo Oratar" % (bpy.app.version_string))
+            "CryBlend v%s" % self.__config.cryblend_version)
         authtool.appendChild(authtname)
         contrib.appendChild(authtool)
         created = self.__doc.createElement("created")
+        created_value = self.__doc.createTextNode(datetime.now().isoformat(" "))
+        created.appendChild(created_value)
         asset.appendChild(created)
         modified = self.__doc.createElement("modified")
         asset.appendChild(modified)

@@ -32,8 +32,8 @@
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
-    "blender": (2, 6, 8),
-    "version": (4, 12, 1),
+    "blender": (2, 60, 0),
+    "version": (4, 12, 1, 1, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -45,7 +45,7 @@ bl_info = {
 # old wiki url: http://wiki.blender.org/
 # index.php/Extensions:2.5/Py/Scripts/Import-Export/CryEngine3
 
-VERSION = bl_info["version"]
+VERSION = '.'.join(str(n) for n in bl_info["version"])
 
 
 if "bpy" in locals():
@@ -1249,6 +1249,7 @@ class Export(bpy.types.Operator, ExportHelper):
             for attribute in attributes:
                 setattr(self, attribute, getattr(config, attribute))
 
+            setattr(self, 'cryblend_version', VERSION)
             setattr(self, 'rc_path', Configuration.rc_path)
             setattr(self, 'rc_for_textures_conversion_path',
                     Configuration.rc_for_texture_conversion_path)
@@ -1466,7 +1467,7 @@ class Tools():
         paths = userpref.filepaths
         layout = self.layout
         # version number
-        layout.label(text='v' + '.'.join(str(n) for n in VERSION))
+        layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("add_cryexport.node", icon='VIEW3D_VEC')
         layout.operator("add_bo.joint", icon='META_CUBE')
