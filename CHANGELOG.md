@@ -1,5 +1,9 @@
 # Changelog:
 
+## 4.12.2
+#### Fixes:
+* Fixed bug #39 (Adding UVs to wrong object).
+
 ## 4.12.1
 * Just version number fix.
 
