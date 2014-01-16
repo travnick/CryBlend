@@ -1259,8 +1259,10 @@ class CrytekDaeExporter:
             if uvlay:
                 cbPrint("Found UV map.")
             elif (object_.type == "MESH"):
-                bpy.ops.mesh.uv_texture_add()
                 cbPrint("Your UV map is missing, adding.")
+                override = {'object': object_}
+                bpy.ops.mesh.uv_texture_add(override)
+
             for uvindex, uvlayer in enumerate(uvlay):
                 mapslot = uvindex
                 mapname = str(uvlayer.name)
