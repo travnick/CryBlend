@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
     "blender": (2, 60, 0),
-    "version": (4, 12, 2, 1, 'dev'),
+    "version": (4, 12, 2, 2, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
@@ -498,44 +498,6 @@ class Find_Weightless(bpy.types.Operator):
                 for g in v.groups:
                     v.select = False
                     break
-        return {'FINISHED'}
-
-
-class Find_Overweight(bpy.types.Operator):
-    bl_label = "Find Overweight Vertices"
-    bl_idname = "mesh_rep.overweight"
-
-    def execute(self, context):
-        obj = bpy.context.active_object
-        if obj.type == 'MESH':
-            for v in obj.data.vertices:
-                v.select = False
-                totalWeight = 0
-                for g in v.groups:
-                    totalWeight += g.weight
-                if totalWeight > 1:
-                    cbPrint("Vertex at " + str(v.co) + " has a weight of "
-                            + str(totalWeight))
-                    v.select = True
-        return {'FINISHED'}
-
-
-class Find_Underweight(bpy.types.Operator):
-    bl_label = "Find Underweight Vertices"
-    bl_idname = "mesh_rep.underweight"
-
-    def execute(self, context):
-        obj = bpy.context.active_object
-        if obj.type == 'MESH':
-            for v in obj.data.vertices:
-                v.select = False
-                totalWeight = 0
-                for g in v.groups:
-                    totalWeight += g.weight
-                if totalWeight < 1:
-                    cbPrint("Vertex at " + str(v.co) + " has a weight of "
-                            + str(totalWeight))
-                    v.select = True
         return {'FINISHED'}
 
 
@@ -1217,6 +1179,11 @@ class Export(bpy.types.Operator, ExportHelper):
                         + "upon export.",
             default=False,
             )
+    correct_weight = BoolProperty(
+            name="Correct Weights",
+            description="For use with .chr files.",
+            default=False,
+            )
     make_layer = BoolProperty(
             name="Make .lyr File",
             description="Makes a .lyr to reassemble your scene"
@@ -1243,6 +1210,7 @@ class Export(bpy.types.Operator, ExportHelper):
                 'save_tiff_during_conversion',
                 'refresh_rc',
                 'include_ik',
+                'correct_weight',
                 'make_layer'
             )
 
@@ -1300,6 +1268,10 @@ class Export(bpy.types.Operator, ExportHelper):
         box.prop(self, "include_ik")
 
         box = layout.box()
+        box.label("Weight Correction")
+        box.prop(self, "correct_weight")
+
+        box = layout.box()
         box.label("CryEngine editor")
         box.prop(self, "make_layer")
 
@@ -1348,8 +1320,6 @@ class Mesh_Repair_Tools(bpy.types.Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
         layout.label(text="Mesh Repair Tools")
         layout.separator()
-        layout.operator("mesh_rep.underweight", icon='MESH_CUBE')
-        layout.operator("mesh_rep.overweight", icon='MESH_CUBE')
         layout.operator("mesh_rep.weightless", icon='MESH_CUBE')
         layout.operator("mesh_rep.removeall", icon='MESH_CUBE')
 
@@ -1539,8 +1509,6 @@ def get_classes_to_register():
 
         Mesh_Repair_Tools,
         Find_Weightless,
-        Find_Overweight,
-        Find_Underweight,
         Remove_All_Weight,
 
         Remove_FakeBones,

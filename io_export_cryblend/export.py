@@ -87,6 +87,9 @@ class CrytekDaeExporter:
         filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
         self.__select_all_export_nodes()
 
+        if self.__config.correct_weight:
+            self.__correct_weights()
+
         # Duo Oratar
         # This is a small bit risky (I don't know if including more things
         # in the selected objects will mess things up or not...
@@ -131,6 +134,14 @@ class CrytekDaeExporter:
         write_to_file(self.__config,
                       self.__doc, filepath,
                       self.__config.rc_path)
+
+    def __correct_weights(self):
+        for group in bpy.context.blend_data.groups:
+            for object_ in group.objects:
+                if object_.type == 'MESH':
+                    override = {'weight_paint_object': object_}
+                    bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+        cbPrint("Weights Corrected.")
 
     def __select_all_export_nodes(self):
         for group in bpy.context.blend_data.groups:
