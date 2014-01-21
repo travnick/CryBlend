@@ -140,7 +140,10 @@ class CrytekDaeExporter:
             for object_ in group.objects:
                 if object_.type == 'MESH':
                     override = {'weight_paint_object': object_}
-                    bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+                    try:
+                        bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+                    except:
+                        raise exceptions.CryBlendException("Please fix weightless vertices first.")
         cbPrint("Weights Corrected.")
 
     def __select_all_export_nodes(self):
