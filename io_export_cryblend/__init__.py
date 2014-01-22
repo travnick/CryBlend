@@ -33,7 +33,7 @@ bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej",
     "blender": (2, 60, 0),
-    "version": (4, 12, 2, 4, 'dev'),
+    "version": (4, 12, 2, 3, 'dev'),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
