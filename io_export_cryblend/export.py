@@ -95,10 +95,10 @@ class CrytekDaeExporter:
         # in the selected objects will mess things up or not...
         # Easiest solution to the problem though
         cbPrint("Searching for boneGeoms...")
-        for i in bpy.context.selectable_objects:
-            if "_boneGeometry" in i.name:
-                bpy.data.objects[i.name].select = True
-                cbPrint("Bone Geometry found: " + i.name)
+        for object_ in bpy.context.selectable_objects:
+            if "_boneGeometry" in object_.name:
+                bpy.data.objects[object_.name].select = True
+                cbPrint("Bone Geometry found: " + object_.name)
 
         root_element = self.__doc.createElement('collada')
         root_element.setAttribute("xmlns",
@@ -122,9 +122,9 @@ class CrytekDaeExporter:
         # Duo Oratar
         # Remove the boneGeometry from the selection so we can get on
         # with business as usual
-        for i in bpy.context.selected_objects:
-            if '_boneGeometry' in i.name:
-                bpy.data.objects[i.name].select = False
+        for object_ in bpy.context.selected_objects:
+            if '_boneGeometry' in object_.name:
+                bpy.data.objects[object_.name].select = False
 
         self.__export_library_controllers(root_element)
         self.__export_library_animation_clips_and_animations(root_element)
@@ -255,8 +255,8 @@ class CrytekDaeExporter:
                     nodename.appendChild(rotx)
                     nodename.appendChild(sc)
                     # Find the boneGeometry object
-                    for i in bpy.context.selectable_objects:
-                        if i.name == bone.name + "_boneGeometry":
+                    for object_ in bpy.context.selectable_objects:
+                        if object_.name == bone.name + "_boneGeometry":
                             ig = self.__doc.createElement("instance_geometry")
                             ig.setAttribute("url", "#%s"
                                             % (bone.name
@@ -264,7 +264,7 @@ class CrytekDaeExporter:
                             bm = self.__doc.createElement("bind_material")
                             tc = self.__doc.createElement("technique_common")
                             # mat = mesh.materials[:]
-                            for mat in i.material_slots:
+                            for mat in object_.material_slots:
                                 # yes lets go through them 1 at a time
                                 im = self.__doc.createElement(
                                                 "instance_material")
@@ -1788,69 +1788,72 @@ class CrytekDaeExporter:
         parent_element.appendChild(libanmcl)
         parent_element.appendChild(libanm)
 
-        asw = 0
+        is_merge_inprogress = 0
         ande = 0
         ande2 = 0
-        for i in bpy.context.selected_objects:
-            lnname = str(i.name)
+        for object_ in bpy.context.selected_objects:
+            lnname = str(object_.name)
             for item in bpy.context.blend_data.groups:
                 if item:
                     ename = str(item.id_data.name)
 
             if lnname[:8] == "animnode":
                 ande2 = 1
-                actname = i["animname"]
-                sf = i["startframe"]
-                ef = i["endframe"]
+                actname = object_["animname"]
+                sf = object_["startframe"]
+                ef = object_["endframe"]
                 cbPrint(actname)
                 cbPrint(sf)
                 cbPrint(ef)
-                anicl = self.__doc.createElement("animation_clip")
-                anicl.setAttribute("id", "%s-%s" % (actname, ename[14:]))
-                anicl.setAttribute("start", "%s" % (utils.convert_time(sf)))
-                anicl.setAttribute("end", "%s" % (utils.convert_time(ef)))
-                for i in bpy.context.selected_objects:
-                    if i.animation_data:
-                        if i.type == 'ARMATURE':
+                animation_clip = self.__doc.createElement("animation_clip")
+                animation_clip.setAttribute("id",
+                                            "%s-%s" % (actname, ename[14:]))
+                animation_clip.setAttribute("start",
+                                            "%s" % (utils.convert_time(sf)))
+                animation_clip.setAttribute("end",
+                                            "%s" % (utils.convert_time(ef)))
+                for object_ in bpy.context.selected_objects:
+                    if object_.animation_data:
+                        if object_.type == 'ARMATURE':
                             cbPrint("Object is armature, cannot process animations.")
-                        elif i.animation_data.action:
+                        elif object_.animation_data.action:
 
                             for axis in iter(AXISES):
-                                anm = self.__get_animation_location(i, axis)
+                                anm = self.__get_animation_location(object_, axis)
                                 libanm.appendChild(anm)
 
                             for axis in iter(AXISES):
-                                anm = self.__get_animation_rotation(i, axis)
+                                anm = self.__get_animation_rotation(object_, axis)
                                 libanm.appendChild(anm)
 
-                            self.__export_instance_animation_parameters(i,
-                                                                        anicl)
+                            self.__export_instance_animation_parameters(object_,
+                                                                animation_clip)
 
-                libanmcl.appendChild(anicl)
+                libanmcl.appendChild(animation_clip)
 
         if ande2 == 0:
-            for i in bpy.context.selected_objects:
-                if i.animation_data:
-                    if i.type == 'ARMATURE':
+            for object_ in bpy.context.selected_objects:
+                if object_.animation_data:
+                    if object_.type == 'ARMATURE':
                         cbPrint("Object is armature, cannot process animations.")
                     else:
-                        if i.animation_data.action:
+                        if object_.animation_data.action:
                             for item in bpy.context.blend_data.groups:
                                 if item:
                                     ename = str(item.id_data.name)
 
-                            act = i.animation_data.action
+                            act = object_.animation_data.action
                             curves = act.fcurves
                             frstrt = curves.data.frame_range[0]
                             frend = curves.data.frame_range[1]
-                            anmlx = self.__get_animation_location(i, 'X')
-                            anmly = self.__get_animation_location(i, 'Y')
-                            anmlz = self.__get_animation_location(i, 'Z')
-                            anmrx = self.__get_animation_rotation(i, 'X')
-                            anmry = self.__get_animation_rotation(i, 'Y')
-                            anmrz = self.__get_animation_rotation(i, 'Z')
+                            anmlx = self.__get_animation_location(object_, 'X')
+                            anmly = self.__get_animation_location(object_, 'Y')
+                            anmlz = self.__get_animation_location(object_, 'Z')
+                            anmrx = self.__get_animation_rotation(object_, 'X')
+                            anmry = self.__get_animation_rotation(object_, 'Y')
+                            anmrz = self.__get_animation_rotation(object_, 'Z')
                             # animationclip name and framerange
-                            for ai in i.children:
+                            for ai in object_.children:
                                 aname = str(ai.name)
                                 if aname[:8] == "animnode":
                                     ande = 1
@@ -1861,35 +1864,40 @@ class CrytekDaeExporter:
                                     start_frame = ai["startframe"]
                                     end_frame = ai["endframe"]
 
-                                    anicl = self.__export__animation_clip(
-                                                                i,
+                                    animation_clip = self.__export__animation_clip(
+                                                                object_,
                                                                 ename,
                                                                 act_name,
                                                                 start_frame,
                                                                 end_frame)
-                                    libanmcl.appendChild(anicl)
+                                    libanmcl.appendChild(animation_clip)
 
                             if ande == 0:
                                 if self.__config.merge_anm:
-                                    if asw == 0:
-                                        anicl = self.__export__animation_clip(
-                                                                i,
+                                    if is_merge_inprogress == 0:
+                                        animation_clip = self.__export__animation_clip(
+                                                                object_,
                                                                 ename,
                                                                 act.name,
                                                                 frstrt,
                                                                 frend)
-                                        asw = 1
+                                        is_merge_inprogress = 1
                                     else:
                                         cbPrint("Merging clips.")
+                                        self.__export_merge_animation_clip(
+                                                                object_,
+                                                                animation_clip,
+                                                                frstrt,
+                                                                frend)
                                 else:
-                                    anicl = self.__export__animation_clip(
-                                                                i,
+                                    animation_clip = self.__export__animation_clip(
+                                                                object_,
                                                                 ename,
                                                                 act.name,
                                                                 frstrt,
                                                                 frend)
-                        if asw == 0:
-                            libanmcl.appendChild(anicl)
+                        if is_merge_inprogress == 0:
+                            libanmcl.appendChild(animation_clip)
                         libanm.appendChild(anmlx)
                         libanm.appendChild(anmly)
                         libanm.appendChild(anmlz)
@@ -1897,27 +1905,47 @@ class CrytekDaeExporter:
                         libanm.appendChild(anmry)
                         libanm.appendChild(anmrz)
 
-            if asw == 1:
-                libanmcl.appendChild(anicl)
+            if is_merge_inprogress == 1:
+                libanmcl.appendChild(animation_clip)
 
-    def __export__animation_clip(self, i, ename, act_name, start_frame, end_frame):
-        anicl = self.__doc.createElement("animation_clip")
-        anicl.setAttribute("id", "%s-%s" % (act_name, ename[14:]))
-        anicl.setAttribute("start", "%s" % (utils.convert_time(start_frame)))
-        anicl.setAttribute("end", "%s" % (utils.convert_time(end_frame)))
-        self.__export_instance_animation_parameters(i, anicl)
+    def __export_merge_animation_clip(self, object_, animation_clip,
+                                      start_frame, end_frame):
+        if self.__merged_clip_start > start_frame:
+            animation_clip.setAttribute("start",
+                                      "%f" % (utils.convert_time(start_frame)))
+            self.__merged_clip_start = start_frame
+        if self.__merged_clip_end < end_frame:
+            animation_clip.setAttribute("end",
+                                        "%f" % (utils.convert_time(end_frame)))
+            self.__merged_clip_end = end_frame
+        self.__export_instance_animation_parameters(object_, animation_clip)
 
-        return anicl
+    def __export__animation_clip(self, object_, ename, act_name,
+                                 start_frame, end_frame):
+        animation_clip = self.__doc.createElement("animation_clip")
+        animation_clip.setAttribute("id", "%s-%s" % (act_name, ename[14:]))
+        # RC does not seem to like doubles and truncates them to integers
+        animation_clip.setAttribute("start",
+                                    "%f" % (utils.convert_time(start_frame)))
+        animation_clip.setAttribute("end",
+                                    "%f" % (utils.convert_time(end_frame)))
+        self.__merged_clip_start = start_frame
+        self.__merged_clip_end = end_frame
+        self.__export_instance_animation_parameters(object_, animation_clip)
 
-    def __export_instance_animation_parameters(self, i, anicl):
-        self.__export_instance_parameter(i, anicl, "location")
-        self.__export_instance_parameter(i, anicl, "rotation_euler")
+        return animation_clip
 
-    def __export_instance_parameter(self, i, anicl, parameter):
+    def __export_instance_animation_parameters(self, object_, animation_clip):
+        self.__export_instance_parameter(object_, animation_clip, "location")
+        self.__export_instance_parameter(object_, animation_clip,
+                                         "rotation_euler")
+
+    def __export_instance_parameter(self, object_, animation_clip, parameter):
         for axis in iter(AXISES):
             inst = self.__doc.createElement("instance_animation")
-            inst.setAttribute("url", "#%s_%s_%s" % (i.name, parameter, axis))
-            anicl.appendChild(inst)
+            inst.setAttribute("url",
+                              "#%s_%s_%s" % (object_.name, parameter, axis))
+            animation_clip.appendChild(inst)
 
     def __export_library_visual_scenes(self, parent_element):
         current_element = self.__doc.createElement("library_visual_scenes")
