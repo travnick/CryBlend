@@ -1881,6 +1881,11 @@ class CrytekDaeExporter:
                                         asw = 1
                                     else:
                                         cbPrint("Merging clips.")
+                                        self.__export_merge_animation_clip(
+                                                                i,
+                                                                anicl,
+                                                                frstrt,
+                                                                frend)
                                 else:
                                     anicl = self.__export__animation_clip(
                                                                 i,
@@ -1900,11 +1905,23 @@ class CrytekDaeExporter:
             if asw == 1:
                 libanmcl.appendChild(anicl)
 
+    def __export_merge_animation_clip(self, i, anicl, start_frame, end_frame):
+        if self.__merged_clip_start > start_frame:
+            anicl.setAttribute("start", "%f" % (utils.convert_time(start_frame)))
+            self.__merged_clip_start = start_frame
+        if self.__merged_clip_end < end_frame:
+            anicl.setAttribute("end", "%f" % (utils.convert_time(end_frame)))
+            self.__merged_clip_end = end_frame
+        self.__export_instance_animation_parameters(i, anicl)
+
     def __export__animation_clip(self, i, ename, act_name, start_frame, end_frame):
         anicl = self.__doc.createElement("animation_clip")
         anicl.setAttribute("id", "%s-%s" % (act_name, ename[14:]))
-        anicl.setAttribute("start", "%s" % (utils.convert_time(start_frame)))
-        anicl.setAttribute("end", "%s" % (utils.convert_time(end_frame)))
+        # RC does not seem to like doubles and truncates them to integers
+        anicl.setAttribute("start", "%f" % (utils.convert_time(start_frame)))
+        anicl.setAttribute("end", "%f" % (utils.convert_time(end_frame)))
+        self.__merged_clip_start = start_frame
+        self.__merged_clip_end = end_frame
         self.__export_instance_animation_parameters(i, anicl)
 
         return anicl
