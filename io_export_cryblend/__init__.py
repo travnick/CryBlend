@@ -216,6 +216,9 @@ it's mesh before running this.'''
     bl_label = "Find Degenerate Faces"
     bl_idname = "find_deg.faces"
 
+    # Minimum face area to be considered non-degenerate
+    area_epsilon = 0.000001
+
     def execute(self, context):
         # Deselect any vertices prevously selected in Edit mode
         saved_mode = bpy.context.object.mode
@@ -232,8 +235,10 @@ it's mesh before running this.'''
         cbPrint("Locating degenerate faces.")
         degenerate_count = 0
 
+
+
         for poly in me.data.polygons:
-            if poly.area == 0:
+            if poly.area < self.area_epsilon:
                 cbPrint("Found a degenerate face.")
                 degenerate_count += 1
 
