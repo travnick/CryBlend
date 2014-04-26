@@ -216,25 +216,45 @@ it's mesh before running this.'''
     bl_label = "Find Degenerate Faces"
     bl_idname = "find_deg.faces"
 
+    # Minimum face area to be considered non-degenerate
+    area_epsilon = 0.000001
+
     def execute(self, context):
-        me = bpy.context.active_object
-        vert_list = [vert for vert in me.data.vertices]
-        # bpy.ops.object.mode_set(mode='EDIT')
-        context.tool_settings.mesh_select_mode = (True, False, False)
-        # bpy.ops.mesh.select_all(
-        #    {'object':me, 'active_object':me, 'edit_object':me},
-        #    action='DESELECT')
+        # Deselect any vertices prevously selected in Edit mode
+        saved_mode = bpy.context.object.mode
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action = 'DESELECT')
+
+        ''' Vertices data should be actually manipulated in Object mode
+            to be displayed in Edit mode correctly'''
         bpy.ops.object.mode_set(mode='OBJECT')
+        me = bpy.context.active_object
+
+        vert_list = [vert for vert in me.data.vertices]
+        context.tool_settings.mesh_select_mode = (True, False, False)
         cbPrint("Locating degenerate faces.")
-        for i in me.data.polygons:
-            # print("1 face")
-            if i.area == 0:
+        degenerate_count = 0
+
+
+
+        for poly in me.data.polygons:
+            if poly.area < self.area_epsilon:
                 cbPrint("Found a degenerate face.")
-            for v in i.vertices:
-                if i.area == 0:
+                degenerate_count += 1
+
+                for v in poly.vertices:
                     cbPrint("Selecting face vertices.")
                     vert_list[v].select = True
-        bpy.ops.object.mode_set(mode='EDIT')
+
+        if degenerate_count > 0:
+            bpy.ops.object.mode_set(mode='EDIT')
+            self.report({'WARNING'},
+                        "Found %i degenerate faces" % degenerate_count)
+        else:
+            self.report({'INFO'}, "No degenerate faces found")
+            # Restore the original mode
+            bpy.ops.object.mode_set(mode=saved_mode)
+
         return {'FINISHED'}
 
 
