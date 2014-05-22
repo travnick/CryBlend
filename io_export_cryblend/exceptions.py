@@ -43,6 +43,9 @@ Texture file: {!r}""".format(blend_path, texture_path)
 
 class NoRcSelectedException(CryBlendException):
     def __init__(self):
-        message = "Please find Resource Compiler first."
+        message = """
+Please find Resource Compiler first.
+Usually located in 'CryEngine\\Bin32\\rc\\rc.exe'
+"""
 
         CryBlendException.__init__(self, message)

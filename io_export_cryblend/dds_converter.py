@@ -60,6 +60,7 @@ class _DdsConverter:
                                       rc_params)
 
             rc_process.wait()
+            cbPrint("RC return code %s" % rc_process.returncode)
 
         if save_tiff:
             self.__save_tiffs()
