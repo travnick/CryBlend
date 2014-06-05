@@ -106,8 +106,8 @@ class Find_RC(bpy.types.Operator, Path_Select_Template):
 
 class Find_RC_For_Texture_Conversion(bpy.types.Operator, Path_Select_Template):
     '''Select if you are using RC from cryengine \
-    newer than 3.4.5. Provide RC path from cryengine 3.4.5 \
-    to be able to export your textures as dds files'''
+newer than 3.4.5. Provide RC path from cryengine 3.4.5 \
+to be able to export your textures as dds files'''
 
     bl_label = "Find the Resource Compiler for Texture Conversion"
     bl_idname = "file.find_rc_for_texture_conversion"
@@ -128,7 +128,7 @@ class Find_RC_For_Texture_Conversion(bpy.types.Operator, Path_Select_Template):
 
 class Select_Textures_Directory(bpy.types.Operator, Path_Select_Template):
     '''This path will be used to create relative path \
-    for textures in .mtl file.'''
+for textures in .mtl file.'''
 
     bl_label = "Select Textures Directory"
     bl_idname = "file.select_textures_directory"
@@ -230,7 +230,7 @@ class Add_CryExportNode(bpy.types.Operator):
 
 class Add_AnimNode(bpy.types.Operator):
     '''Click to add an AnimNode to selection or with nothing selected
-    add an AnimNode to the scene'''
+add an AnimNode to the scene'''
     bl_label = "Add AnimNode"
     bl_idname = "object.add_anim_node"
     my_string = StringProperty(name="Animation Name")
@@ -605,7 +605,7 @@ class Add_Dynamic_Property(bpy.types.Operator):
 
 class Find_Degenerate_Faces(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in \
-    it's mesh before running this.'''
+it's mesh before running this.'''
     bl_label = "Find Degenerate Faces"
     bl_idname = "object.find_degenerate_faces"
 
@@ -654,7 +654,7 @@ class Find_Degenerate_Faces(bpy.types.Operator):
 # Duo Oratar
 class Find_Multiface_Lines(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in \
-    it's mesh before running this.'''
+it's mesh before running this.'''
     bl_label = "Find Lines with 3+ Faces."
     bl_idname = "object.find_multiface_lines"
 
@@ -719,7 +719,7 @@ class Remove_All_Weight(bpy.types.Operator):
 
 class Find_No_UVs(bpy.types.Operator):
         '''Use this with no objects selected in object mode
-        to find all items without UVs'''
+to find all items without UVs'''
         bl_label = "Find All Objects with No UVs"
         bl_idname = "scene.find_no_uvs"
 
@@ -749,7 +749,7 @@ class Find_No_UVs(bpy.types.Operator):
 def add_fake_bone(width, height, depth):
     """
     This function takes inputs and returns vertex and face arrays.
-    no actual mesh data creation is done here.
+    No actual mesh data creation is done here.
     """
 
     verts = [(-0.02029, -0.02029, -0.02029),
@@ -780,7 +780,7 @@ def add_fake_bone(width, height, depth):
 def add_bone_geometry():
     """
     This function takes inputs and returns vertex and face arrays.
-    no actual mesh data creation is done here.
+    No actual mesh data creation is done here.
     """
 
     verts = [(-0.5, -0.5, -0.5),
