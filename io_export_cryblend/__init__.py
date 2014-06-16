@@ -76,7 +76,7 @@ import webbrowser
 new = 2  # open in a new tab, if possible
 
 
-class Path_Select_Template(ExportHelper):
+class PathSelectTemplate(ExportHelper):
     check_existing = True
 
     def execute(self, context):
@@ -86,7 +86,7 @@ class Path_Select_Template(ExportHelper):
         return {'FINISHED'}
 
 
-class Find_RC(bpy.types.Operator, Path_Select_Template):
+class FindRC(bpy.types.Operator, PathSelectTemplate):
     '''Select the Resource Compiler executable'''
 
     bl_label = "Find The Resource Compiler"
@@ -104,7 +104,7 @@ class Find_RC(bpy.types.Operator, Path_Select_Template):
         return ExportHelper.invoke(self, context, event)
 
 
-class Find_RC_For_Texture_Conversion(bpy.types.Operator, Path_Select_Template):
+class FindRCForTextureConversion(bpy.types.Operator, PathSelectTemplate):
     '''Select if you are using RC from cryengine \
 newer than 3.4.5. Provide RC path from cryengine 3.4.5 \
 to be able to export your textures as dds files'''
@@ -126,7 +126,7 @@ to be able to export your textures as dds files'''
         return ExportHelper.invoke(self, context, event)
 
 
-class Select_Textures_Directory(bpy.types.Operator, Path_Select_Template):
+class SelectTexturesDirectory(bpy.types.Operator, PathSelectTemplate):
     '''This path will be used to create relative path \
 for textures in .mtl file.'''
 
@@ -147,7 +147,7 @@ for textures in .mtl file.'''
         return ExportHelper.invoke(self, context, event)
 
 
-class Menu_Template():
+class MenuTemplate():
     class Operator:
         def __init__(self, name="", icon=''):
             self.name = name
@@ -167,22 +167,22 @@ class Menu_Template():
             layout.operator(operator.name, icon=operator.icon)
 
 
-class Set_CryBlend_Configuration_Paths(bpy.types.Menu, Menu_Template):
+class SetCryBlendConfigurationPaths(bpy.types.Menu, MenuTemplate):
     bl_label = "Set CryBlend Paths"
     bl_idname = "menu.set_cryblend_configuration_paths"
     label = bl_label
 
     operators = (
-         Menu_Template.Operator(name="file.find_rc",
+         MenuTemplate.Operator(name="file.find_rc",
                                icon='SCRIPTWIN'),
-         Menu_Template.Operator(name="file.find_rc_for_texture_conversion",
+         MenuTemplate.Operator(name="file.find_rc_for_texture_conversion",
                                icon='SCRIPTWIN'),
-         Menu_Template.Operator(name="file.select_textures_directory",
+         MenuTemplate.Operator(name="file.select_textures_directory",
                                icon='IMASEL'),
      )
 
 
-class Save_CryBlend_Configuration(bpy.types.Operator):
+class SaveCryBlendConfiguration(bpy.types.Operator):
     '''operator: Saves current CryBlend configuration'''
     bl_label = "Save Config File"
     bl_idname = "config.save"
@@ -202,7 +202,7 @@ class Save_CryBlend_Configuration(bpy.types.Operator):
 # Interfaces with defs in external .py
 #------------------------------------------------------------------------------
 
-class Add_Breakable_Joint(bpy.types.Operator):
+class AddBreakableJoint(bpy.types.Operator):
     '''Click to add a pre-broken breakable joint to current selection'''
     bl_label = "Add Joint"
     bl_idname = "object.add_joint"
@@ -211,7 +211,7 @@ class Add_Breakable_Joint(bpy.types.Operator):
         return add.add_joint(self, context)
 
 
-class Add_CryExportNode(bpy.types.Operator):
+class AddCryExportNode(bpy.types.Operator):
     '''Click to add selection to a CryExportNode'''
     bl_label = "Add CryExportNode"
     bl_idname = "object.add_cry_export_node"
@@ -228,7 +228,7 @@ class Add_CryExportNode(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
 
-class Add_AnimNode(bpy.types.Operator):
+class AddAnimNode(bpy.types.Operator):
     '''Click to add an AnimNode to selection or with nothing selected
 add an AnimNode to the scene'''
     bl_label = "Add AnimNode"
@@ -267,7 +267,7 @@ add an AnimNode to the scene'''
 # Defined Properties:
 #------------------------------------------------------------------------------
 
-class Open_UDP_Webpage(bpy.types.Operator):
+class OpenUDPWebpage(bpy.types.Operator):
     '''A link to UDP'''
     bl_label = "Open Web Page for UDP"
     bl_idname = "file.open_udp_webpage"
@@ -282,7 +282,7 @@ class Open_UDP_Webpage(bpy.types.Operator):
 
 # custom props
 # wheels
-class Add_Wheel_Property(bpy.types.Operator):
+class AddWheelProperty(bpy.types.Operator):
     '''Click to add a wheels property'''
     bl_label = "Add Wheel Properties"
     bl_idname = "object.add_wheel_property"
@@ -292,7 +292,7 @@ class Add_Wheel_Property(bpy.types.Operator):
 
 
 # wheel transform fix
-class Fix_Wheel_Transforms(bpy.types.Operator):
+class FixWheelTransforms(bpy.types.Operator):
     bl_label = "Fix Wheel Transforms"
     bl_idname = "object.fix_wheel_transforms"
 
@@ -307,7 +307,7 @@ class Fix_Wheel_Transforms(bpy.types.Operator):
 
 # jointed breakables
 # rendermesh
-class Add_Entity_Property(bpy.types.Operator):
+class AddEntityProperty(bpy.types.Operator):
     '''Click to add an entity property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_entity_property"
@@ -316,7 +316,7 @@ class Add_Entity_Property(bpy.types.Operator):
         return add.add_rm_e_p(self, context)
 
 
-class Add_Mass_Property(bpy.types.Operator):
+class AddMassProperty(bpy.types.Operator):
     '''Click to add a mass value'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_mass_property"
@@ -325,7 +325,7 @@ class Add_Mass_Property(bpy.types.Operator):
         return add.add_rm_m_p(self, context)
 
 
-class Add_Density_Property(bpy.types.Operator):
+class AddDensityProperty(bpy.types.Operator):
     '''Click to add a density value'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_density_property"
@@ -334,7 +334,7 @@ class Add_Density_Property(bpy.types.Operator):
         return add.add_rm_d_p(self, context)
 
 
-class Add_Pieces_Property(bpy.types.Operator):
+class AddPiecesProperty(bpy.types.Operator):
     '''Click to add a pieces value'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_pieces_property"
@@ -344,7 +344,7 @@ class Add_Pieces_Property(bpy.types.Operator):
 
 
 # joint
-class Add_Critical_Property(bpy.types.Operator):
+class AddCriticalProperty(bpy.types.Operator):
     '''Click to add a critical property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_critical_property"
@@ -353,7 +353,7 @@ class Add_Critical_Property(bpy.types.Operator):
         return add.add_j_gpc_p(self, context)
 
 
-class Add_Breakable_Property(bpy.types.Operator):
+class AddBreakableProperty(bpy.types.Operator):
     '''Click to add a breakable property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_breakable_property"
@@ -362,7 +362,7 @@ class Add_Breakable_Property(bpy.types.Operator):
         return add.add_j_pcb_p(self, context)
 
 
-class Add_Bend_Property(bpy.types.Operator):
+class AddBendProperty(bpy.types.Operator):
     '''Click to add a bend property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_bend_property"
@@ -371,7 +371,7 @@ class Add_Bend_Property(bpy.types.Operator):
         return add.add_j_b_p(self, context)
 
 
-class Add_Twist_Property(bpy.types.Operator):
+class AddTwistProperty(bpy.types.Operator):
     '''Click to add a twist property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_twist_property"
@@ -380,7 +380,7 @@ class Add_Twist_Property(bpy.types.Operator):
         return add.add_j_t_p(self, context)
 
 
-class Add_Pull_Property(bpy.types.Operator):
+class AddPullProperty(bpy.types.Operator):
     '''Click to add a pull property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_pull_property"
@@ -389,7 +389,7 @@ class Add_Pull_Property(bpy.types.Operator):
         return add.add_j_pull_p(self, context)
 
 
-class Add_Push_Property(bpy.types.Operator):
+class AddPushProperty(bpy.types.Operator):
     '''Click to add a push property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_push_property"
@@ -398,7 +398,7 @@ class Add_Push_Property(bpy.types.Operator):
         return add.add_j_push_p(self, context)
 
 
-class Add_Shift_Property(bpy.types.Operator):
+class AddShiftProperty(bpy.types.Operator):
     '''Click to add a shift property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_shift_property"
@@ -407,7 +407,7 @@ class Add_Shift_Property(bpy.types.Operator):
         return add.add_j_shift_p(self, context)
 
 
-class Add_Limit_Constraint(bpy.types.Operator):
+class AddLimitConstraint(bpy.types.Operator):
     '''Click to add a limit constraint'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_limit_constraint"
@@ -416,7 +416,7 @@ class Add_Limit_Constraint(bpy.types.Operator):
         return add.add_j_climit_p(self, context)
 
 
-class Add_Min_Angle_Constraint(bpy.types.Operator):
+class AddMinAngleConstraint(bpy.types.Operator):
     '''Click to add a min angle constraint'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_min_angle_constraint"
@@ -425,7 +425,7 @@ class Add_Min_Angle_Constraint(bpy.types.Operator):
         return add.add_j_cminang_p(self, context)
 
 
-class Add_Max_Angle_Constraint(bpy.types.Operator):
+class AddMaxAngleConstraint(bpy.types.Operator):
     '''Click to add a max angle constraint'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_max_angle_constraint"
@@ -434,7 +434,7 @@ class Add_Max_Angle_Constraint(bpy.types.Operator):
         return add.add_j_cmaxang_p(self, context)
 
 
-class Add_Damping_Constraint(bpy.types.Operator):
+class AddDampingConstraint(bpy.types.Operator):
     '''Click to add a damping constraint'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_damping_constraint"
@@ -443,7 +443,7 @@ class Add_Damping_Constraint(bpy.types.Operator):
         return add.add_j_cdamp_p(self, context)
 
 
-class Add_Collision_Constraint(bpy.types.Operator):
+class AddCollisionConstraint(bpy.types.Operator):
     '''Click to add a collision constraint'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_collision_constraint"
@@ -453,7 +453,7 @@ class Add_Collision_Constraint(bpy.types.Operator):
 
 
 # deformable
-class Add_Deformable_Property(bpy.types.Operator):
+class AddDeformableProperty(bpy.types.Operator):
     '''Click to add a deformable mesh property'''
     bl_label = "Add DeformableMesh Properties"
     bl_idname = "object.add_deformable_property"
@@ -463,7 +463,7 @@ class Add_Deformable_Property(bpy.types.Operator):
 
 
 # material physics
-class Add_Material_Phys_Default(bpy.types.Operator):
+class AddMaterialPhysDefault(bpy.types.Operator):
     '''__physDefault will be added to the material name'''
     bl_label = "Add __physDefault to Material Name"
     bl_idname = "material.add_phys_default"
@@ -472,7 +472,7 @@ class Add_Material_Phys_Default(bpy.types.Operator):
         return add.add_phys_default(self, context)
 
 
-class Add_Material_Phys_Proxy_No_Draw(bpy.types.Operator):
+class AddMaterialPhysProxyNoDraw(bpy.types.Operator):
     '''__physProxyNoDraw will be added to the material name'''
     bl_label = "Add __physProxyNoDraw to Material Name"
     bl_idname = "material.add_phys_proxy_no_draw"
@@ -481,7 +481,7 @@ class Add_Material_Phys_Proxy_No_Draw(bpy.types.Operator):
         return add.add_phys_pnd(self, context)
 
 
-class Add_Material_Phys_None(bpy.types.Operator):
+class AddMaterialPhysNone(bpy.types.Operator):
     '''__physNone will be added to the material name'''
     bl_label = "Add __physNone to Material Name"
     bl_idname = "material.add_phys_none"
@@ -490,7 +490,7 @@ class Add_Material_Phys_None(bpy.types.Operator):
         return add.add_phys_none(self, context)
 
 
-class Add_Material_Phys_Obstruct(bpy.types.Operator):
+class AddMaterialPhysObstruct(bpy.types.Operator):
     '''__physObstruct will be added to the material name'''
     bl_label = "Add __physObstruct to Material Name"
     bl_idname = "material.add_phys_obstruct"
@@ -499,7 +499,7 @@ class Add_Material_Phys_Obstruct(bpy.types.Operator):
         return add.add_phys_obstr(self, context)
 
 
-class Add_Material_Phys_No_Collide(bpy.types.Operator):
+class AddMaterialPhysNoCollide(bpy.types.Operator):
     '''__physNoCollide will be added to the material name'''
     bl_label = "Add __physNoCollide to Material Name"
     bl_idname = "material.add_phys_no_collide"
@@ -509,7 +509,7 @@ class Add_Material_Phys_No_Collide(bpy.types.Operator):
 
 
 # CGF/CGA/CHR
-class Add_No_Explosion_Occlusion_Property(bpy.types.Operator):
+class AddNoExplosionOcclusionProperty(bpy.types.Operator):
     '''Click to add a no explosion occlusion property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_no_explosion_occlusion_property"
@@ -518,7 +518,7 @@ class Add_No_Explosion_Occlusion_Property(bpy.types.Operator):
         return add.add_neo_p(self, context)
 
 
-class Add_Rendermesh_Property(bpy.types.Operator):
+class AddRendermeshProperty(bpy.types.Operator):
     '''Click to add an other rendermesh property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_rendermesh_property"
@@ -527,7 +527,7 @@ class Add_Rendermesh_Property(bpy.types.Operator):
         return add.add_orm_p(self, context)
 
 
-class Add_Colltype_Player_Property(bpy.types.Operator):
+class AddColltypePlayerProperty(bpy.types.Operator):
     '''Click to add a colltype player property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_colltype_player_property"
@@ -536,7 +536,7 @@ class Add_Colltype_Player_Property(bpy.types.Operator):
         return add.add_colp_p(self, context)
 
 # proxies
-class Add_Box_Proxy_Property(bpy.types.Operator):
+class AddBoxProxyProperty(bpy.types.Operator):
     '''Click to add a box proxy'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_box_proxy_property"
@@ -545,7 +545,7 @@ class Add_Box_Proxy_Property(bpy.types.Operator):
         return add.add_b_p(self, context)
 
 
-class Add_Cylinder_Proxy_Property(bpy.types.Operator):
+class AddCylinderProxyProperty(bpy.types.Operator):
     '''Click to add a cylinder proxy'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_cylinder_proxy_property"
@@ -554,7 +554,7 @@ class Add_Cylinder_Proxy_Property(bpy.types.Operator):
         return add.add_cyl_p(self, context)
 
 
-class Add_Capsule_Proxy_Property(bpy.types.Operator):
+class AddCapsuleProxyProperty(bpy.types.Operator):
     '''Click to add a capsule proxy'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_capsule_proxy_property"
@@ -563,7 +563,7 @@ class Add_Capsule_Proxy_Property(bpy.types.Operator):
         return add.add_caps_p(self, context)
 
 
-class Add_Sphere_Proxy_Property(bpy.types.Operator):
+class AddSphereProxyProperty(bpy.types.Operator):
     '''Click to add a sphere proxy'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_sphere_proxy_property"
@@ -572,7 +572,7 @@ class Add_Sphere_Proxy_Property(bpy.types.Operator):
         return add.add_sph_p(self, context)
 
 
-class Add_Notaprim_Proxy_Property(bpy.types.Operator):
+class AddNotaprimProxyProperty(bpy.types.Operator):
     '''Click to add a notaprim proxy'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_notaprim_proxy_property"
@@ -581,7 +581,7 @@ class Add_Notaprim_Proxy_Property(bpy.types.Operator):
         return add.add_nap_p(self, context)
 
 
-class Add_No_Hit_Refinement_Property(bpy.types.Operator):
+class AddNoHitRefinementProperty(bpy.types.Operator):
     '''Click to add a no hit refinement property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_no_hit_refinement_property"
@@ -590,7 +590,7 @@ class Add_No_Hit_Refinement_Property(bpy.types.Operator):
         return add.add_nhr_p(self, context)
 
 
-class Add_Dynamic_Property(bpy.types.Operator):
+class AddDynamicProperty(bpy.types.Operator):
     '''Click to add a dynamic property'''
     bl_label = "Add Entity Properties"
     bl_idname = "object.add_dynamic_property"
@@ -603,7 +603,7 @@ class Add_Dynamic_Property(bpy.types.Operator):
 # Repair Tools:
 #------------------------------------------------------------------------------
 
-class Find_Degenerate_Faces(bpy.types.Operator):
+class FindDegenerateFaces(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in \
 it's mesh before running this.'''
     bl_label = "Find Degenerate Faces"
@@ -652,11 +652,11 @@ it's mesh before running this.'''
 
 
 # Duo Oratar
-class Find_Multiface_Lines(bpy.types.Operator):
+class FindMultifaceLines(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in \
 it's mesh before running this.'''
     bl_label = "Find Lines with 3+ Faces."
-    bl_idname = "object.find_multiface_lines"
+    bl_idname = "mesh.find_multiface_lines"
 
     def execute(self, context):
         me = bpy.context.active_object
@@ -683,7 +683,7 @@ it's mesh before running this.'''
         return {'FINISHED'}
 
 
-class Find_Weightless(bpy.types.Operator):
+class FindWeightless(bpy.types.Operator):
     '''Select the object in object mode with nothing in its mesh selected before running this'''
     bl_label = "Find Weightless Vertices"
     bl_idname = "mesh.find_weightless"
@@ -699,7 +699,7 @@ class Find_Weightless(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class Remove_All_Weight(bpy.types.Operator):
+class RemoveAllWeight(bpy.types.Operator):
         '''Select vertices from which to remove weight in edit mode'''
         bl_label = "Remove All Weight from Selected Vertices"
         bl_idname = "mesh.remove_weight"
@@ -717,7 +717,7 @@ class Remove_All_Weight(bpy.types.Operator):
             return {'FINISHED'}
 
 
-class Find_No_UVs(bpy.types.Operator):
+class FindNoUVs(bpy.types.Operator):
         '''Use this with no objects selected in object mode
 to find all items without UVs'''
         bl_label = "Find All Objects with No UVs"
@@ -805,7 +805,7 @@ def add_bone_geometry():
 
 
 # Duo Oratar
-class Rename_Phys_Bones(bpy.types.Operator):
+class RenamePhysBones(bpy.types.Operator):
     '''Renames phys bones'''
     bl_label = "Rename Phys Bones"
     bl_idname = "armature.rename_phys_bones"
@@ -821,7 +821,7 @@ class Rename_Phys_Bones(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class Add_Bone_Geometry(bpy.types.Operator):
+class AddBoneGeometry(bpy.types.Operator):
     '''Add BoneGeometry for bones in selected armatures'''
     bl_label = "Add BoneGeometry"
     bl_idname = "armature.add_bone_geometry"
@@ -895,7 +895,7 @@ class Add_Bone_Geometry(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class Remove_Bone_Geometry(bpy.types.Operator):
+class RemoveBoneGeometry(bpy.types.Operator):
     '''Remove BoneGeometry for bones in selected armatures'''
     bl_label = "Remove BoneGeometry"
     bl_idname = "armature.remove_bone_geometry"
@@ -950,7 +950,7 @@ class Remove_Bone_Geometry(bpy.types.Operator):
 
 # verts and faces
 # find bone heads and add at that location
-class Add_Fake_Bone(bpy.types.Operator):
+class AddFakeBone(bpy.types.Operator):
     '''Add a simple box mesh'''
     bl_label = "Add FakeBone"
     bl_idname = "armature.add_fake_bone"
@@ -1031,10 +1031,10 @@ class Add_Fake_Bone(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class Remove_FakeBones(bpy.types.Operator):
+class RemoveFakeBones(bpy.types.Operator):
         '''Select to remove all fakebones from the scene'''
         bl_label = "Remove All FakeBones"
-        bl_idname = "scene.remove_fakebones"
+        bl_idname = "scene.remove_fake_bones"
 
         def execute(self, context):
             for obj in bpy.data.objects:
@@ -1168,7 +1168,7 @@ def add_fake_bone_keyframe(self, context):
 
 
 # fakebone keyframe
-class Make_Fake_Bone_Keyframe_List(bpy.types.Operator):
+class AddFakeBoneKeyframeList(bpy.types.Operator):
     '''Adds a key frame list to fakebones'''
     bl_label = "Make Fakebone Keyframes List"
     bl_idname = "armature.add_fakebone_keyframe_list"
@@ -1177,7 +1177,7 @@ class Make_Fake_Bone_Keyframe_List(bpy.types.Operator):
         return add_fake_bone_keyframe_list(self, context)
 
 
-class Make_Fake_Bone_Keyframe(bpy.types.Operator):
+class AddFakeBoneKeyframe(bpy.types.Operator):
     '''Adds a key frame to fakebone'''
     bl_label = "Add Fakebone Keyframe"
     bl_idname = "armature.add_fakebone_keyframe"
@@ -1351,7 +1351,7 @@ class Export(bpy.types.Operator, ExportHelper):
         box.prop(self, "run_in_profiler")
 
 
-class Error_Handler(bpy.types.Operator):
+class ErrorHandler(bpy.types.Operator):
     bl_label = "Error:"
     bl_idname = "screen.display_error"
 
@@ -1387,7 +1387,7 @@ def multiline_label(layout, text):
 # MENU:
 #------------------------------------------------------------------------------
 
-class Mesh_Repair_Tools_Menu(bpy.types.Menu):
+class MeshRepairToolsMenu(bpy.types.Menu):
     bl_label = "Weight Paint Repair"
     bl_idname = "menu.weight_paint_repair"
 
@@ -1400,7 +1400,7 @@ class Mesh_Repair_Tools_Menu(bpy.types.Menu):
         layout.operator("mesh.remove_weight", icon='MESH_CUBE')
 
 
-class Add_Material_Physics_Menu(bpy.types.Menu):
+class AddMaterialPhysicsMenu(bpy.types.Menu):
     bl_label = "Add Material Physics"
     bl_idname = "menu.add_material_physics"
 
@@ -1417,7 +1417,7 @@ class Add_Material_Physics_Menu(bpy.types.Menu):
         layout.operator("material.add_phys_no_collide", icon='PHYSICS')
 
 
-class Add_Breakable_Properties_Menu(bpy.types.Menu):
+class AddBreakablePropertiesMenu(bpy.types.Menu):
     bl_label = "Add JOINTED (pre-broken) BREAKABLES Properties"
     bl_idname = "menu.add_breakable_properties"
 
@@ -1454,7 +1454,7 @@ class Add_Breakable_Properties_Menu(bpy.types.Menu):
 
 
 # cgf/cga/chr
-class Add_CFAR_Properties_Menu(bpy.types.Menu):
+class AddCFARPropertiesMenu(bpy.types.Menu):
     bl_label = "Add CGF/CGA/CHR Properties"
     bl_idname = "menu.add_cfar_properties"
 
@@ -1480,7 +1480,7 @@ class Add_CFAR_Properties_Menu(bpy.types.Menu):
         layout.operator("object.add_dynamic_property", icon='SCRIPT', text="Dynamic")
 
 
-class Add_Custom_Properties_Menu(bpy.types.Menu):
+class AddCustomPropertiesMenu(bpy.types.Menu):
     bl_label = "Add Custom Properties"
     bl_idname = "menu.add_custom_properties"
 
@@ -1522,7 +1522,7 @@ class Tools():
         layout.operator("object.add_anim_node", icon='POSE_HLT')
         layout.separator()
         layout.operator("armature.add_fake_bone", icon='BONE_DATA')
-        layout.operator("scene.remove_fakebones", icon='BONE_DATA')
+        layout.operator("scene.remove_fake_bones", icon='BONE_DATA')
         layout.separator()
         layout.operator("armature.add_bone_geometry", icon="PHYSICS")
         layout.operator("armature.remove_bone_geometry", icon="PHYSICS")
@@ -1543,7 +1543,7 @@ class Tools():
         layout.menu("menu.add_custom_properties", icon='SCRIPT')
         layout.separator()
         layout.operator("object.find_degenerate_faces", icon='ZOOM_ALL')
-        layout.operator("object.find_multiface_lines", icon='ZOOM_ALL')
+        layout.operator("mesh.find_multiface_lines", icon='ZOOM_ALL')
         layout.separator()
         # layout.operator("object.fix_wheel_transforms", icon='ZOOM_ALL')
         layout.separator()
@@ -1565,7 +1565,7 @@ class Tools():
         #                           )config.save
 
 
-class Tools_Menu(Tools, bpy.types.Menu):
+class ToolsMenu(Tools, bpy.types.Menu):
     bl_label = "CryBlend Menu"
     bl_idname = "menu.cryblend_menu"
 
@@ -1573,80 +1573,80 @@ class Tools_Menu(Tools, bpy.types.Menu):
 def get_classes_to_register():
     classes = (
 
-        Find_RC,
-        Find_RC_For_Texture_Conversion,
-        Select_Textures_Directory,
-        Set_CryBlend_Configuration_Paths,
-        Save_CryBlend_Configuration,
+        FindRC,
+        FindRCForTextureConversion,
+        SelectTexturesDirectory,
+        SetCryBlendConfigurationPaths,
+        SaveCryBlendConfiguration,
 
-        Add_Breakable_Joint,
-        Add_CryExportNode,
-        Add_AnimNode,
+        AddBreakableJoint,
+        AddCryExportNode,
+        AddAnimNode,
 
-        Open_UDP_Webpage,
-        Add_Wheel_Property,
-        Fix_Wheel_Transforms,
+        OpenUDPWebpage,
+        AddWheelProperty,
+        FixWheelTransforms,
 
-        Add_Entity_Property,
-        Add_Mass_Property,
-        Add_Density_Property,
-        Add_Pieces_Property,
+        AddEntityProperty,
+        AddMassProperty,
+        AddDensityProperty,
+        AddPiecesProperty,
 
-        Add_Critical_Property,
-        Add_Breakable_Property,
-        Add_Bend_Property,
-        Add_Twist_Property,
-        Add_Pull_Property,
-        Add_Push_Property,
-        Add_Shift_Property,
+        AddCriticalProperty,
+        AddBreakableProperty,
+        AddBendProperty,
+        AddTwistProperty,
+        AddPullProperty,
+        AddPushProperty,
+        AddShiftProperty,
 
-        Add_Limit_Constraint,
-        Add_Min_Angle_Constraint,
-        Add_Max_Angle_Constraint,
-        Add_Damping_Constraint,
-        Add_Collision_Constraint,
-        Add_Deformable_Property,
+        AddLimitConstraint,
+        AddMinAngleConstraint,
+        AddMaxAngleConstraint,
+        AddDampingConstraint,
+        AddCollisionConstraint,
+        AddDeformableProperty,
 
-        Add_Material_Phys_Default,
-        Add_Material_Phys_Proxy_No_Draw,
-        Add_Material_Phys_None,
-        Add_Material_Phys_Obstruct,
-        Add_Material_Phys_No_Collide,
+        AddMaterialPhysDefault,
+        AddMaterialPhysProxyNoDraw,
+        AddMaterialPhysNone,
+        AddMaterialPhysObstruct,
+        AddMaterialPhysNoCollide,
 
-        Add_No_Explosion_Occlusion_Property,
-        Add_Rendermesh_Property,
-        Add_Colltype_Player_Property,
-        Add_Box_Proxy_Property,
-        Add_Cylinder_Proxy_Property,
-        Add_Capsule_Proxy_Property,
-        Add_Sphere_Proxy_Property,
-        Add_Notaprim_Proxy_Property,
-        Add_No_Hit_Refinement_Property,
-        Add_Dynamic_Property,
+        AddNoExplosionOcclusionProperty,
+        AddRendermeshProperty,
+        AddColltypePlayerProperty,
+        AddBoxProxyProperty,
+        AddCylinderProxyProperty,
+        AddCapsuleProxyProperty,
+        AddSphereProxyProperty,
+        AddNotaprimProxyProperty,
+        AddNoHitRefinementProperty,
+        AddDynamicProperty,
 
-        Find_Degenerate_Faces,
-        Find_Multiface_Lines,
-        Find_Weightless,
-        Remove_All_Weight,
-        Find_No_UVs,
+        FindDegenerateFaces,
+        FindMultifaceLines,
+        FindWeightless,
+        RemoveAllWeight,
+        FindNoUVs,
 
-        Rename_Phys_Bones,
-        Add_Bone_Geometry,
-        Remove_Bone_Geometry,
-        Add_Fake_Bone,
-        Remove_FakeBones,
-        Make_Fake_Bone_Keyframe_List,
-        Make_Fake_Bone_Keyframe,
+        RenamePhysBones,
+        AddBoneGeometry,
+        RemoveBoneGeometry,
+        AddFakeBone,
+        RemoveFakeBones,
+        AddFakeBoneKeyframeList,
+        AddFakeBoneKeyframe,
 
         Export,
-        Error_Handler,
+        ErrorHandler,
 
-        Tools_Menu,
-        Mesh_Repair_Tools_Menu,
-        Add_Material_Physics_Menu,
-        Add_Breakable_Properties_Menu,
-        Add_CFAR_Properties_Menu,
-        Add_Custom_Properties_Menu,
+        ToolsMenu,
+        MeshRepairToolsMenu,
+        AddMaterialPhysicsMenu,
+        AddBreakablePropertiesMenu,
+        AddCFARPropertiesMenu,
+        AddCustomPropertiesMenu,
     )
 
     return classes
@@ -1654,7 +1654,7 @@ def get_classes_to_register():
 
 def draw_item(self, context):
     layout = self.layout
-    layout.menu(Tools_Menu.bl_idname)
+    layout.menu(ToolsMenu.bl_idname)
 
 
 def register():
@@ -1679,4 +1679,4 @@ if __name__ == "__main__":
     register()
 
     # The menu can also be called from scripts
-    bpy.ops.wm.call_menu(name=Tools_Menu.bl_idname)
+    bpy.ops.wm.call_menu(name=ToolsMenu.bl_idname)
