@@ -1748,9 +1748,9 @@ class CrytekDaeExporter:
                     if vertex_group.index == group.group:
                         for bone_id, bone in enumerate(armature_bones):
                             if bone.name == vertex_group.name:
-                                vw = "%s%s " % (vw, bone_id)
+                                vw += "%s " % bone_id
 
-                vw += "%s%s " % (vw, vertex_count)
+                vw += "%s " % vertex_count
                 vertex_count += 1
 
             vertex_groups_lengths.append("%s" % len(vertex.groups))
