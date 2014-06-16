@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        hardbodyanimutils
-# Purpose:     hardbody animation export functions
+# Name:        hbanim.py
+# Purpose:     Hard body animation export functions
 #
 # Author:      Angelo J. Miner
 #
@@ -9,6 +9,9 @@
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 #!/usr/bin/env python
+
+
+# <pep8-80 compliant>
 
 
 def convert_time(frx):
@@ -627,7 +630,7 @@ def extract_anirx(self, i):
                 time = convert_time(frame)
                 intx += ("%s " % (keyx.interpolation))
                 inpx += ("%s " % (time))
-                outpx += ("%s " % (value * utils.toD))
+                outpx += ("%s " % (value * utils.toDegrees))
                 intangfirst = convert_time(khlx)
                 outangfirst = convert_time(khrx)
                 intangx += ("%s %s " % (intangfirst, khly))
@@ -835,7 +838,7 @@ def extract_aniry(self, i):
                 time = convert_time(frame)
                 inty += ("%s " % (key.interpolation))
                 inpy += ("%s " % (time))
-                outpy += ("%s " % (value * utils.toD))
+                outpy += ("%s " % (value * utils.toDegrees))
                 intangfirst = convert_time(khlx)
                 outangfirst = convert_time(khrx)
                 intangy += ("%s %s " % (intangfirst, khly))
@@ -1043,7 +1046,7 @@ def extract_anirz(self, i):
                 time = convert_time(frame)
                 intz += ("%s " % (key.interpolation))
                 inpz += ("%s " % (time))
-                outpz += ("%s " % (value * utils.toD))
+                outpz += ("%s " % (value * utils.toDegrees))
                 intangfirst = convert_time(khlx)
                 outangfirst = convert_time(khrx)
                 intangz += ("%s %s " % (intangfirst, khly))

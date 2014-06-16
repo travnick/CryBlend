@@ -17,7 +17,7 @@
 # ##### END GPL LICENSE BLOCK #####
 #------------------------------------------------------------------------------
 # Name:        export.py
-# Purpose:     export to cryengine main
+# Purpose:     Main exporter to CryEngine
 #
 # Author:      Angelo J. Miner,
 #                some code borrowed from fbx exporter Campbell Barton
@@ -40,7 +40,7 @@ else:
 
 from bpy_extras.io_utils import ExportHelper
 from datetime import datetime
-from io_export_cryblend.dds_converter import DdsConverterRunner
+from io_export_cryblend.dds_converter import DDSConverterRunner
 from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector
 from time import clock
@@ -60,7 +60,7 @@ AXISES = {
 
 
 # replace minidom's function with ours
-xml.dom.minidom.Element.writexml = utils.fixed_writexml
+xml.dom.minidom.Element.writexml = utils.fix_write_xml
 
 
 class CrytekDaeExporter:
@@ -227,21 +227,21 @@ class CrytekDaeExporter:
                     rotz.setAttribute("sid", "rotation_Z")
                     rotzn = self.__doc.createTextNode("0 0 1 %.4f"
                                                % (object_.rotation_euler[2]
-                                                  * utils.toD))
+                                                  * utils.toDegrees))
                     rotz.appendChild(rotzn)
                     # <rotate sid="rotation_Y">
                     roty = self.__doc.createElement("rotate")
                     roty.setAttribute("sid", "rotation_Y")
                     rotyn = self.__doc.createTextNode("0 1 0 %.4f"
                                                % (object_.rotation_euler[1]
-                                                  * utils.toD))
+                                                  * utils.toDegrees))
                     roty.appendChild(rotyn)
                     # <rotate sid="rotation_X">
                     rotx = self.__doc.createElement("rotate")
                     rotx.setAttribute("sid", "rotation_X")
                     rotxn = self.__doc.createTextNode("1 0 0 %.4f"
                                                % (object_.rotation_euler[0]
-                                                  * utils.toD))
+                                                  * utils.toDegrees))
                     rotx.appendChild(rotxn)
                     # <scale sid="scale">
                     sc = self.__doc.createElement("scale")
@@ -320,21 +320,21 @@ class CrytekDaeExporter:
                 rotz.setAttribute("sid", "rotation_Z")
                 rotzn = self.__doc.createTextNode("0 0 1 %s"
                                            % (object_.rotation_euler[2]
-                                              * utils.toD))
+                                              * utils.toDegrees))
                 rotz.appendChild(rotzn)
                 # <rotate sid="rotation_Y">
                 roty = self.__doc.createElement("rotate")
                 roty.setAttribute("sid", "rotation_Y")
                 rotyn = self.__doc.createTextNode("0 1 0 %s"
                                            % (object_.rotation_euler[1]
-                                              * utils.toD))
+                                              * utils.toDegrees))
                 roty.appendChild(rotyn)
                 # <rotate sid="rotation_X">
                 rotx = self.__doc.createElement("rotate")
                 rotx.setAttribute("sid", "rotation_X")
                 rotxn = self.__doc.createTextNode("1 0 0 %s"
                                            % (object_.rotation_euler[0]
-                                              * utils.toD))
+                                              * utils.toDegrees))
                 rotx.appendChild(rotxn)
                 # <scale sid="scale">
                 sc = self.__doc.createElement("scale")
@@ -500,7 +500,7 @@ class CrytekDaeExporter:
 
     def __get_animation_rotation(self, object_, axis):
         attribute_type = "rotation_euler"
-        multiplier = utils.toD
+        multiplier = utils.toDegrees
         target = "{!s}{!s}{!s}{!s}".format(object_.name,
                                            "/rotation_",
                                            axis,
@@ -886,7 +886,7 @@ class CrytekDaeExporter:
         return image.has_data and image.filepath
 
     def __convert_images_to_dds(self, images_to_convert):
-        converter = DdsConverterRunner(
+        converter = DDSConverterRunner(
                                 self.__config.rc_for_textures_conversion_path)
         converter.start_conversion(images_to_convert,
                                    self.__config.refresh_rc,
@@ -2035,7 +2035,7 @@ def make_layer(fname):
     # Layer
     layer = layerDoc.createElement("Layer")
     layer.setAttribute('name', lName)
-    layer.setAttribute('GUID', utils.get_uuid())
+    layer.setAttribute('GUID', utils.get_guid())
     layer.setAttribute('FullName', lName)
     layer.setAttribute('External', '0')
     layer.setAttribute('Exportable', '1')
@@ -2059,7 +2059,7 @@ def make_layer(fname):
             object_node = layerDoc.createElement("Object")
             object_node.setAttribute('name', group.name[14:])
             object_node.setAttribute('Type', 'Entity')
-            object_node.setAttribute('Id', utils.get_uuid())
+            object_node.setAttribute('Id', utils.get_guid())
             object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
             object_node.setAttribute('Layer', lName)
             cbPrint(origin)

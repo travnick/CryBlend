@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        DdsConverter
-# Purpose:     Converter to DDS
+# Name:        dds_converter.py
+# Purpose:     Image conversion to DDS
 #
 # Author:      Mikołaj Milej
 #
@@ -26,12 +26,12 @@ import threading
 import tempfile
 
 
-class DdsConverterRunner:
+class DDSConverterRunner:
     def __init__(self, rc_exe):
         self.__rc_exe = rc_exe
 
     def start_conversion(self, images_to_convert, refresh_rc, save_tiff):
-        converter = _DdsConverter(self.__rc_exe)
+        converter = _DDSConverter(self.__rc_exe)
 
         conversion_thread = threading.Thread(
             target=converter, args=(images_to_convert, refresh_rc, save_tiff)
@@ -41,7 +41,7 @@ class DdsConverterRunner:
         return conversion_thread
 
 
-class _DdsConverter:
+class _DDSConverter:
     def __init__(self, rc_exe):
         self.__rc_exe = rc_exe
         self.__tmp_images = {}
