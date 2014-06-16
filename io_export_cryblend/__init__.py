@@ -197,11 +197,6 @@ class SaveCryBlendConfiguration(bpy.types.Operator):
         return {'FINISHED'}
 
 
-#------------------------------------------------------------------------------
-# Menu Classes
-# Interfaces with defs in external .py
-#------------------------------------------------------------------------------
-
 class AddBreakableJoint(bpy.types.Operator):
     '''Click to add a pre-broken breakable joint to current selection'''
     bl_label = "Add Joint"
@@ -280,7 +275,6 @@ class OpenUDPWebpage(bpy.types.Operator):
         return {'FINISHED'}
 
 
-# custom props
 # wheels
 class AddWheelProperty(bpy.types.Operator):
     '''Click to add a wheels property'''
@@ -288,7 +282,7 @@ class AddWheelProperty(bpy.types.Operator):
     bl_idname = "object.add_wheel_property"
 
     def execute(self, context):
-        return add.add_w_phl(self, context)
+        return add.add_wheel_property(self, context)
 
 
 # wheel transform fix
@@ -313,7 +307,7 @@ class AddEntityProperty(bpy.types.Operator):
     bl_idname = "object.add_entity_property"
 
     def execute(self, context):
-        return add.add_rm_e_p(self, context)
+        return add.add_entity_property(self, context)
 
 
 class AddMassProperty(bpy.types.Operator):
@@ -322,7 +316,7 @@ class AddMassProperty(bpy.types.Operator):
     bl_idname = "object.add_mass_property"
 
     def execute(self, context):
-        return add.add_rm_m_p(self, context)
+        return add.add_mass_property(self, context)
 
 
 class AddDensityProperty(bpy.types.Operator):
@@ -331,7 +325,7 @@ class AddDensityProperty(bpy.types.Operator):
     bl_idname = "object.add_density_property"
 
     def execute(self, context):
-        return add.add_rm_d_p(self, context)
+        return add.add_density_property(self, context)
 
 
 class AddPiecesProperty(bpy.types.Operator):
@@ -340,7 +334,25 @@ class AddPiecesProperty(bpy.types.Operator):
     bl_idname = "object.add_pieces_property"
 
     def execute(self, context):
-        return add.add_rm_p_p(self, context)
+        return add.add_pieces_property(self, context)
+
+
+class AddNoHitRefinementProperty(bpy.types.Operator):
+    '''Click to add a no hit refinement property'''
+    bl_label = "Add Entity Properties"
+    bl_idname = "object.add_no_hit_refinement_property"
+
+    def execute(self, context):
+        return add.add_no_hit_refinement_property(self, context)
+
+
+class AddDynamicProperty(bpy.types.Operator):
+    '''Click to add a dynamic property'''
+    bl_label = "Add Entity Properties"
+    bl_idname = "object.add_dynamic_property"
+
+    def execute(self, context):
+        return add.add_dynamic_property(self, context)
 
 
 # joint
@@ -350,7 +362,7 @@ class AddCriticalProperty(bpy.types.Operator):
     bl_idname = "object.add_critical_property"
 
     def execute(self, context):
-        return add.add_j_gpc_p(self, context)
+        return add.add_critical_property(self, context)
 
 
 class AddBreakableProperty(bpy.types.Operator):
@@ -359,7 +371,7 @@ class AddBreakableProperty(bpy.types.Operator):
     bl_idname = "object.add_breakable_property"
 
     def execute(self, context):
-        return add.add_j_pcb_p(self, context)
+        return add.add_breakable_property(self, context)
 
 
 class AddBendProperty(bpy.types.Operator):
@@ -368,7 +380,7 @@ class AddBendProperty(bpy.types.Operator):
     bl_idname = "object.add_bend_property"
 
     def execute(self, context):
-        return add.add_j_b_p(self, context)
+        return add.add_bend_property(self, context)
 
 
 class AddTwistProperty(bpy.types.Operator):
@@ -377,7 +389,7 @@ class AddTwistProperty(bpy.types.Operator):
     bl_idname = "object.add_twist_property"
 
     def execute(self, context):
-        return add.add_j_t_p(self, context)
+        return add.add_twist_property(self, context)
 
 
 class AddPullProperty(bpy.types.Operator):
@@ -386,7 +398,7 @@ class AddPullProperty(bpy.types.Operator):
     bl_idname = "object.add_pull_property"
 
     def execute(self, context):
-        return add.add_j_pull_p(self, context)
+        return add.add_pull_property(self, context)
 
 
 class AddPushProperty(bpy.types.Operator):
@@ -395,7 +407,7 @@ class AddPushProperty(bpy.types.Operator):
     bl_idname = "object.add_push_property"
 
     def execute(self, context):
-        return add.add_j_push_p(self, context)
+        return add.add_push_property(self, context)
 
 
 class AddShiftProperty(bpy.types.Operator):
@@ -404,7 +416,7 @@ class AddShiftProperty(bpy.types.Operator):
     bl_idname = "object.add_shift_property"
 
     def execute(self, context):
-        return add.add_j_shift_p(self, context)
+        return add.add_shift_property(self, context)
 
 
 class AddLimitConstraint(bpy.types.Operator):
@@ -413,7 +425,7 @@ class AddLimitConstraint(bpy.types.Operator):
     bl_idname = "object.add_limit_constraint"
 
     def execute(self, context):
-        return add.add_j_climit_p(self, context)
+        return add.add_limit_constraint(self, context)
 
 
 class AddMinAngleConstraint(bpy.types.Operator):
@@ -422,7 +434,7 @@ class AddMinAngleConstraint(bpy.types.Operator):
     bl_idname = "object.add_min_angle_constraint"
 
     def execute(self, context):
-        return add.add_j_cminang_p(self, context)
+        return add.add_min_angle_constraint(self, context)
 
 
 class AddMaxAngleConstraint(bpy.types.Operator):
@@ -431,7 +443,7 @@ class AddMaxAngleConstraint(bpy.types.Operator):
     bl_idname = "object.add_max_angle_constraint"
 
     def execute(self, context):
-        return add.add_j_cmaxang_p(self, context)
+        return add.add_max_angle_constraint(self, context)
 
 
 class AddDampingConstraint(bpy.types.Operator):
@@ -440,7 +452,7 @@ class AddDampingConstraint(bpy.types.Operator):
     bl_idname = "object.add_damping_constraint"
 
     def execute(self, context):
-        return add.add_j_cdamp_p(self, context)
+        return add.add_damping_constraint(self, context)
 
 
 class AddCollisionConstraint(bpy.types.Operator):
@@ -449,7 +461,7 @@ class AddCollisionConstraint(bpy.types.Operator):
     bl_idname = "object.add_collision_constraint"
 
     def execute(self, context):
-        return add.add_j_ccol_p(self, context)
+        return add.add_collision_constraint(self, context)
 
 
 # deformable
@@ -459,7 +471,7 @@ class AddDeformableProperty(bpy.types.Operator):
     bl_idname = "object.add_deformable_property"
 
     def execute(self, context):
-        return add.add_skel_p(self, context)
+        return add.add_deformable_property(self, context)
 
 
 # material physics
@@ -478,7 +490,7 @@ class AddMaterialPhysProxyNoDraw(bpy.types.Operator):
     bl_idname = "material.add_phys_proxy_no_draw"
 
     def execute(self, context):
-        return add.add_phys_pnd(self, context)
+        return add.add_phys_proxy_no_draw(self, context)
 
 
 class AddMaterialPhysNone(bpy.types.Operator):
@@ -496,7 +508,7 @@ class AddMaterialPhysObstruct(bpy.types.Operator):
     bl_idname = "material.add_phys_obstruct"
 
     def execute(self, context):
-        return add.add_phys_obstr(self, context)
+        return add.add_phys_obstruct(self, context)
 
 
 class AddMaterialPhysNoCollide(bpy.types.Operator):
@@ -505,7 +517,7 @@ class AddMaterialPhysNoCollide(bpy.types.Operator):
     bl_idname = "material.add_phys_no_collide"
 
     def execute(self, context):
-        return add.add_phys_nocol(self, context)
+        return add.add_phys_no_collide(self, context)
 
 
 # CGF/CGA/CHR
@@ -515,7 +527,7 @@ class AddNoExplosionOcclusionProperty(bpy.types.Operator):
     bl_idname = "object.add_no_explosion_occlusion_property"
 
     def execute(self, context):
-        return add.add_neo_p(self, context)
+        return add.add_no_explosion_occlusion_property(self, context)
 
 
 class AddRendermeshProperty(bpy.types.Operator):
@@ -524,7 +536,7 @@ class AddRendermeshProperty(bpy.types.Operator):
     bl_idname = "object.add_rendermesh_property"
 
     def execute(self, context):
-        return add.add_orm_p(self, context)
+        return add.add_rendermesh_property(self, context)
 
 
 class AddColltypePlayerProperty(bpy.types.Operator):
@@ -533,7 +545,8 @@ class AddColltypePlayerProperty(bpy.types.Operator):
     bl_idname = "object.add_colltype_player_property"
 
     def execute(self, context):
-        return add.add_colp_p(self, context)
+        return add.add_colltype_player_property(self, context)
+
 
 # proxies
 class AddBoxProxyProperty(bpy.types.Operator):
@@ -542,7 +555,7 @@ class AddBoxProxyProperty(bpy.types.Operator):
     bl_idname = "object.add_box_proxy_property"
 
     def execute(self, context):
-        return add.add_b_p(self, context)
+        return add.add_box_proxy_property(self, context)
 
 
 class AddCylinderProxyProperty(bpy.types.Operator):
@@ -551,7 +564,7 @@ class AddCylinderProxyProperty(bpy.types.Operator):
     bl_idname = "object.add_cylinder_proxy_property"
 
     def execute(self, context):
-        return add.add_cyl_p(self, context)
+        return add.add_cylinder_proxy_property(self, context)
 
 
 class AddCapsuleProxyProperty(bpy.types.Operator):
@@ -560,7 +573,7 @@ class AddCapsuleProxyProperty(bpy.types.Operator):
     bl_idname = "object.add_capsule_proxy_property"
 
     def execute(self, context):
-        return add.add_caps_p(self, context)
+        return add.add_capsule_proxy_property(self, context)
 
 
 class AddSphereProxyProperty(bpy.types.Operator):
@@ -569,7 +582,7 @@ class AddSphereProxyProperty(bpy.types.Operator):
     bl_idname = "object.add_sphere_proxy_property"
 
     def execute(self, context):
-        return add.add_sph_p(self, context)
+        return add.add_sphere_proxy_property(self, context)
 
 
 class AddNotaprimProxyProperty(bpy.types.Operator):
@@ -578,25 +591,7 @@ class AddNotaprimProxyProperty(bpy.types.Operator):
     bl_idname = "object.add_notaprim_proxy_property"
 
     def execute(self, context):
-        return add.add_nap_p(self, context)
-
-
-class AddNoHitRefinementProperty(bpy.types.Operator):
-    '''Click to add a no hit refinement property'''
-    bl_label = "Add Entity Properties"
-    bl_idname = "object.add_no_hit_refinement_property"
-
-    def execute(self, context):
-        return add.add_nhr_p(self, context)
-
-
-class AddDynamicProperty(bpy.types.Operator):
-    '''Click to add a dynamic property'''
-    bl_label = "Add Entity Properties"
-    bl_idname = "object.add_dynamic_property"
-
-    def execute(self, context):
-        return add.add_dyn_p(self, context)
+        return add.add_notaprim_proxy_property(self, context)
 
 #------------------------------------------------------------------------------
 # Mesh and Weight
