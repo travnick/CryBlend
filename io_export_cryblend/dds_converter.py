@@ -26,12 +26,12 @@ import threading
 import tempfile
 
 
-class DDSConverterRunner:
+class DdsConverterRunner:
     def __init__(self, rc_exe):
         self.__rc_exe = rc_exe
 
     def start_conversion(self, images_to_convert, refresh_rc, save_tiff):
-        converter = _DDSConverter(self.__rc_exe)
+        converter = _DdsConverter(self.__rc_exe)
 
         conversion_thread = threading.Thread(
             target=converter, args=(images_to_convert, refresh_rc, save_tiff)
@@ -41,7 +41,7 @@ class DDSConverterRunner:
         return conversion_thread
 
 
-class _DDSConverter:
+class _DdsConverter:
     def __init__(self, rc_exe):
         self.__rc_exe = rc_exe
         self.__tmp_images = {}
