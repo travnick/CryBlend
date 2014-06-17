@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # Name:        exceptions.py
-# Purpose:     holds custom exception classes
+# Purpose:     Holds custom exception classes
 #
 # Author:      Mikołaj Milej
 #
@@ -30,7 +30,7 @@ class BlendNotSavedException(CryBlendException):
         CryBlendException.__init__(self, message)
 
 
-class TextureAndBlendDiskMismatch(CryBlendException):
+class TextureAndBlendDiskMismatchException(CryBlendException):
     def __init__(self, blend_path, texture_path):
         message = """
 Blend file and all textures have to be placed on the same disk.

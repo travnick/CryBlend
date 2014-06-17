@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        utils
-# Purpose:     utility functions to share throughout the addon
+# Name:        utils.py
+# Purpose:     Utility functions for use throughout the add-on
 #
 # Author:      Angelo J. Miner
 #
@@ -32,7 +32,7 @@ import xml.dom.minidom
 
 
 # globals
-toD = 180.0 / math.pi
+toDegrees = 180.0 / math.pi
 
 
 def color_to_string(r, g, b, a):
@@ -49,7 +49,7 @@ def convert_time(frx):
 # http://ronrothman.com/
 #    public/leftbraned/xml-dom-minidom-toprettyxml-and-silly-whitespace/
 # modified to use the current ver of shipped python
-def fixed_writexml(self, writer, indent="", addindent="", newl=""):
+def fix_write_xml(self, writer, indent="", addindent="", newl=""):
     # indent = current indentation
     # addindent = indentation to add to higher levels
     # newl = newline string
@@ -75,7 +75,7 @@ def fixed_writexml(self, writer, indent="", addindent="", newl=""):
             writer.write("/>%s" % (newl))
 
 
-def get_uuid():
+def get_guid():
     GUID = "{%s-%s-%s-%s-%s}" % (random_hex_sector(8),
                                  random_hex_sector(4),
                                  random_hex_sector(4),
@@ -192,7 +192,7 @@ def make_relative_path(filepath, start):
         return relative_path
 
     except ValueError:
-        raise exceptions.TextureAndBlendDiskMismatch(start, filepath)
+        raise exceptions.TextureAndBlendDiskMismatchException(start, filepath)
 
 
 def get_mtl_files_in_directory(directory):

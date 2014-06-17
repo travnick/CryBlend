@@ -17,7 +17,7 @@
 # ##### END GPL LICENSE BLOCK #####
 #------------------------------------------------------------------------------
 # Name:        export.py
-# Purpose:     export to cryengine main
+# Purpose:     Main exporter to CryEngine
 #
 # Author:      Angelo J. Miner,
 #                some code borrowed from fbx exporter Campbell Barton
@@ -52,7 +52,7 @@ import time
 import xml.dom.minidom
 
 
-AXISES = {
+AXES = {
     'X': 0,
     'Y': 1,
     'Z': 2,
@@ -60,7 +60,7 @@ AXISES = {
 
 
 # replace minidom's function with ours
-xml.dom.minidom.Element.writexml = utils.fixed_writexml
+xml.dom.minidom.Element.writexml = utils.fix_write_xml
 
 
 class CrytekDaeExporter:
@@ -68,14 +68,14 @@ class CrytekDaeExporter:
         self.__config = config
         self.__doc = Document()
 
-        # If you have all your textures in 'Texture', then path shoulb be like:
+        # If you have all your textures in 'Texture', then path should be like:
         # Textures/some/path
         # so 'Textures' has to be removed from start path
         normalized_path = os.path.normpath(config.textures_dir)
         self.__textures_parent_directory = os.path.dirname(normalized_path)
-        cbPrint("Normalized textures direcotry: {!r}".format(normalized_path),
+        cbPrint("Normalized textures directory: {!r}".format(normalized_path),
                 'debug')
-        cbPrint("Textures parent direcotry: {!r}".format(
+        cbPrint("Textures parent directory: {!r}".format(
                                             self.__textures_parent_directory),
                 'debug')
 
@@ -98,7 +98,7 @@ class CrytekDaeExporter:
         for object_ in bpy.context.selectable_objects:
             if "_boneGeometry" in object_.name:
                 bpy.data.objects[object_.name].select = True
-                cbPrint("Bone Geometry found: " + object_.name)
+                cbPrint("Bone Geometry found: %s" % object_.name)
 
         root_element = self.__doc.createElement('collada')
         root_element.setAttribute("xmlns",
@@ -156,7 +156,7 @@ class CrytekDaeExporter:
         return [Object for Object in Parent.children
                 if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
 
-    def wbl(self, pname, bones, obj, node1):
+    def write_bone_list(self, pname, bones, obj, node1):
         cbPrint("{!r} bones".format(len(bones)))
         boneExtendedNames = []
         for bone in bones:
@@ -227,21 +227,21 @@ class CrytekDaeExporter:
                     rotz.setAttribute("sid", "rotation_Z")
                     rotzn = self.__doc.createTextNode("0 0 1 %.4f"
                                                % (object_.rotation_euler[2]
-                                                  * utils.toD))
+                                                  * utils.toDegrees))
                     rotz.appendChild(rotzn)
                     # <rotate sid="rotation_Y">
                     roty = self.__doc.createElement("rotate")
                     roty.setAttribute("sid", "rotation_Y")
                     rotyn = self.__doc.createTextNode("0 1 0 %.4f"
                                                % (object_.rotation_euler[1]
-                                                  * utils.toD))
+                                                  * utils.toDegrees))
                     roty.appendChild(rotyn)
                     # <rotate sid="rotation_X">
                     rotx = self.__doc.createElement("rotate")
                     rotx.setAttribute("sid", "rotation_X")
                     rotxn = self.__doc.createTextNode("1 0 0 %.4f"
                                                % (object_.rotation_euler[0]
-                                                  * utils.toD))
+                                                  * utils.toDegrees))
                     rotx.appendChild(rotxn)
                     # <scale sid="scale">
                     sc = self.__doc.createElement("scale")
@@ -293,7 +293,7 @@ class CrytekDaeExporter:
             else:
                 node1.appendChild(nodename)
 
-    def vsp(self, objects, node1):
+    def write_visual_scene(self, objects, node1):
         for object_ in objects:
             fby = 0
             for ai in object_.rna_type.id_data.items():
@@ -320,21 +320,21 @@ class CrytekDaeExporter:
                 rotz.setAttribute("sid", "rotation_Z")
                 rotzn = self.__doc.createTextNode("0 0 1 %s"
                                            % (object_.rotation_euler[2]
-                                              * utils.toD))
+                                              * utils.toDegrees))
                 rotz.appendChild(rotzn)
                 # <rotate sid="rotation_Y">
                 roty = self.__doc.createElement("rotate")
                 roty.setAttribute("sid", "rotation_Y")
                 rotyn = self.__doc.createTextNode("0 1 0 %s"
                                            % (object_.rotation_euler[1]
-                                              * utils.toD))
+                                              * utils.toDegrees))
                 roty.appendChild(rotyn)
                 # <rotate sid="rotation_X">
                 rotx = self.__doc.createElement("rotate")
                 rotx.setAttribute("sid", "rotation_X")
                 rotxn = self.__doc.createTextNode("1 0 0 %s"
                                            % (object_.rotation_euler[0]
-                                              * utils.toD))
+                                              * utils.toDegrees))
                 rotx.appendChild(rotxn)
                 # <scale sid="scale">
                 sc = self.__doc.createElement("scale")
@@ -369,7 +369,6 @@ class CrytekDaeExporter:
                         tc = self.__doc.createElement("technique_common")
 
                         for mat in object_.material_slots:
-                            # yes lets go through them 1 at a time
                             im = self.__doc.createElement("instance_material")
                             im.setAttribute("symbol", "%s"
                                             % (mat.name))
@@ -395,7 +394,7 @@ class CrytekDaeExporter:
                 techcry = self.__doc.createElement("technique")
                 techcry.setAttribute("profile", "CryEngine")
                 prop2 = self.__doc.createElement("properties")
-                # Tagging properties onto the end of the item, I think.
+                # tagging properties onto the end of the item
                 for ai in object_.rna_type.id_data.items():
                     if ai:
                         cryprops = self.__doc.createTextNode("%s" % ai[1])
@@ -433,7 +432,7 @@ class CrytekDaeExporter:
                 if object_.type == 'ARMATURE':
                     cbPrint("Armature appended.")
                     bonelist = self.__get_bones(object_)
-                    self.wbl(cname, bonelist, object_, node1)
+                    self.write_bone_list(cname, bonelist, object_, node1)
 
                 if object_.children:
                     if object_.parent:
@@ -452,12 +451,12 @@ class CrytekDaeExporter:
                                 else:
                                     nodeparent.appendChild(nodename)
                             ChildList = self.__get_object_children(object_)
-                            self.vsp(ChildList, node1)
+                            self.write_visual_scene(ChildList, node1)
                     else:
                         if object_.type != 'ARMATURE':
                             node1.appendChild(nodename)
                             ChildList = self.__get_object_children(object_)
-                            self.vsp(ChildList, node1)
+                            self.write_visual_scene(ChildList, node1)
 
                 else:
                     if object_.parent:
@@ -500,7 +499,7 @@ class CrytekDaeExporter:
 
     def __get_animation_rotation(self, object_, axis):
         attribute_type = "rotation_euler"
-        multiplier = utils.toD
+        multiplier = utils.toDegrees
         target = "{!s}{!s}{!s}{!s}".format(object_.name,
                                            "/rotation_",
                                            axis,
@@ -524,7 +523,7 @@ class CrytekDaeExporter:
 
         for curve in object_.animation_data.action.fcurves:
             if (curve.data_path == attribute_type and
-                curve.array_index == AXISES[axis]):
+                curve.array_index == AXES[axis]):
                 animation_element = self.__doc.createElement("animation")
                 animation_element.setAttribute("id", id_prefix)
                 intangx = ""
@@ -689,7 +688,7 @@ class CrytekDaeExporter:
                 animation_element.appendChild(samx)
                 animation_element.appendChild(chanx)
 
-                cbPrint("keyframe_points cout: {!s}".format(ii))
+                cbPrint("keyframe_points count: {!s}".format(ii))
                 cbPrint(inpx)
                 cbPrint(outpx)
                 cbPrint(intx)
@@ -723,7 +722,6 @@ class CrytekDaeExporter:
                 float_array.appendChild(self.__doc.createTextNode(row_string))
 
     def __negate_z_axis_of_matrix(self, matrix_local):
-        # TODO: find out what that code is suppose to do
         for i in range(0, 3):
             matrix_local[i][3] = -matrix_local[i][3]
 
@@ -803,7 +801,7 @@ class CrytekDaeExporter:
                     images.append(texture.image)
 
             except AttributeError:
-                # don't care about non image textures
+                # don't care about non-image textures
                 pass
 
         # return only unique images
@@ -1270,8 +1268,8 @@ class CrytekDaeExporter:
             sourcenor.appendChild(tcom)
             me.appendChild(sourcenor)
             # end normals
-            # uv we will make assumptions here because this is
-            # for a game export so there should allways
+            # UVs, we will make assumptions here because this is
+            # for a game export so there should always
             # be a uv set
             uvs = self.__doc.createElement("source")
             uvlay = []
@@ -1406,7 +1404,6 @@ class CrytekDaeExporter:
                                 ni += 1
                                 ii += 1  # One more Color
 
-                                # thankyou fbx
                         if cn == 1:
                             vcolc1 = str((ii) * 4)
                         else:
@@ -1464,7 +1461,6 @@ class CrytekDaeExporter:
             mat = mesh.materials[:]
             start_time = clock()
             if mat:
-                # yes lets go through them 1 at a time
                 for im in enumerate(mat):
                     polyl = self.__doc.createElement("polylist")
                     polyl.setAttribute("material", im[1].name)
@@ -1525,7 +1521,7 @@ class CrytekDaeExporter:
                     inpuv = self.__doc.createElement("input")
                     inpuv.setAttribute("semantic", "TEXCOORD")
                     inpuv.setAttribute("source", "#%s" % (uvid))
-                    # will allways be 2, vcolors can be 2 or 3
+                    # will always be 2, vcolors can be 2 or 3
                     inpuv.setAttribute("offset", "2")
                     inpuv.setAttribute("set", "%s" % (mapslot))
                     polyl.appendChild(inpuv)
@@ -1825,11 +1821,11 @@ class CrytekDaeExporter:
                             cbPrint("Object is armature, cannot process animations.")
                         elif object_.animation_data.action:
 
-                            for axis in iter(AXISES):
+                            for axis in iter(AXES):
                                 anm = self.__get_animation_location(object_, axis)
                                 libanm.appendChild(anm)
 
-                            for axis in iter(AXISES):
+                            for axis in iter(AXES):
                                 anm = self.__get_animation_rotation(object_, axis)
                                 libanm.appendChild(anm)
 
@@ -1859,7 +1855,7 @@ class CrytekDaeExporter:
                             anmrx = self.__get_animation_rotation(object_, 'X')
                             anmry = self.__get_animation_rotation(object_, 'Y')
                             anmrz = self.__get_animation_rotation(object_, 'Z')
-                            # animationclip name and framerange
+                            # animation clip name and frame range
                             for ai in object_.children:
                                 aname = str(ai.name)
                                 if aname[:8] == "animnode":
@@ -1948,7 +1944,7 @@ class CrytekDaeExporter:
                                          "rotation_euler")
 
     def __export_instance_parameter(self, object_, animation_clip, parameter):
-        for axis in iter(AXISES):
+        for axis in iter(AXES):
             inst = self.__doc.createElement("instance_animation")
             inst.setAttribute("url",
                               "#%s_%s_%s" % (object_.name, parameter, axis))
@@ -1960,7 +1956,7 @@ class CrytekDaeExporter:
         current_element.appendChild(visual_scene)
         parent_element.appendChild(current_element)
 
-        # doesnt matter what name we have here as long as it is
+        # doesn't matter what name we have here as long as it is
         # the same for <scene>
         visual_scene.setAttribute("id", "scene")
         visual_scene.setAttribute("name", "scene")
@@ -1971,8 +1967,8 @@ class CrytekDaeExporter:
                 node1.setAttribute("id", "%s" % (ename))
                 node1.setIdAttribute('id')
             visual_scene.appendChild(node1)
-            node1 = self.vsp(item.objects, node1)
-            # exportnode settings
+            node1 = self.write_visual_scene(item.objects, node1)
+            # export node settings
             ext1 = self.__doc.createElement("extra")
             tc3 = self.__doc.createElement("technique")
             tc3.setAttribute("profile", "CryEngine")
@@ -1994,7 +1990,7 @@ class CrytekDaeExporter:
             node1.appendChild(ext1)
 
     def __export_scene(self, parent_element):
-        # <scene> nothing really changes here or rather it doesnt need to.
+        # <scene> nothing really changes here or rather it doesn't need to.
         scene = self.__doc.createElement("scene")
         ivs = self.__doc.createElement("instance_visual_scene")
         ivs.setAttribute("url", "#scene")
@@ -2042,7 +2038,7 @@ def make_layer(fname):
     # Layer
     layer = layerDoc.createElement("Layer")
     layer.setAttribute('name', lName)
-    layer.setAttribute('GUID', utils.get_uuid())
+    layer.setAttribute('GUID', utils.get_guid())
     layer.setAttribute('FullName', lName)
     layer.setAttribute('External', '0')
     layer.setAttribute('Exportable', '1')
@@ -2066,7 +2062,7 @@ def make_layer(fname):
             object_node = layerDoc.createElement("Object")
             object_node.setAttribute('name', group.name[14:])
             object_node.setAttribute('Type', 'Entity')
-            object_node.setAttribute('Id', utils.get_uuid())
+            object_node.setAttribute('Id', utils.get_guid())
             object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
             object_node.setAttribute('Layer', lName)
             cbPrint(origin)
@@ -2170,13 +2166,13 @@ def save(config):
     exporter.export()
 
 
-def menu_func_export(self, context):
+def menu_function_export(self, context):
     self.layout.operator(CrytekDaeExporter.bl_idname, text="Export Crytek Dae")
 
 
 def register():
     bpy.utils.register_class(CrytekDaeExporter)
-    bpy.types.INFO_MT_file_export.append(menu_func_export)
+    bpy.types.INFO_MT_file_export.append(menu_function_export)
 
     bpy.utils.register_class(TriangulateMeError)
     bpy.utils.register_class(Error)
@@ -2184,7 +2180,7 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(CrytekDaeExporter)
-    bpy.types.INFO_MT_file_export.remove(menu_func_export)
+    bpy.types.INFO_MT_file_export.remove(menu_function_export)
     bpy.utils.unregister_class(TriangulateMeError)
     bpy.utils.unregister_class(Error)
 

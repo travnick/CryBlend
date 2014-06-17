@@ -1,5 +1,12 @@
 #------------------------------------------------------------------------------
-# License:   GPLv2+
+# Name:        outPipe.py
+# Purpose:     Pipeline for console output
+#
+# Author:      N/A
+#
+# Created:     N/A
+# Copyright:   (c) N/A
+# Licence:     GPLv2+
 #------------------------------------------------------------------------------
 
 # <pep8-80 compliant>
@@ -9,7 +16,7 @@ from io_export_cryblend import exceptions
 from logging import basicConfig, info, debug, warning, DEBUG
 
 
-class outPipe():
+class OutPipe():
     def __init__(self):
         pass
 
@@ -30,7 +37,7 @@ class outPipe():
             raise exceptions.CryBlendException("No such message type {!r}".
                                     format(message_type))
 
-oP = outPipe()
+oP = OutPipe()
 
 
 def cbPrint(msg, message_type='info'):

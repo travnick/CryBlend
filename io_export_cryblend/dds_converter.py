@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        DdsConverter
-# Purpose:     Converter to DDS
+# Name:        dds_converter.py
+# Purpose:     Image conversion to DDS
 #
 # Author:      Mikołaj Milej
 #
