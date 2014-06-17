@@ -817,7 +817,14 @@ class CrytekDaeExporter:
         materials = []
         for object_ in bpy.context.selected_objects:
             for material_slot in object_.material_slots:
-                materials.append(material_slot.material)
+                material = material_slot.material
+                materialName = material.name
+                materialComponents = materialName.split("__")
+                id = materialComponents[1]
+                if (len(id) == 1 and id.isdigit()):
+                    id = id.rjust(2, '0')  # pad single digit ID's
+                material.name = "%s__%s__%s__%s" % (materialComponents[0], id, materialComponents[2], materialComponents[3]) 
+                materials.append(material)
 
         return materials
 
