@@ -17,7 +17,6 @@ from bpy_extras.io_utils import ExportHelper
 import bpy
 import bpy.ops
 import bpy_extras
-# from add_utils import AddObjectHelper, add_object_data
 
 
 # jointed breakables
@@ -173,7 +172,7 @@ def add_collision_constraint(self, context):
 
 
 # deformable
-def add_deformable_property(self, context, mass, stiffness, hardness,
+def add_deformable_properties(self, context, mass, stiffness, hardness,
         max_stretch, max_impulse, skin_dist, thickness, explosion_scale, is_primitive):
         ob = bpy.context.active_object
         ob["mass"] = "mass=%s" % mass

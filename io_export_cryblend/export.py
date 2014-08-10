@@ -44,18 +44,24 @@ from io_export_cryblend.dds_converter import DdsConverterRunner
 from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector
 from time import clock
-from xml.dom.minidom import Document
+from xml.dom.minidom import Document, Element, parse
 import copy
 import os
 import threading
 import time
 import xml.dom.minidom
+import shutil
+import fileinput
+import sys
+import tempfile
+import re
+import bmesh
 
 
 AXES = {
-    'X': 0,
-    'Y': 1,
-    'Z': 2,
+    "X": 0,
+    "Y": 1,
+    "Z": 2,
 }
 
 
@@ -71,23 +77,23 @@ class CrytekDaeExporter:
         # If you have all your textures in 'Texture', then path should be like:
         # Textures/some/path
         # so 'Textures' has to be removed from start path
-        normalized_path = os.path.normpath(config.textures_dir)
+        textures_path = "%s/%s/%s/%s" % (utils.get_cry_root_path(), "Objects", utils.get_project_path(), "Textures")
+        normalized_path = os.path.normpath(textures_path)
         self.__textures_parent_directory = os.path.dirname(normalized_path)
         cbPrint("Normalized textures directory: {!r}".format(normalized_path),
                 'debug')
         cbPrint("Textures parent directory: {!r}".format(
                                             self.__textures_parent_directory),
-                'debug')
-
-    def __get_bones(self, armature):
-        return [bone for bone in armature.data.bones]
+                "debug")
 
     def export(self):
+        self.__create_project()
+
         # Ensure the correct extension for chosen path
-        filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
+        filepath = bpy.path.ensure_ext("%s/%s/%s/%s" % (utils.get_cry_root_path(), "Objects", utils.get_project_path(), utils.get_project_name()), ".dae")
         self.__select_all_export_nodes()
 
-        if self.__config.correct_weight:
+        if getattr(bpy.context.scene, "correct_weight"):
             self.__correct_weights()
 
         # Duo Oratar
@@ -123,7 +129,7 @@ class CrytekDaeExporter:
         # Remove the boneGeometry from the selection so we can get on
         # with business as usual
         for object_ in bpy.context.selected_objects:
-            if '_boneGeometry' in object_.name:
+            if "_boneGeometry" in object_.name:
                 bpy.data.objects[object_.name].select = False
 
         self.__export_library_controllers(root_element)
@@ -135,16 +141,287 @@ class CrytekDaeExporter:
                       self.__doc, filepath,
                       self.__config.rc_path)
 
+
+    def __get_bones(self, armature):
+        return [bone for bone in armature.data.bones]
+
+    # verts and faces
+    def __add_fake_bone(self, width, height, depth):
+        """
+        This function takes inputs and returns vertex and face arrays.
+        no actual mesh data creation is done here.
+        """
+
+        verts = [(-0.02029, -0.02029, -0.02029),
+                 (-0.02029, 0.02029, -0.02029),
+                 (0.02029, 0.02029, -0.02029),
+                 (0.02029, -0.02029, -0.02029),
+                 (-0.02029, -0.02029, 0.02029),
+                 (-0.02029, 0.02029, 0.02029),
+                 (0.02029, 0.02029, 0.02029),
+                 (0.02029, -0.02029, 0.02029),
+                 ]
+
+        faces = [(0, 1, 2, 3),
+                 (4, 7, 6, 5),
+                 (0, 4, 5, 1),
+                 (1, 5, 6, 2),
+                 (2, 6, 7, 3),
+                 (4, 0, 3, 7),
+                ]
+
+        # apply size
+        for i, v in enumerate(verts):
+            verts[i] = v[0] * width, v[1] * depth, v[2] * height
+
+        return verts, faces
+
+    def __add_fake_bones(self, scene):
+        old_active_scene = utils.make_active_scene(scene)
+
+        verts_loc, faces = self.__add_fake_bone(1, 1, 1,)
+        for om in bpy.data.meshes:
+            if om.users == 0:
+                bpy.data.meshes.remove(om)
+
+        scene_objects = bpy.context.scene.objects
+        for armature in scene_objects:
+            if armature.type == 'ARMATURE':
+
+                for pbone in armature.pose.bones:
+                    mesh = bpy.data.meshes.new("%s" % pbone.name)
+                    bm = bmesh.new()
+
+                    for v_co in verts_loc:
+                        bm.verts.new(v_co)
+
+                    for f_idx in faces:
+                        bm.faces.new([bm.verts[i] for i in f_idx])
+
+                    bm.to_mesh(mesh)
+                    mesh.update()
+                    bmatrix = pbone.bone.head_local
+                    # loc, rotation, scale = bmatrix.decompose()
+                    self.location[0] = bmatrix[0]
+                    self.location[1] = bmatrix[1]
+                    self.location[2] = bmatrix[2]
+                    # add the mesh as an object into the scene
+                    # with this utility module
+                    from bpy_extras import object_utils
+                    object_utils.object_data_add(context, mesh, operator=self)
+                    bpy.ops.mesh.uv_texture_add()
+                    for fb in scene_objects:
+                        if fb.name == pbone.name:
+                            fb["fakebone"] = "fakebone"
+                    bpy.context.scene.objects.active = armature
+                    armature.data.bones.active = pbone.bone
+                    bpy.ops.object.parent_set(type='BONE')
+
+        utils.make_active_scene(old_active_scene)
+
+    def __remove_fake_bones(self, scene):
+        old_active_scene = utils.make_active_scene(scene)
+
+        for obj in bpy.data.objects:
+            obj.select = False
+
+        for obj in bpy.context.selectable_objects:
+            isFakeBone = False
+            try:
+                throwaway = obj['fakebone']
+                isFakeBone = True
+            except:
+                pass
+            if (obj.name == obj.parent_bone
+                and isFakeBone
+                and obj.type == 'MESH'):
+                obj.select = True
+                bpy.ops.object.delete(use_global=False)
+
+        utils.make_active_scene(old_active_scene)
+    
+    def __create_project(self):
+        project_path = "%s/%s/%s" % (utils.get_cry_root_path(), "Objects", utils.get_project_path())
+        textures_path = "%s/%s/%s/%s" % (utils.get_cry_root_path(), "Objects", utils.get_project_path(), "Textures")
+
+        if (not os.path.exists(project_path)):
+            os.makedirs(project_path)
+        if (not os.path.exists(textures_path)):
+            os.makedirs(textures_path)
+
+        if (getattr(bpy.context.scene, "generate_scripts")):
+            if (getattr(bpy.context.scene, "project_type") == "CHR"):
+                self.__create_chr_files()
+            elif (getattr(bpy.context.scene, "project_type") == "Entity"):
+                self.__create_entity_files()
+            elif (getattr(bpy.context.scene, "project_type") == "Vehicle"):
+                self.__create_vehicle_files()
+            elif (getattr(bpy.context.scene, "project_type") == "Player"):
+                self.__create_chr_files()
+                self.__create_player_files()
+            elif (getattr(bpy.context.scene, "project_type") == "FPS"):
+                self.__create_chr_files()
+                self.__create_fps_files()
+
+    def __create_chr_files(self):
+        animations_path = "%s/%s/%s" % (utils.get_cry_root_path(), "Animations", utils.get_project_path())
+        chr_path = bpy.path.ensure_ext("%s/%s/%s" % ("Objects", utils.get_project_path(), utils.get_project_name()), ".chr")
+        chrparams_path = bpy.path.ensure_ext("%s/%s/%s/%s" % (utils.get_cry_root_path(), "Objects", utils.get_project_path(), utils.get_project_name()), ".chrparams")
+        chrparams_contents = """<Params>
+\t<AnimationList>
+\t</AnimationList>
+</Params>"""
+        cdf_path = bpy.path.ensure_ext("%s/%s/%s/%s" % (utils.get_cry_root_path(), "Objects", utils.get_project_path(), utils.get_project_name()), ".cdf")
+        cdf_contents = """<CharacterDefinition>
+\t<Model File="%s"/>
+\t<AttachmentList>
+\t</AttachmentList>
+\t<ShapeDeformation COL0="0" COL1="0" COL2="0" COL3="0" COL4="0" COL5="0" COL6="0" COL7="0"/>
+</CharacterDefinition>""" % chr_path
+
+        if (not os.path.exists(animations_path)):
+            os.makedirs(animations_path)
+
+        chrparams_file = open(chrparams_path, "w")
+        chrparams_file.write(chrparams_contents)
+        chrparams_file.close()
+
+        cdf_file = open(cdf_path, "w")
+        cdf_file.write(cdf_contents)
+        cdf_file.close()
+    
+    def __create_entity_files(self):
+        entity_path = bpy.path.ensure_ext("%s/%s/%s" % (utils.get_cry_root_path(), "Entities", utils.get_project_name()), ".ent")
+        entity_contents = """<Entity
+\tName="%s"
+\tScript="Scripts/Entities/%s/%s.lua"
+/>""" % (utils.get_project_name(), utils.get_project_path(), utils.get_project_name())
+
+        if (not os.path.exists(os.path.dirname(entity_path))):
+            os.makedirs(os.path.dirname(entity_path))
+        entity_file = open(entity_path, "w")
+        entity_file.write(entity_contents)
+        entity_file.close()
+
+        self.__create_lua_file()
+
+    def __create_lua_file(self):
+        lua_path = bpy.path.ensure_ext("%s/%s/%s/%s" % (utils.get_cry_root_path(), "Scripts/Entities", utils.get_project_path(), utils.get_project_name()), ".lua")
+        lua_contents = ""
+
+        if (not os.path.exists(os.path.dirname(lua_path))):
+            os.makedirs(os.path.dirname(lua_path))
+        lua_file = open(lua_path, "w")
+        lua_file.write(lua_contents)
+        lua_file.close()
+
+    def __create_vehicle_files(self):
+        cbPrint("")
+
+    def __create_player_files(self):
+        animation_graph_path_old = bpy.path.ensure_ext("%s/%s" % (utils.fix_name(sys.path[0]), "io_export_cryblend/resources/base_animation_graph"), ".xml")
+        animation_graph_path_new = bpy.path.ensure_ext("%s/%s/%s" % (utils.get_cry_root_path(), "Animations/Graphs", utils.get_project_name()), ".xml")
+        if (not os.path.exists(os.path.dirname(animation_graph_path_new))):
+            os.makedirs(os.path.dirname(animation_graph_path_new))
+        shutil.copy(animation_graph_path_old, animation_graph_path_new)
+
+        self.__edit_player_lua_third_person()
+
+    def __create_player_lua(self):
+        player_lua_path_old = bpy.path.ensure_ext("%s/%s" % (utils.fix_name(sys.path[0]), "io_export_cryblend/resources/player"), ".lua")
+        player_lua_path_new = bpy.path.ensure_ext("%s/%s" % (utils.get_cry_root_path(), "Scripts/Entities/actor/player"), ".lua")
+        if (not os.path.exists(os.path.dirname(player_lua_path_new))):
+            os.makedirs(os.path.dirname(player_lua_path_new))
+        shutil.copy(player_lua_path_old, player_lua_path_new)
+
+    def __edit_player_lua_third_person(self):
+        animation_graph_path = bpy.path.ensure_ext("%s" % (utils.get_project_name()), ".xml")
+        model_path = bpy.path.ensure_ext("%s/%s/%s" % ("Objects", utils.get_project_path(), utils.get_project_name()), ".cdf")
+        player_lua_path = bpy.path.ensure_ext("%s/%s" % (utils.get_cry_root_path(), "Scripts/Entities/actor/player"), ".lua")
+        if (not os.path.exists(player_lua_path)):
+            self.__create_player_lua()
+
+        fh, target_file_path = tempfile.mkstemp()
+        with open(target_file_path, "w") as target_file:
+            with open(player_lua_path, "r") as source_file:
+                for line in source_file:
+                    line_stripped = re.sub("[ \t\n]", "", line)
+                    line_components = line_stripped.split("=")
+                    if ("AnimationGraph" in line_components):
+                        target_file.write(line.replace(line_components[1], '"%s"' % animation_graph_path))
+                    elif ("UpperBodyGraph" in line_components):
+                        target_file.write(line.replace(line_components[1], '"%s"' % animation_graph_path))
+                    elif ("fileModel" in line_components):
+                        target_file.write(line.replace(line_components[1], '"%s"' % model_path))
+                    elif ("clientFileModel" in line_components):
+                        target_file.write(line.replace(line_components[1], '"%s"' % model_path))
+                    elif ("objFrozenModel" in line_components):
+                        target_file.write(line.replace(line_components[1], '"%s"' % model_path))
+                    else:
+                        target_file.write(line)
+        os.remove(player_lua_path)
+        shutil.copy(target_file_path, player_lua_path)
+
+    def __create_fps_files(self):
+        weapon_script_path_old = bpy.path.ensure_ext("%s/%s" % (utils.fix_name(sys.path[0]), "io_export_cryblend/resources/base_weapon_script"), ".xml")
+        weapon_script_path_new = bpy.path.ensure_ext("%s/%s/%s" % (utils.get_cry_root_path(), "Scripts/Entities/Items/XML/Weapons", utils.get_project_name()), ".xml")
+        if (not os.path.exists(weapon_script_path_new)):
+            if (not os.path.exists(os.path.dirname(weapon_script_path_new))):
+                os.makedirs(os.path.dirname(weapon_script_path_new))
+            shutil.copy(weapon_script_path_old, weapon_script_path_new)
+
+        self.__edit_weapon_script(weapon_script_path_new)
+        self.__edit_player_lua_first_person()
+
+    def __edit_weapon_script(self, script):
+        fp_weapon_path = bpy.path.ensure_ext("%s/%s/%s" % ("Objects", utils.get_project_path(), utils.get_project_name()), ".chr")
+        tp_weapon_path = bpy.path.ensure_ext("%s/%s/%s" % ("Objects", utils.get_project_path(), utils.get_project_name()), ".cgf")
+
+        weapon_script = parse(script)
+
+        item = weapon_script.getElementsByTagName("item")[0]
+        item.setAttribute("name", utils.get_project_name())
+        geometry = weapon_script.getElementsByTagName("geometry")[0]
+        firstperson = geometry.getElementsByTagName("firstperson")[0]
+        thirdperson = geometry.getElementsByTagName("thirdperson")[0]
+        firstperson.setAttribute("name", fp_weapon_path)
+        thirdperson.setAttribute("name", tp_weapon_path)
+
+        new_xml = open(script, "w")
+        weapon_script.writexml(new_xml)
+        new_xml.close()
+
+    def __edit_player_lua_first_person(self):
+        fp_arms_model_path = bpy.path.ensure_ext("%s/%s/%s" % ("Objects", utils.get_project_path(), utils.get_project_name()), ".chr")
+        player_lua_path = bpy.path.ensure_ext("%s/%s" % (utils.get_cry_root_path(), "Scripts/Entities/actor/player"), ".lua")
+        if (not os.path.exists(player_lua_path)):
+            self.__create_player_lua()
+
+        fh, target_file_path = tempfile.mkstemp()
+        with open(target_file_path, 'w') as target_file:
+            with open(player_lua_path, 'r') as source_file:
+                for line in source_file:
+                    line_stripped = re.sub("[ \t\n]", "", line)
+                    line_components = line_stripped.split("=")
+                    if ("fpItemHandsModel" in line_components):
+                        target_file.write(line.replace(line_components[1], '"%s"' % fp_arms_model_path))
+                    else:
+                        target_file.write(line)
+        os.remove(player_lua_path)
+        shutil.copy(target_file_path, player_lua_path)
+
     def __correct_weights(self):
-        for group in bpy.context.blend_data.groups:
-            for object_ in group.objects:
-                if object_.type == 'MESH':
-                    override = {'weight_paint_object': object_}
-                    try:
-                        bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
-                    except:
-                        raise exceptions.CryBlendException("Please fix weightless vertices first.")
-        cbPrint("Weights Corrected.")
+        scene = bpy.data.scenes[0]
+        if (getattr(bpy.context.scene, "project_type") == ""):
+            for group in bpy.context.blend_data.groups:
+                for object_ in group.objects:
+                    if object_.type == "MESH":
+                        override = {"weight_paint_object": object_}
+                        try:
+                            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+                        except:
+                            bpy.ops.screen.display_error("INVOKE_DEFAULT", message="Please fix weightless vertices first.")
+            cbPrint("Weights Corrected.")
 
     def __select_all_export_nodes(self):
         for group in bpy.context.blend_data.groups:
@@ -154,9 +431,9 @@ class CrytekDaeExporter:
 
     def __get_object_children(self, Parent):
         return [Object for Object in Parent.children
-                if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+                if Object.type in {"ARMATURE", "EMPTY", "MESH"}]
 
-    def write_bone_list(self, pname, bones, obj, node1):
+    def write_bone_list(self, pname, bones, obj, node):
         cbPrint("{!r} bones".format(len(bones)))
         boneExtendedNames = []
         for bone in bones:
@@ -209,80 +486,83 @@ class CrytekDaeExporter:
             boneExtendedNames.append(bname + pExtension)
             nodename.setIdAttribute('id')
 
-            for object_ in bpy.context.selectable_objects:
-                if (object_.name == bone.name
-                    or (object_.name == bone.name[:-5]
-                        and "_Phys" == bone.name[-5:])
-                    ):
-                    bpy.data.objects[object_.name].select = True
-                    cbPrint("FakeBone found for " + bone.name)
-                    # <translate sid="translation">
-                    trans = self.__doc.createElement("translate")
-                    trans.setAttribute("sid", "translation")
-                    transnum = self.__doc.createTextNode("%.4f %.4f %.4f"
-                                                  % object_.location[:])
-                    trans.appendChild(transnum)
-                    # <rotate sid="rotation_Z">
-                    rotz = self.__doc.createElement("rotate")
-                    rotz.setAttribute("sid", "rotation_Z")
-                    rotzn = self.__doc.createTextNode("0 0 1 %.4f"
-                                               % (object_.rotation_euler[2]
-                                                  * utils.toDegrees))
-                    rotz.appendChild(rotzn)
-                    # <rotate sid="rotation_Y">
-                    roty = self.__doc.createElement("rotate")
-                    roty.setAttribute("sid", "rotation_Y")
-                    rotyn = self.__doc.createTextNode("0 1 0 %.4f"
-                                               % (object_.rotation_euler[1]
-                                                  * utils.toDegrees))
-                    roty.appendChild(rotyn)
-                    # <rotate sid="rotation_X">
-                    rotx = self.__doc.createElement("rotate")
-                    rotx.setAttribute("sid", "rotation_X")
-                    rotxn = self.__doc.createTextNode("1 0 0 %.4f"
-                                               % (object_.rotation_euler[0]
-                                                  * utils.toDegrees))
-                    rotx.appendChild(rotxn)
-                    # <scale sid="scale">
-                    sc = self.__doc.createElement("scale")
-                    sc.setAttribute("sid", "scale")
-                    scn = self.__doc.createTextNode(
-                            utils.floats_to_string(object_.scale, " ", "%s"))
-                    sc.appendChild(scn)
-                    nodename.appendChild(trans)
-                    nodename.appendChild(rotz)
-                    nodename.appendChild(roty)
-                    nodename.appendChild(rotx)
-                    nodename.appendChild(sc)
-                    # Find the boneGeometry object
-                    for object_ in bpy.context.selectable_objects:
-                        if object_.name == bone.name + "_boneGeometry":
-                            ig = self.__doc.createElement("instance_geometry")
-                            ig.setAttribute("url", "#%s"
-                                            % (bone.name
-                                               + "_boneGeometry"))
-                            bm = self.__doc.createElement("bind_material")
-                            tc = self.__doc.createElement("technique_common")
-                            # mat = mesh.materials[:]
-                            for mat in object_.material_slots:
-                                # yes lets go through them 1 at a time
-                                im = self.__doc.createElement(
-                                                "instance_material")
-                                im.setAttribute("symbol", "%s"
-                                                % (mat.name))
-                                im.setAttribute("target", "#%s"
-                                                % (mat.name))
-                                bvi = self.__doc.createElement(
-                                                "bind_vertex_input")
-                                bvi.setAttribute("semantic", "UVMap")
-                                bvi.setAttribute("input_semantic",
-                                                 "TEXCOORD")
-                                bvi.setAttribute("input_set", "0")
-                                im.appendChild(bvi)
-                                tc.appendChild(im)
-                            bm.appendChild(tc)
-                            ig.appendChild(bm)
-                            nodename.appendChild(ig)
+            bpy.data.objects[obj.name].select = True
+            arm = bpy.data.armatures[obj.name]
+            bpy.ops.object.mode_set(mode='EDIT')
+            editBone = arm.edit_bones[bone.name]
+            bmatrix = editBone.head
+            # ----------------------------------------------------
+            # <translate sid="translation">
+            trans = self.__doc.createElement("translate")
+            trans.setAttribute("sid", "translation")
+            transnum = self.__doc.createTextNode("%.4f %.4f %.4f"
+                                          % bmatrix[:])
+            trans.appendChild(transnum)
+            
+            # <rotate sid="rotation_Z">
+            rotz = self.__doc.createElement("rotate")
+            rotz.setAttribute("sid", "rotation_Z")
+            rotzn = self.__doc.createTextNode("0 0 1 %.4f"
+                                       % 0)
+            rotz.appendChild(rotzn)
+            
+            # <rotate sid="rotation_Y">
+            roty = self.__doc.createElement("rotate")
+            roty.setAttribute("sid", "rotation_Y")
+            rotyn = self.__doc.createTextNode("0 1 0 %.4f"
+                                       % 0)
+            roty.appendChild(rotyn)
+            
+            # <rotate sid="rotation_X">
+            rotx = self.__doc.createElement("rotate")
+            rotx.setAttribute("sid", "rotation_X")
+            rotxn = self.__doc.createTextNode("1 0 0 %.4f"
+                                       % 0)
+            rotx.appendChild(rotxn)
+            
+            # <scale sid="scale">
+            sc = self.__doc.createElement("scale")
+            sc.setAttribute("sid", "scale")
+            scn = self.__doc.createTextNode(
+                    utils.floats_to_string([1,1,1], " ", "%s"))
+            sc.appendChild(scn)
+            
+            nodename.appendChild(trans)
+            nodename.appendChild(rotz)
+            nodename.appendChild(roty)
+            nodename.appendChild(rotx)
+            nodename.appendChild(sc)
+            cbPrint("Found fakebone for...")
+            cbPrint(bmatrix[:])
+            # Find the boneGeometry object
+            for i in bpy.context.selectable_objects:
+                if i.name == bone.name + "_boneGeometry":
+                    ig = self.__doc.createElement("instance_geometry")
+                    ig.setAttribute("url", "#%s"
+                                    % (bone.name
+                                       + "_boneGeometry"))
+                    bm = self.__doc.createElement("bind_material")
+                    tc = self.__doc.createElement("technique_common")
+                    # mat = mesh.materials[:]
+                    for mat in i.material_slots:
+                        # yes lets go through them 1 at a time
+                        im = self.__doc.createElement(
+                                        "instance_material")
+                        im.setAttribute("symbol", "%s"
+                                        % (mat.name))
+                        im.setAttribute("target", "#%s"
+                                        % (mat.name))
+                        bvi = self.__doc.createElement(
+                                        "bind_vertex_input")
+                        bvi.setAttribute("semantic", "UVMap")
+                        bvi.setAttribute("input_semantic",
+                                         "TEXCOORD")
+                        bvi.setAttribute("input_set", "0")
+                        im.appendChild(bvi)
+                        tc.appendChild(im)
+                    bm.appendChild(tc)
+                    ig.appendChild(bm)
+                    nodename.appendChild(ig)
 
             if bprnt:
                 for name in boneExtendedNames:
@@ -295,6 +575,9 @@ class CrytekDaeExporter:
 
     def write_visual_scene(self, objects, node1):
         for object_ in objects:
+            if (len(bpy.data.scenes) > 1):
+                if (object_ not in bpy.data.scenes["Basis"]):
+                     continue
             fby = 0
             for ai in object_.rna_type.id_data.items():
                 if ai:
@@ -701,14 +984,21 @@ class CrytekDaeExporter:
     def __get_bone_names_for_idref(self, bones):
         return " ".join(bone.name for bone in bones)
 
-    def __export_float_array(self, armature_bones, float_array):
+    def __export_float_array(self, armature_name, armature_bones, float_array):
         for bone in armature_bones:
             matrix_local = 0
+            arm = bpy.data.armatures[armature_name]
+            bpy.ops.object.mode_set(mode='EDIT')
+            editBone = arm.edit_bones[bone.name]
+            bmatrix = editBone.head
             # TODO: this loop is probably useless
-            for scene_object in bpy.context.scene.objects:
-                if scene_object.name == bone.name:
-                    matrix_local = copy.deepcopy(scene_object.matrix_local)
-                    break
+
+            matrix_local = [
+                [1.0, 0.0, 0.0, bmatrix[0]],
+                [0.0, 1.0, 0.0, bmatrix[1]],
+                [0.0, 0.0, 1.0, bmatrix[2]],
+                [0.0, 0.0, 0.0, 1.0]
+                ]
 
             if matrix_local == 0:
                 return
@@ -766,11 +1056,11 @@ class CrytekDaeExporter:
                                                         image)
             library_images.appendChild(image_element)
 
-        if self.__config.convert_source_image_to_dds:
+        if getattr(bpy.context.scene, "convert_source_image_to_dds"):
             self.__convert_images_to_dds(images_to_convert)
 
     def __export_library_image(self, images_to_convert, image):
-        if self.__config.convert_source_image_to_dds:
+        if getattr(bpy.context.scene, "convert_source_image_to_dds"):
             image_path = utils.get_path_with_new_extension(image.filepath,
                 "dds")
             images_to_convert.append(image)
@@ -796,13 +1086,16 @@ class CrytekDaeExporter:
         textures = self.__get_textures_for_selected_objects()
 
         for texture in textures:
-            try:
-                if self.is_valid_image(texture.image):
-                    images.append(texture.image)
+            image = texture.image
+            if self.is_valid_image(image):
+                if (image.filepath.endswith(".tif")):
+                    image.filepath = bpy.path.ensure_ext(image.filepath[:-4], ".tiff")
+                try:
+                    images.append(image)
 
-            except AttributeError:
-                # don't care about non-image textures
-                pass
+                except AttributeError:
+                    # don't care about non-image textures
+                    pass
 
         # return only unique images
         return list(set(images))
@@ -817,12 +1110,15 @@ class CrytekDaeExporter:
             for material_slot in object_.material_slots:
                 material = material_slot.material
                 materialName = material.name
-                materialComponents = materialName.split("__")
-                id = materialComponents[1]
-                if (len(id) == 1 and id.isdigit()):
-                    id = id.rjust(2, '0')  # pad single digit ID's
-                material.name = "%s__%s__%s__%s" % (materialComponents[0], id, materialComponents[2], materialComponents[3]) 
-                materials.append(material)
+                try:
+                    materialComponents = materialName.split("__")
+                    id = materialComponents[1]
+                    if (len(id) == 1 and id.isdigit()):
+                        id = id.rjust(2, '0')  # pad single digit ID's
+                    material.name = "%s__%s__%s__%s" % (materialComponents[0], id, materialComponents[2], materialComponents[3])
+                    materials.append(material)
+                except:
+                    materials.append(material)
 
         return materials
 
@@ -894,8 +1190,8 @@ class CrytekDaeExporter:
         converter = DdsConverterRunner(
                                 self.__config.rc_for_textures_conversion_path)
         converter.start_conversion(images_to_convert,
-                                   self.__config.refresh_rc,
-                                   self.__config.save_tiff_during_conversion)
+                                   getattr(bpy.context.scene, "refresh_rc"),
+                                   getattr(bpy.context.scene, "save_tiff_during_conversion"))
 
     def __export_library_effects(self, parent_element):
         current_element = self.__doc.createElement("library_effects")
@@ -1121,28 +1417,28 @@ class CrytekDaeExporter:
                 bpy.ops.object.mode_set(mode='OBJECT')
             object_.data.update(calc_tessface=1)
             mesh = object_.data
-            me_verts = mesh.vertices[:]
-            mname = object_.name
+            mesh_verts = mesh.vertices[:]
+            mesh_name = object_.name
             geo = self.__doc.createElement("geometry")
-            geo.setAttribute("id", "%s" % (mname))
+            geo.setAttribute("id", "%s" % (mesh_name))
             me = self.__doc.createElement("mesh")
             # positions
             sourcep = self.__doc.createElement("source")
-            sourcep.setAttribute("id", "%s-positions" % (mname))
+            sourcep.setAttribute("id", "%s-positions" % (mesh_name))
 
             float_positions = []
-            for vertice in me_verts:
-                float_positions.append("%.6f %.6g %.6f" % vertice.co[:])
+            for vert in mesh_verts:
+                float_positions.append("%.6f %.6g %.6f" % vert.co[:])
 
             cbPrint('vert loc took %.4f sec.' % (clock() - start_time))
             far = self.__doc.createElement("float_array")
-            far.setAttribute("id", "%s-positions-array" % mname)
+            far.setAttribute("id", "%s-positions-array" % mesh_name)
             far.setAttribute("count", "%s" % (str(len(mesh.vertices) * 3)))
             mpos = self.__doc.createTextNode(" ".join(float_positions))
             far.appendChild(mpos)
             techcom = self.__doc.createElement("technique_common")
             acc = self.__doc.createElement("accessor")
-            acc.setAttribute("source", "#%s-positions-array" % (mname))
+            acc.setAttribute("source", "#%s-positions-array" % (mesh_name))
             acc.setAttribute("count", "%s" % (str(len(mesh.vertices))))
             acc.setAttribute("stride", "3")
             parx = self.__doc.createElement("param")
@@ -1165,38 +1461,34 @@ class CrytekDaeExporter:
             # normals
             float_normals = ""
             float_normals_count = ""
-            iin = 0
-            iin = ""
+            normal_count = 0
+            normal_count = ""
             start_time = clock()
-            # mesh.sort_faces()
-            # mesh.calc_normals()
-            face_index_pairs = mesh.tessfaces
-            ush = 0
+            use_sharp_edges = 0
             has_sharp_edges = 0
-            # for f in mesh.tessfaces:
-            for f in face_index_pairs:
-                if f.use_smooth:
-                    for v_idx in f.vertices:
-                        for e_idx in mesh.edges:
-                            for ev in e_idx.vertices:
-                                if ev == v_idx:
-                                    if e_idx.use_edge_sharp:
-                                        ush = 1
-                                        has_sharp_edges = 1
-                                    else:
-                                        ush = 2
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+            for face in bm.faces:
+                for vert in face.verts:
+                    for edge in face.edges:
+                        if not edge.smooth:
+                            use_sharp_edges = 1
+                            has_sharp_edges = 1
+                            cbPrint("use_sharp_edges = 1")
+                        else:
+                            use_sharp_edges = 2
 
-                        if ush == 1:
-                            v = me_verts[v_idx]
-                            noKey = utils.veckey3d21(f.normal)
-                            float_normals += '%.6f %.6f %.6f ' % noKey
-                            iin += "1"
-                        if ush == 2:
-                            v = me_verts[v_idx]
-                            noKey = utils.veckey3d21(v.normal)
-                            float_normals += '%.6f %.6f %.6f ' % noKey
-                            iin += "1"
-                        ush = 0
+                    if use_sharp_edges == 1:
+                        vertex = mesh_verts[vert.index]
+                        noKey = utils.veckey3d21(face.normal)
+                        float_normals += '%.6f %.6f %.6f ' % noKey
+                        normal_count += "1"
+                    if use_sharp_edges == 2:
+                        vertex = mesh_verts[vert.index]
+                        noKey = utils.veckey3d21(vertex.normal)
+                        float_normals += '%.6f %.6f %.6f ' % noKey
+                        normal_count += "1"
+                    use_sharp_edges = 0
 
                 else:
                     fnc = ""
@@ -1204,17 +1496,17 @@ class CrytekDaeExporter:
                     fnlx = 0
                     fnly = 0
                     fnlz = 0
-                    if self.__config.avg_pface:
+                    if getattr(bpy.context.scene, "avg_pface"):
                         if fns == 0:
-                            fnlx = f.normal.x
-                            fnly = f.normal.y
-                            fnlz = f.normal.z
+                            fnlx = face.normal.x
+                            fnly = face.normal.y
+                            fnlz = face.normal.z
                             fnc += "1"
                             cbPrint("face%s" % fnlx)
                         for fn in face_index_pairs:
-                            if (f.normal.angle(fn.normal) <
+                            if (face.normal.angle(fn.normal) <
                                 .052):
-                                if (f.normal.angle(fn.normal) >
+                                if (face.normal.angle(fn.normal) >
                                     - .052):
                                     fnlx = fn.normal.x + fnlx
                                     fnly = fn.normal.x + fnly
@@ -1223,32 +1515,32 @@ class CrytekDaeExporter:
                                     fns = 1
 
                         cbPrint("facen2%s" % (fnlx / len(fnc)))
-                        iin += "1"
+                        normal_count += "1"
                         float_normals += '%.6f %.6f %.6f ' % (fnlx / len(fnc),
                             fnly / len(fnc),
                             fnlz / len(fnc))
                     else:
-                        noKey = utils.veckey3d21(f.normal)
+                        noKey = utils.veckey3d21(face.normal)
                         float_normals += '%.6f %.6f %.6f ' % noKey
-                        iin += "1"  # for v_idx in f.vertices:
+                        normal_count += "1"  # for v_idx in face.vertices:
 
             # Hard, each vert gets normal
             # from the face.
-            float_normals_count = len(iin) * 3
+            float_normals_count = len(normal_count) * 3
             cbPrint('normals took %.4f sec.' % (clock() - start_time))
-            float_vertsc = len(iin)
+            float_vertsc = len(normal_count)
             cbPrint(str(float_vertsc))
-            iin = 0
+            normal_count = 0
             sourcenor = self.__doc.createElement("source")
-            sourcenor.setAttribute("id", "%s-normals" % (mname))
+            sourcenor.setAttribute("id", "%s-normals" % (mesh_name))
             farn = self.__doc.createElement("float_array")
-            farn.setAttribute("id", "%s-normals-array" % (mname))
+            farn.setAttribute("id", "%s-normals-array" % (mesh_name))
             farn.setAttribute("count", "%s" % (float_normals_count))
             fpos = self.__doc.createTextNode("%s" % (float_normals))
             farn.appendChild(fpos)
             tcom = self.__doc.createElement("technique_common")
             acc = self.__doc.createElement("accessor")
-            acc.setAttribute("source", "%s-normals-array" % (mname))
+            acc.setAttribute("source", "%s-normals-array" % (mesh_name))
             acc.setAttribute("count", "%s" % (float_vertsc))
             acc.setAttribute("stride", "3")
             parx = self.__doc.createElement("param")
@@ -1287,7 +1579,7 @@ class CrytekDaeExporter:
             for uvindex, uvlayer in enumerate(uvlay):
                 mapslot = uvindex
                 mapname = str(uvlayer.name)
-                uvid = "%s-%s-%s" % (mname, mapname, mapslot)
+                uvid = "%s-%s-%s" % (mesh_name, mapname, mapslot)
                 i_n = -1
                 ii = 0  # Count how many UVs we write
                 test = ""
@@ -1309,7 +1601,7 @@ class CrytekDaeExporter:
                 uvc1 = str((ii) * 2)
                 uvc2 = str(ii)
 
-            uvs.setAttribute("id", "%s-%s-%s" % (mname, mapname, mapslot))
+            uvs.setAttribute("id", "%s-%s-%s" % (mesh_name, mapname, mapslot))
             cbPrint('UVs took %.4f sec.' % (clock() - start_time))
             fa = self.__doc.createElement("float_array")
             fa.setAttribute("id", "%s-array" % (uvid))
@@ -1411,15 +1703,15 @@ class CrytekDaeExporter:
                         # vcolc1=str((ii)*3)
                         vcolc2 = str(ii)
 
-                vcols.setAttribute("id", "%s-colors" % (mname))
+                vcols.setAttribute("id", "%s-colors" % (mesh_name))
                 fa = self.__doc.createElement("float_array")
-                fa.setAttribute("id", "%s-colors-array" % (mname))
+                fa.setAttribute("id", "%s-colors-array" % (mesh_name))
                 fa.setAttribute("count", "%s" % (vcolc1))
                 vcolp = self.__doc.createTextNode("%s" % (vcol))
                 fa.appendChild(vcolp)
                 tc2 = self.__doc.createElement("technique_common")
                 acc3 = self.__doc.createElement("accessor")
-                acc3.setAttribute("source", "#%s-colors-array" % (mname))
+                acc3.setAttribute("source", "#%s-colors-array" % (mesh_name))
                 acc3.setAttribute("count", "%s" % (vcolc2))
                 if alpha_found == 1:
                     acc3.setAttribute("stride", "4")
@@ -1450,10 +1742,10 @@ class CrytekDaeExporter:
             # endvertcol
             # vertices
             vertic = self.__doc.createElement("vertices")
-            vertic.setAttribute("id", "%s-vertices" % (mname))
+            vertic.setAttribute("id", "%s-vertices" % (mesh_name))
             inputsem1 = self.__doc.createElement("input")
             inputsem1.setAttribute("semantic", "POSITION")
-            inputsem1.setAttribute("source", "#%s-positions" % (mname))
+            inputsem1.setAttribute("source", "#%s-positions" % (mesh_name))
             vertic.appendChild(inputsem1)
             me.appendChild(vertic)
             # end vertices
@@ -1470,7 +1762,7 @@ class CrytekDaeExporter:
                     ni = 0
                     texindex = 0
                     nverts = ""
-                    for f in face_index_pairs:
+                    for f in mesh.tessfaces:
                         fi = f.vertices[:]
                         if f.material_index == im[0]:
                             nverts += str(len(f.vertices)) + " "
@@ -1510,12 +1802,12 @@ class CrytekDaeExporter:
                     polyl.setAttribute("count", "%s" % (len(face_count)))
                     inpv = self.__doc.createElement("input")
                     inpv.setAttribute("semantic", "VERTEX")
-                    inpv.setAttribute("source", "#%s-vertices" % (mname))
+                    inpv.setAttribute("source", "#%s-vertices" % (mesh_name))
                     inpv.setAttribute("offset", "0")
                     polyl.appendChild(inpv)
                     inpn = self.__doc.createElement("input")
                     inpn.setAttribute("semantic", "NORMAL")
-                    inpn.setAttribute("source", "#%s-normals" % (mname))
+                    inpn.setAttribute("source", "#%s-normals" % (mesh_name))
                     inpn.setAttribute("offset", "1")
                     polyl.appendChild(inpn)
                     inpuv = self.__doc.createElement("input")
@@ -1528,7 +1820,7 @@ class CrytekDaeExporter:
                     if mesh.vertex_colors:
                         inpvcol = self.__doc.createElement("input")
                         inpvcol.setAttribute("semantic", "COLOR")
-                        inpvcol.setAttribute("source", "#%s-colors" % (mname))
+                        inpvcol.setAttribute("source", "#%s-colors" % (mesh_name))
                         # vcolors can be 2 or 3
                         inpvcol.setAttribute("offset", "3")
                         polyl.appendChild(inpvcol)
@@ -1712,7 +2004,7 @@ class CrytekDaeExporter:
                                       % (armature_name, object_name))
         float_array_node.setAttribute("count", "%s"
                                       % (len(armature_bones) * 16))
-        self.__export_float_array(armature_bones, float_array_node)
+        self.__export_float_array(armature_name, armature_bones, float_array_node)
         source_matrices_node.appendChild(float_array_node)
 
         technique_node = self.__doc.createElement("technique_common")
@@ -1876,7 +2168,7 @@ class CrytekDaeExporter:
                                     libanmcl.appendChild(animation_clip)
 
                             if ande == 0:
-                                if self.__config.merge_anm:
+                                if getattr(bpy.context.scene, "merge_anm"):
                                     if is_merge_inprogress == 0:
                                         animation_clip = self.__export__animation_clip(
                                                                 object_,
@@ -1973,16 +2265,19 @@ class CrytekDaeExporter:
             tc3 = self.__doc.createElement("technique")
             tc3.setAttribute("profile", "CryEngine")
             prop1 = self.__doc.createElement("properties")
-            if self.__config.export_type == 'CGF':
+            if getattr(bpy.context.scene, "project_type") == 'CGF':
                 pcgf = self.__doc.createTextNode("fileType=cgf")
                 prop1.appendChild(pcgf)
-            if self.__config.export_type == 'CGA & ANM':
-                pcga = self.__doc.createTextNode("fileType=cgaanm")
+            elif getattr(bpy.context.scene, "project_type") == 'CGA':
+                pcga = self.__doc.createTextNode("fileType=cgf")
                 prop1.appendChild(pcga)
-            if self.__config.export_type == 'CHR & CAF':
+            elif getattr(bpy.context.scene, "project_type") == 'CHR':
                 pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
                 prop1.appendChild(pchrcaf)
-            if self.__config.donot_merge:
+            else:
+                pcgf = self.__doc.createTextNode("fileType=cgf")
+                prop1.appendChild(pcgf)
+            if getattr(bpy.context.scene, "donot_merge"):
                 pdnm = self.__doc.createTextNode("DoNotMerge")
                 prop1.appendChild(pdnm)
             tc3.appendChild(prop1)
@@ -2005,24 +2300,25 @@ def write_to_file(config, doc, file_name, exe):
     file.close()
 
     dae_file_for_rc = utils.get_absolute_path_for_rc(file_name)
-    rc_params = ["/verbose", "/threads=processors"]
-    if config.refresh_rc:
+    rc_params = ["/verbose", "/threads=processors", "/realignchunks"]
+
+    if getattr(bpy.context.scene, "refresh_rc"):
         rc_params.append("/refresh")
 
-    if config.run_rc or config.do_materials:
-        if config.do_materials:
+    if getattr(bpy.context.scene, "run_rc") or getattr(bpy.context.scene, "do_materials"):
+        if getattr(bpy.context.scene, "do_materials"):
             rc_params.append("/createmtl=1")
 
         rc_process = utils.run_rc(exe, dae_file_for_rc, rc_params)
 
-        if config.do_materials:
+        if getattr(bpy.context.scene, "do_materials"):
             mtl_fix_thread = threading.Thread(
                 target=fix_normalmap_in_mtls,
                 args=(rc_process, file_name)
             )
             mtl_fix_thread.start()
 
-    if config.make_layer:
+    if getattr(bpy.context.scene, "make_layer"):
         layer = make_layer(file_name)
         lyr_file_name = os.path.splitext(file_name)[0] + ".lyr"
         file = open(lyr_file_name, 'w')
