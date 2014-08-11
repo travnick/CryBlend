@@ -55,7 +55,10 @@ class _DdsConverter:
 
             tiff_image_for_rc = utils.get_absolute_path_for_rc(tiff_image_path)
 
-            check_for_normal_texture()
+            try:
+                create_normal_texture()
+            except:
+                cbPrint("Failed to invert green channel")
 
             rc_process = utils.run_rc(self.__rc_exe,
                                       tiff_image_for_rc,
@@ -68,6 +71,7 @@ class _DdsConverter:
                     image.save()
             except:
                 cbPrint("Failed to invert green channel")
+
             rc_process.wait()
 
         if save_tiff:
@@ -75,14 +79,14 @@ class _DdsConverter:
 
         self.__remove_tmp_files()
 
-    def check_for_normal_texture():
+    def create_normal_texture():
         if ("_ddn" in image.name):
             # make a copy to prevent editing the original image
-            normal_temp_image = image.copy()
-            self.__invert_green_channel(normal_temp_image)
+            image_cb_normal = image.copy()
+            self.__invert_green_channel(image_cb_normal)
             # save to file and delete the temporary image
-            normal_temp_image.save()
-            bpy.data.images.remove(normal_temp_image)
+            image_cb_normal.save()
+            bpy.data.images.remove(image_cb_normal)
 
     def __get_rc_params(self, refresh_rc, destination_path):
         rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
