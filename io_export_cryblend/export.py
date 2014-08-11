@@ -1275,9 +1275,13 @@ class CrytekDaeExporter:
             if uvlay:
                 cbPrint("Found UV map.")
             elif (object_.type == "MESH"):
-                cbPrint("Your UV map is missing, adding.")
                 override = {'object': object_}
-                bpy.ops.mesh.uv_texture_add(override)
+                bpy.ops.object.mode_set(override, mode='EDIT')
+                bpy.ops.mesh.select_all(override, action='SELECT')
+                bpy.ops.uv.smart_project(override, angle_limit=66, island_margin=0.03, user_area_weight=0)
+                bpy.ops.object.mode_set(override, mode='OBJECT')
+                object_.data.update(calc_tessface=1)
+                cbPrint("Missing UV map.  Mesh unwrapped using smart UV project", message_type='warning')
 
             for uvindex, uvlayer in enumerate(uvlay):
                 mapslot = uvindex
