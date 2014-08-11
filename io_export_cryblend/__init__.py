@@ -683,15 +683,25 @@ class FindWeightless(bpy.types.Operator):
     bl_label = "Find Weightless Vertices"
     bl_idname = "mesh.find_weightless"
 
+    # weightless: a vertex not belonging to any groups or with a net weight of 0
     def execute(self, context):
         obj = bpy.context.active_object
-        if obj.type == 'MESH':
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="DESELECT")
+        bpy.ops.object.mode_set(mode="OBJECT")
+        if obj.type == "MESH":
             for v in obj.data.vertices:
-                v.select = True
-                for g in v.groups:
-                    v.select = False
-                    break
-        return {'FINISHED'}
+                if (not v.groups):
+                    v.select = True
+                else:
+                    weight = 0
+                    for g in v.groups:
+                        weight += g.weight
+                    if (weight == 0):
+                        v.select = True
+        obj.data.update()
+        bpy.ops.object.mode_set(mode="EDIT")
+        return {"FINISHED"}
 
 
 class RemoveAllWeight(bpy.types.Operator):
