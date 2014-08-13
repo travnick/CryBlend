@@ -82,11 +82,12 @@ class _DdsConverter:
     def create_normal_texture():
         if ("_ddn" in image.name):
             # make a copy to prevent editing the original image
-            image_cb_normal = image.copy()
-            self.__invert_green_channel(image_cb_normal)
+            temp_normal_image = image.copy()
+            self.__invert_green_channel(temp_normal_image)
             # save to file and delete the temporary image
-            image_cb_normal.save()
-            bpy.data.images.remove(image_cb_normal)
+            new_normal_image_path = "%s_cb_normal.%s" % (os.path.splitext(temp_normal_image.filepath_raw)[0], os.path.splitext(temp_normal_image.filepath_raw)[1])
+            temp_normal_image.save_render(filepath=new_normal_image_path)
+            bpy.data.images.remove(temp_normal_image)
 
     def __get_rc_params(self, refresh_rc, destination_path):
         rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
