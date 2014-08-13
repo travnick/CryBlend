@@ -683,7 +683,10 @@ class FindWeightless(bpy.types.Operator):
     bl_label = "Find Weightless Vertices"
     bl_idname = "mesh.find_weightless"
 
-    # weightless: a vertex not belonging to any groups or with a net weight of 0
+    # Minimum net weight to be considered non-weightless
+    weight_epsilon = 0.0001
+
+    # Weightless: a vertex not belonging to any groups or with a net weight of 0
     def execute(self, context):
         obj = bpy.context.active_object
         bpy.ops.object.mode_set(mode="EDIT")
@@ -697,7 +700,7 @@ class FindWeightless(bpy.types.Operator):
                     weight = 0
                     for g in v.groups:
                         weight += g.weight
-                    if (weight == 0):
+                    if (weight < self.weight_epsilon):
                         v.select = True
         obj.data.update()
         bpy.ops.object.mode_set(mode="EDIT")
