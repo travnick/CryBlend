@@ -85,8 +85,8 @@ def get_guid():
 
 
 def random_hex_sector(length):
-    fixed_lenght_hex_format = "%0" + str(length) + "x" 
-    return fixed_lenght_hex_format % random.randrange(16 ** length)
+    fixed_length_hex_format = "%0" + str(length) + "x"
+    return fixed_length_hex_format % random.randrange(16 ** length)
 
 
 # borrowed from obj exporter
@@ -231,6 +231,9 @@ def run_rc(rc_path, files_to_process, params=None):
 
 def get_path_with_new_extension(image_path, extension):
     return "%s.%s" % (os.path.splitext(image_path)[0], extension)
+
+def get_extension_from_path(image_path):
+    return "%s" % (os.path.splitext(image_path)[1])
 
 
 # this is needed if you want to access more than the first def

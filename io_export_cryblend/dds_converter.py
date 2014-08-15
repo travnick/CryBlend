@@ -55,17 +55,39 @@ class _DdsConverter:
 
             tiff_image_for_rc = utils.get_absolute_path_for_rc(tiff_image_path)
 
+            try:
+                create_normal_texture()
+            except:
+                cbPrint("Failed to invert green channel")
+
             rc_process = utils.run_rc(self.__rc_exe,
                                       tiff_image_for_rc,
                                       rc_params)
 
+            # re-save the original image after running the RC to
+            # prevent the original one from getting lost
+            try:
+                if ("_ddn" in image.name):
+                    image.save()
+            except:
+                cbPrint("Failed to invert green channel")
+
             rc_process.wait()
-            cbPrint("RC return code %s" % rc_process.returncode)
 
         if save_tiff:
             self.__save_tiffs()
 
         self.__remove_tmp_files()
+
+    def create_normal_texture():
+        if ("_ddn" in image.name):
+            # make a copy to prevent editing the original image
+            temp_normal_image = image.copy()
+            self.__invert_green_channel(temp_normal_image)
+            # save to file and delete the temporary image
+            new_normal_image_path = "%s_cb_normal.%s" % (os.path.splitext(temp_normal_image.filepath_raw)[0], os.path.splitext(temp_normal_image.filepath_raw)[1])
+            temp_normal_image.save_render(filepath=new_normal_image_path)
+            bpy.data.images.remove(temp_normal_image)
 
     def __get_rc_params(self, refresh_rc, destination_path):
         rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
@@ -79,7 +101,20 @@ class _DdsConverter:
 
         return rc_params
 
+    def __invert_green_channel(self, image):
+        override = {'edit_image': bpy.data.images[image.name]}
+        bpy.ops.image.invert(override, invert_g=True)
+        image.update()
+
     def __get_temp_tiff_image_path(self, image):
+        # check if the image already is a .tif
+        image_extension = utils.get_extension_from_path(image.filepath)
+        cbPrint(image_extension)
+
+        if ".tif" == image_extension:
+            cbPrint("Image {!r} is already a tif, not converting".format(image.name), 'debug')
+            return image.filepath
+
         tiff_image_path = utils.get_path_with_new_extension(image.filepath,
                                                             "tif")
         tiff_image_absolute_path = utils.get_absolute_path(tiff_image_path)
