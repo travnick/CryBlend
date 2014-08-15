@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        Configuration
-# Purpose:     Converter to DDS
+# Name:        configuration.py
+# Purpose:     Storing CryBlend configuration settings
 #
 # Author:      Mikołaj Milej
 #

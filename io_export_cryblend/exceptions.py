@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # Name:        exceptions.py
-# Purpose:     holds custom exception classes
+# Purpose:     Holds custom exception classes
 #
 # Author:      Mikołaj Milej
 #
@@ -30,7 +30,7 @@ class BlendNotSavedException(CryBlendException):
         CryBlendException.__init__(self, message)
 
 
-class TextureAndBlendDiskMismatch(CryBlendException):
+class TextureAndBlendDiskMismatchException(CryBlendException):
     def __init__(self, blend_path, texture_path):
         message = """
 Blend file and all textures have to be placed on the same disk.
@@ -43,6 +43,9 @@ Texture file: {!r}""".format(blend_path, texture_path)
 
 class NoRcSelectedException(CryBlendException):
     def __init__(self):
-        message = "Please find Resource Compiler first."
+        message = """
+Please find Resource Compiler first.
+Usually located in 'CryEngine\\Bin32\\rc\\rc.exe'
+"""
 
         CryBlendException.__init__(self, message)
