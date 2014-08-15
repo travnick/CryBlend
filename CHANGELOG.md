@@ -7,6 +7,8 @@
 * Added support for green channel inversion when converting normal maps to DDS.
 * Removed find underweight/overweight utilities and replaced them with an automatic weights correction tool.
 * Added/Revised tooltips for all operators.
+* Added material ID padding to fix assignment problems in CryEngine.
+* Only compatible with Blender v2.70 and up.
 
 #### Code features:
 * Thorough code clean up, renamed variables, extracted methods etc.
