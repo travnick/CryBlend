@@ -1,5 +1,16 @@
 # Changelog:
 
+## 4.13
+#### Features:
+* Improved find weightless vertices utility.
+* Smart UV projection used in place of default UV unwrapping for exports missing a UV map.
+* Added support for green channel inversion when converting normal maps to DDS.
+* Removed find underweight/overweight utilities and replaced them with an automatic weights correction tool.
+* Added/Revised tooltips for all operators.
+
+#### Code features:
+* Thorough code clean up, renamed variables, extracted methods etc.
+
 ## 4.12.2
 #### Fixes:
 * Fixed bug #39 (Adding UVs to wrong object).
@@ -22,7 +33,6 @@
 #### Fixes:
 * Layer creation does not crash and maybe generates correct layers.
 * Fixed buggy implementation of GUID (UUID) generator.
-
 
 ## 4.11.1
 #### Fixes:

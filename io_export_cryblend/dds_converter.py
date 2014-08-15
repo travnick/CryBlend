@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        DdsConverter
-# Purpose:     Converter to DDS
+# Name:        dds_converter.py
+# Purpose:     Image conversion to DDS
 #
 # Author:      Mikołaj Milej
 #
@@ -60,6 +60,7 @@ class _DdsConverter:
                                       rc_params)
 
             rc_process.wait()
+            cbPrint("RC return code %s" % rc_process.returncode)
 
         if save_tiff:
             self.__save_tiffs()
