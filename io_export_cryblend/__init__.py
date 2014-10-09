@@ -224,7 +224,7 @@ class AddCryExportNode(bpy.types.Operator):
 
 
 class SetMaterialsNames(bpy.types.Operator):
-    '''Materials will be renamed to fit CryEngine conventions'''
+    '''Materials will be named after the first CryExportNode the Object is in. Materials with CryExportNode names are not affected.'''
     bl_label = "Rename Materials in CryExportNodes"
     bl_idname = "material.set_materials_names"
     my_string = StringProperty(name="Physics", default = "physDefault")
@@ -246,7 +246,7 @@ class SetMaterialsNames(bpy.types.Operator):
                         if not isInExportNode(materialNodeCounter, slot.material): # Skip materials that have been renamed already.
                             materialNodeCounter[group.name] += 1
                             materialOldName = slot.material.name
-                            slot.material.name = "{}__{:02d}__{}__{}".format(group.name.replace("CryExportNode_", ""), materialNodeCounter[group.name], materialOldName.replace(" ", "").replace("__", "_"), self.my_string)
+                            slot.material.name = "{}__{:02d}__{}__{}".format(group.name.replace("CryExportNode_", ""), materialNodeCounter[group.name], replaceInvalidRCCharacters(materialOldName), self.my_string)
                             message = "Changed {} to {}".format(materialOldName, slot.material.name)
                             self.report({'INFO'}, message)
                             cbPrint(message)
@@ -255,7 +255,10 @@ class SetMaterialsNames(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
-
+def replaceInvalidRCCharacters(string):
+    string = string.replace(" ", "").replace("__", "_").replace("ü", "ue").replace("ö", "oe").replace("ä", "ae") # Regex not faster.
+    return string
+        
 def isExportNode(group):
     if "CryExportNode_" in group.name:
         return True
@@ -796,6 +799,26 @@ to find all items without UVs'''
                         break
                     if not a:
                         obj.select = True
+            return {'FINISHED'}
+
+class AddUVTexture(bpy.types.Operator):
+        '''Add UVs to all meshes without UVs.'''
+        bl_label = "Add UVs to Objects"
+        bl_idname = "mesh.add_uv_texture"
+
+        def execute(self, context):
+            for obj in bpy.data.objects:
+                if obj.type == 'MESH':
+                    uv = False
+                    for i in obj.data.uv_textures:
+                        uv = True
+                        break
+                    if not uv:
+                        bpy.context.scene.objects.active = obj
+                        bpy.ops.mesh.uv_texture_add()
+                        message = "Added UV map to {}".format(obj.name)
+                        self.report({'INFO'}, message)
+                        cbPrint(message)
             return {'FINISHED'}
 
 #------------------------------------------------------------------------------
@@ -1577,7 +1600,7 @@ class Tools():
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("object.add_cry_export_node", icon='VIEW3D_VEC')
-        layout.operator("material.set_materials_names", icon='VIEW3D_VEC')
+        layout.operator("material.set_materials_names", icon='MATERIAL')
         layout.operator("object.add_joint", icon='META_CUBE')
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
@@ -1599,6 +1622,7 @@ class Tools():
         layout.menu("menu.weight_paint_repair", icon="MESH_CUBE")
         layout.separator()
         layout.operator("scene.find_no_uvs", icon="UV_FACESEL")
+        layout.operator("mesh.add_uv_texture", icon="UV_FACESEL")
         layout.separator()
         # layout.label(text="Add Custom Properties", icon="SCRIPT")
         layout.menu("menu.add_custom_properties", icon='SCRIPT')
@@ -1691,6 +1715,7 @@ def get_classes_to_register():
         FindWeightless,
         RemoveAllWeight,
         FindNoUVs,
+        AddUVTexture,
 
         RenamePhysBones,
         AddBoneGeometry,
