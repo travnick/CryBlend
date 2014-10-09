@@ -223,6 +223,58 @@ class AddCryExportNode(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
 
+class SetMaterialsNames(bpy.types.Operator):
+    '''Materials will be renamed to fit CryEngine conventions'''
+    bl_label = "Rename Materials in CryExportNodes"
+    bl_idname = "material.set_materials_names"
+    my_string = StringProperty(name="Physics", default = "physDefault")
+
+    def execute(self, context):
+        materialNodeCounter = {}
+        for group in bpy.data.groups:
+            if isExportNode(group):
+                initialCounter = 0
+                for material in bpy.data.materials:
+                    if isInSpecificExportNode(group, material):
+                        initialCounter += 1
+                materialNodeCounter[group.name] = initialCounter
+        
+        for obj in bpy.data.objects:
+            for group in obj.users_group:
+                if isExportNode(group):
+                    for slot in obj.material_slots: # All materials assigned to the object.
+                        if not isInExportNode(materialNodeCounter, slot.material): # Skip materials that have been renamed already.
+                            materialNodeCounter[group.name] += 1
+                            materialOldName = slot.material.name
+                            slot.material.name = "{}__{:02d}__{}__{}".format(group.name.replace("CryExportNode_", ""), materialNodeCounter[group.name], materialOldName.replace(" ", "").replace("__", "_"), self.my_string)
+                            message = "Changed {} to {}".format(materialOldName, slot.material.name)
+                            self.report({'INFO'}, message)
+                            cbPrint(message)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+
+def isExportNode(group):
+    if "CryExportNode_" in group.name:
+        return True
+    else:
+        return False
+
+def isInExportNode(groupDictionary, material):
+    for groupname in groupDictionary:
+        if groupname.replace("CryExportNode_", "") + "__" in material.name:
+            return True
+    return False
+
+def isInSpecificExportNode(group, material):
+    if group.name.replace("CryExportNode_", "") + "__" in material.name:
+        return True
+    else:
+        return False
+
+
 class AddAnimNode(bpy.types.Operator):
     '''Click to add an AnimNode to selection or with nothing selected
 add an AnimNode to the scene'''
@@ -1525,6 +1577,7 @@ class Tools():
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("object.add_cry_export_node", icon='VIEW3D_VEC')
+        layout.operator("material.set_materials_names", icon='VIEW3D_VEC')
         layout.operator("object.add_joint", icon='META_CUBE')
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
@@ -1589,6 +1642,7 @@ def get_classes_to_register():
 
         AddBreakableJoint,
         AddCryExportNode,
+        SetMaterialsNames,
         AddAnimNode,
 
         OpenUDPWebpage,
