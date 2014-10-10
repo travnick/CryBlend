@@ -210,11 +210,11 @@ class AddCryExportNode(bpy.types.Operator):
     '''Click to add selection to a CryExportNode'''
     bl_label = "Add CryExportNode"
     bl_idname = "object.add_cry_export_node"
-    my_string = StringProperty(name="CryExportNode name")
+    nodeNameUserInput = StringProperty(name="CryExportNode name")
 
     def execute(self, context):
-        bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
-        message = "Adding CryExportNode_'%s'" % (self.my_string)
+        bpy.ops.group.create(name="CryExportNode_%s" % (self.nodeNameUserInput))
+        message = "Adding CryExportNode_'%s'" % (self.nodeNameUserInput)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
@@ -224,30 +224,31 @@ class AddCryExportNode(bpy.types.Operator):
 
 
 class SetMaterialsNames(bpy.types.Operator):
-    '''Materials will be named after the first CryExportNode the Object is in. Materials with CryExportNode names are not affected.'''
+    '''Materials will be named after the first CryExportNode the Object \
+is in. Materials with CryExportNode names are not affected.'''
     bl_label = "Rename Materials in CryExportNodes"
     bl_idname = "material.set_materials_names"
-    my_string = StringProperty(name="Physics", default = "physDefault")
+    physUserInput = StringProperty(name="Physics", default = "physDefault")
 
     def execute(self, context):
-        materialNodeCounter = {}
+        materialCounter = setMaterialCounter()
+
         for group in bpy.data.groups:
-            if isExportNode(group):
-                initialCounter = 0
-                for material in bpy.data.materials:
-                    if isInSpecificExportNode(group, material):
-                        initialCounter += 1
-                materialNodeCounter[group.name] = initialCounter
-        
-        for obj in bpy.data.objects:
-            for group in obj.users_group:
-                if isExportNode(group):
-                    for slot in obj.material_slots: # All materials assigned to the object.
-                        if not isInExportNode(materialNodeCounter, slot.material): # Skip materials that have been renamed already.
-                            materialNodeCounter[group.name] += 1
+            if isExportNode(group.name):
+                for object in group.objects:
+                    for slot in object.material_slots:
+                        # Skip materials that have been renamed already.
+                        if not isInExportNode(materialCounter, slot.material.name):
+                            materialCounter[group.name] += 1
                             materialOldName = slot.material.name
-                            slot.material.name = "{}__{:02d}__{}__{}".format(group.name.replace("CryExportNode_", ""), materialNodeCounter[group.name], replaceInvalidRCCharacters(materialOldName), self.my_string)
-                            message = "Changed {} to {}".format(materialOldName, slot.material.name)
+                            slot.material.name = "{}__{:02d}__{}__{}".format(
+                                    group.name.replace("CryExportNode_", ""),
+                                    materialCounter[group.name],
+                                    replaceInvalidRCCharacters(materialOldName),
+                                    self.physUserInput)
+                            message = "Changed {} to {}".format(
+                                    materialOldName,
+                                    slot.material.name)
                             self.report({'INFO'}, message)
                             cbPrint(message)
         return {'FINISHED'}
@@ -255,35 +256,50 @@ class SetMaterialsNames(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
+def setMaterialCounter():
+    materialCounter = {}
+    for group in bpy.data.groups:
+        if isExportNode(group.name):
+            initialCounter = 0
+            for material in bpy.data.materials:
+                if isInSpecificExportNode(group.name, material.name):
+                    initialCounter += 1
+            materialCounter[group.name] = initialCounter
+    return materialCounter
+
 def replaceInvalidRCCharacters(string):
-    string = string.replace(" ", "").replace("__", "_").replace("ü", "ue").replace("ö", "oe").replace("ä", "ae") # Regex not faster.
+    string = string.replace(" ", ""). \
+        replace("__", "_"). \
+        replace("ü", "ue"). \
+        replace("ö", "oe"). \
+        replace("ä", "ae") # Regex readability would be worse.
     return string
         
-def isExportNode(group):
-    if "CryExportNode_" in group.name:
+def isExportNode(groupname):
+    if groupname.startswith("CryExportNode_"):
         return True
     else:
         return False
 
-def isInExportNode(groupDictionary, material):
+def isInExportNode(groupDictionary, materialname):
     for groupname in groupDictionary:
-        if groupname.replace("CryExportNode_", "") + "__" in material.name:
+        if materialname.startswith(groupname.replace("CryExportNode_", "") + "__"):
             return True
     return False
 
-def isInSpecificExportNode(group, material):
-    if group.name.replace("CryExportNode_", "") + "__" in material.name:
+def isInSpecificExportNode(groupname, materialname):
+    if materialname.startswith(groupname.replace("CryExportNode_", "") + "__"):
         return True
     else:
         return False
 
 
 class AddAnimNode(bpy.types.Operator):
-    '''Click to add an AnimNode to selection or with nothing selected
+    '''Click to add an AnimNode to selection or with nothing selected \
 add an AnimNode to the scene'''
     bl_label = "Add AnimNode"
     bl_idname = "object.add_anim_node"
-    my_string = StringProperty(name="Animation Name")
+    animNameUserInput = StringProperty(name="Animation Name")
     start_frame = FloatProperty(name="Start Frame")
     end_frame = FloatProperty(name="End Frame")
 
@@ -294,7 +310,7 @@ add an AnimNode to the scene'''
         bpy.ops.object.add(type='EMPTY')
         empty_object = bpy.context.active_object
         empty_object.name = 'animnode'
-        empty_object["animname"] = self.my_string
+        empty_object["animname"] = self.animNameUserInput
         empty_object["startframe"] = self.start_frame
         empty_object["endframe"] = self.end_frame
 
@@ -303,7 +319,7 @@ add an AnimNode to the scene'''
             bpy.context.scene.objects.active = object_
 
         bpy.ops.object.parent_set(type='OBJECT')
-        message = "Adding AnimNode '%s'" % (self.my_string)
+        message = "Adding AnimNode '%s'" % (self.animNameUserInput)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
@@ -734,7 +750,8 @@ it's mesh before running this.'''
 
 
 class FindWeightless(bpy.types.Operator):
-    '''Select the object in object mode with nothing in its mesh selected before running this'''
+    '''Select the object in object mode with nothing in its mesh selected \
+before running this'''
     bl_label = "Find Weightless Vertices"
     bl_idname = "mesh.find_weightless"
 
