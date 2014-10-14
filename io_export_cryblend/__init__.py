@@ -1418,11 +1418,11 @@ class AddMaterialPhysicsMenu(bpy.types.Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
         layout.label(text="Add Material Physics")
         layout.separator()
-        layout.operator("material.add_phys_default", icon='PHYSICS')
-        layout.operator("material.add_phys_proxy_no_draw", icon='PHYSICS')
-        layout.operator("material.add_phys_none", icon='PHYSICS')
-        layout.operator("material.add_phys_obstruct", icon='PHYSICS')
-        layout.operator("material.add_phys_no_collide", icon='PHYSICS')
+        layout.operator("material.add_phys_default", text="__physDefault", icon='PHYSICS')
+        layout.operator("material.add_phys_proxy_no_draw", text="__physProxyNoDraw", icon='PHYSICS')
+        layout.operator("material.add_phys_none", text="__physNone", icon='PHYSICS')
+        layout.operator("material.add_phys_obstruct", text="__physObstruct", icon='PHYSICS')
+        layout.operator("material.add_phys_no_collide", text="__physNoCollide", icon='PHYSICS')
 
 
 class AddBreakablePropertiesMenu(bpy.types.Menu):
@@ -1665,12 +1665,21 @@ def draw_item(self, context):
     layout.menu(ToolsMenu.bl_idname)
 
 
+def physics_menu(self, context):
+    layout = self.layout
+    layout.separator()
+    layout.label("CryBlend")
+    layout.menu("menu.add_material_physics", icon="PHYSICS")
+    layout.separator()
+
+
 def register():
     for classToRegister in get_classes_to_register():
         bpy.utils.register_class(classToRegister)
 
     # lets add ourselves to the main headerAdd_rm_e_Prop
     bpy.types.INFO_HT_header.append(draw_item)
+    bpy.types.MATERIAL_MT_specials.append(physics_menu)
 
 
 def unregister():
@@ -1681,6 +1690,7 @@ def unregister():
         bpy.utils.unregister_class(classToRegister)
 
     bpy.types.INFO_HT_header.remove(draw_item)
+    bpy.types.MATERIAL_MT_specials.remove(physics_menu)
 
 
 if __name__ == "__main__":
