@@ -1666,13 +1666,13 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         col.operator("object.add_joint")
         col.separator()
 
-        col.label(text="Configuration Paths")
+        col.label(text="Configuration Paths", icon="SCRIPT")
         col.separator()
         col.operator("file.find_rc", text="Find RC")
         col.operator("file.find_rc_for_texture_conversion", text="Find Texture RC")
         col.operator("file.select_textures_directory", text="Select Textures Folder")
         col.separator()
-        col.label(text="Export")
+        col.label(text="Export", icon="GAME")
         col.operator("scene.export_to_game")
 
 
@@ -1684,19 +1684,19 @@ class BoneUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
         col = layout.column(align=True)
 
-        col.label(text="Skeleton")
+        col.label(text="Skeleton", icon='BONE_DATA')
         col.separator()
         col.operator("armature.add_fake_bone", text="Add Fakebone")
         col.operator("scene.remove_fake_bones", text="Remove Fakebones")
         col.separator()
 
-        col.label(text="Animation")
+        col.label(text="Animation", icon='KEY_HLT')
         col.separator()
         col.operator("armature.add_fakebone_keyframe_list", text="FakeBone Keyframe List")
         col.operator("armature.add_fakebone_keyframe", text="FakeBone Keyframe")
         col.separator()
 
-        col.label(text="Physics")
+        col.label(text="Physics", icon="PHYSICS")
         col.separator()
         col.operator("armature.add_bone_geometry")
         col.operator("armature.remove_bone_geometry")
@@ -1711,38 +1711,21 @@ class MeshUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
         col = layout.column(align=True)
 
-        col.label(text="Weight Repair")
+        col.label(text="Weight Repair", icon="WPAINT_HLT")
         col.separator()
         col.operator("mesh.find_weightless", text="Find Weightless")
         col.operator("mesh.remove_weight", text="Remove Weight")
         col.separator()
 
-        col.label(text="Mesh Repair")
+        col.label(text="Mesh Repair", icon='ZOOM_ALL')
         col.separator()
         col.operator("object.find_degenerate_faces", text="Find Degenerate")
         col.operator("mesh.find_multiface_lines", text="Find Multi-face")
         col.separator()
 
-        col.label(text="UV Repair")
+        col.label(text="UV Repair", icon="UV_FACESEL")
         col.separator()
         col.operator("scene.find_no_uvs", text="Find No UV's")
-
-
-class MaterialPhysicsPanel(View3DPanel, Panel):
-    bl_label = "Material Physics"
-    bl_category = "CryBlend"
-
-    def draw(self, context):
-        layout = self.layout
-        col = layout.column(align=True)
-
-        col.label(text="Add Ending...")
-        col.separator()
-        col.operator("material.add_phys_default", text = "physDefault")
-        col.operator("material.add_phys_proxy_no_draw", text = "physProxyNoDraw")
-        col.operator("material.add_phys_none", text = "physNone")
-        col.operator("material.add_phys_obstruct", text = "physObstruct")
-        col.operator("material.add_phys_no_collide", text = "physNoCollide")
 
 
 class CustomPropertiesPanel(View3DPanel, Panel):
@@ -1755,7 +1738,7 @@ class CustomPropertiesPanel(View3DPanel, Panel):
         col.operator("file.open_udp_webpage")
         col.separator()
 
-        col.label(text="Rendermesh:")
+        col.label(text="Rendermesh:", icon='OBJECT_DATA')
         col.separator()
         col.operator("object.add_entity_property", text="Entity")
         col.operator("object.add_mass_property", text="Mass")
@@ -1765,7 +1748,7 @@ class CustomPropertiesPanel(View3DPanel, Panel):
         col.operator("object.add_no_hit_refinement_property", text="No Hit Refinement")
         col.separator()
 
-        col.label(text="Phys Proxy:")
+        col.label(text="Phys Proxy:", icon='PHYSICS')
         col.separator()
         col.operator("object.add_box_proxy_property", text="Box")
         col.operator("object.add_cylinder_proxy_property", text="Cylinder")
@@ -1777,7 +1760,7 @@ class CustomPropertiesPanel(View3DPanel, Panel):
         col.operator("object.add_colltype_player_property", text="Colltype Player")
         col.separator()
 
-        col.label(text="Joint Node:")
+        col.label(text="Joint Node:", icon='PROP_ON')
         col.separator()
         col.operator("object.add_bend_property", text="Bend")
         col.operator("object.add_twist_property", text="Twist")
@@ -1788,7 +1771,7 @@ class CustomPropertiesPanel(View3DPanel, Panel):
         col.operator("object.add_player_can_break_property", text="Player Can Break")
         col.separator()
 
-        col.label(text="Constraints:")
+        col.label(text="Constraints:", icon='CONSTRAINT')
         col.separator()
         col.operator("object.add_limit_constraint", text="Limit")
         col.operator("object.add_min_angle_constraint", text="MinAngle")
@@ -1797,12 +1780,12 @@ class CustomPropertiesPanel(View3DPanel, Panel):
         col.operator("object.add_collision_constraint", text="Collision")
         col.separator()
 
-        col.label(text="Deformables:")
+        col.label(text="Deformables:", icon='MOD_SIMPLEDEFORM')
         col.separator()
         col.operator("object.add_deformable_properties", text="Deformable Props")
         col.separator()
 
-        col.label(text="Vehicles:")
+        col.label(text="Vehicles:", icon='ROTATECOLLECTION')
         col.separator()
         col.operator("object.add_wheel_property", text="Wheel Props")
 
@@ -1815,7 +1798,7 @@ class HelpPanel(View3DPanel, Panel):
         layout = self.layout
         col = layout.column(align=True)
 
-        col.label(text="Resources")
+        col.label(text="Resources", icon='QUESTION')
         col.separator()
         col.operator("file.open_crydev_webpage", text = "CryDev Forums")
         col.operator("file.open_github_webpage", text = "CryBlend Wiki")
@@ -2109,7 +2092,6 @@ def get_classes_to_register():
         ExportUtilitiesPanel,
         BoneUtilitiesPanel,
         MeshUtilitiesPanel,
-        MaterialPhysicsPanel,
         CustomPropertiesPanel,
         HelpPanel,
 
@@ -2130,6 +2112,11 @@ def get_classes_to_register():
     return classes
 
 
+def draw_item(self, context):
+    layout = self.layout
+    layout.menu(CryBlendMainMenu.bl_idname)
+
+
 def register():
     for classToRegister in get_classes_to_register():
         bpy.utils.register_class(classToRegister)
@@ -2139,6 +2126,8 @@ def register():
         km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
         kmi = km.keymap_items.new('wm.call_menu', 'Q', 'PRESS', ctrl = False, shift = True)
         kmi.properties.name = "view3d.cryblend_main_menu"
+
+    bpy.types.INFO_HT_header.append(draw_item)
 
 
 def unregister():
@@ -2153,9 +2142,11 @@ def unregister():
         km = kc.keymaps['3D View']
         for kmi in km.keymap_items:
             if kmi.idname == 'wm.call_menu':
-                if kmi.properties.name == "view3d.mymenu":
+                if kmi.properties.name == "view3d.cryblend_main_menu":
                     km.keymap_items.remove(kmi)
                     break
+
+    bpy.types.INFO_HT_header.remove(draw_item)
 
 
 if __name__ == "__main__":
