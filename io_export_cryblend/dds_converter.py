@@ -31,7 +31,6 @@ class DdsConverterRunner:
         self.__rc_exe = rc_exe
 
     def start_conversion(self, images_to_convert, refresh_rc, save_tiff):
-        cbPrint("ZZZZZZZZZZZZZZZ", "test")
         converter = _DdsConverter(self.__rc_exe)
 
         conversion_thread = threading.Thread(
@@ -73,7 +72,8 @@ class _DdsConverter:
         if refresh_rc:
             rc_params.append("/refresh")
 
-        image_directory = utils.get_texture_path()
+        image_directory = os.path.dirname(utils.get_absolute_path_for_rc(
+                destination_path))
 
         rc_params.append("/targetroot={!s}".format(image_directory))
 
@@ -121,19 +121,3 @@ class _DdsConverter:
 
         os.removedirs(self.__tmp_dir)
         self.__tmp_images.clear()
-
-def move_texture_to_project(images):
-    for image in images:
-        dds_old_path = utils.get_path_with_new_extension(image.filepath, "dds")
-        dds_tail = os.path.split(dds_old_path)[1]
-        dds_name = dds_tail[:-4]
-        dds_new_path = bpy.path.ensure_ext("%s/%s/%s/%s/%s" % (utils.get_cry_root_path(), "Objects", utils.get_project_path(), "Textures", dds_name), ".dds")
-        shutil.copy(dds_old_path, dds_new_path)
-        os.remove(dds_old_path)
-        cbPrint("ZZZZZZZZZZZZZZZ", "test")
-        cbPrint(dds_old_path, "test")
-        cbPrint(dds_new_path, "test")
-
-# this is needed if you want to access more than the first def
-if __name__ == "__main__":
-    register()

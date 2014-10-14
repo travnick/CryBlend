@@ -29,7 +29,6 @@ import random
 import subprocess
 import sys
 import xml.dom.minidom
-import shutil
 
 
 # globals
@@ -208,65 +207,6 @@ def get_mtl_files_in_directory(directory):
     return mtl_files
 
 
-def get_cry_root_path():
-    return "C:/Users/Dan/Documents/!!Blender/Programming/CryEngine3.4.5/Game"
-
-
-def get_cryblend_root_path():
-    return os.path.dirname(__file__)
-
-
-def get_project_path():
-    scene = bpy.data.scenes[0]
-    return fix_filename(scene["project_name"])
-
-
-def get_project_name():
-    scene = bpy.data.scenes[0]
-    pathComponents = fix_filename(scene["project_name"]).split("/")
-    return pathComponents[len(pathComponents)-1]
-
-
-def get_texture_path():
-    return "%s/%s/%s/%s" % (get_cry_root_path(), "Objects", get_project_path(), "Textures")
-
-
-def fix_filename(name):
-    return name.replace("\\", "/")
-
-
-def make_active_scene(active_scene):
-    old_active_scene = bpy.context.scene
-    bpy.data.screens["Default"].scene = active_scene
-    bpy.context.screen.scene = active_scene
-    return old_active_scene
-
-
-def handle_dev_files(run_object):
-    run_object.wait()
-    delete_files = True
-    dae_path = bpy.path.ensure_ext("%s/%s/%s/%s" % (get_cry_root_path(), "Objects", get_project_path(), get_project_name()), ".dae")
-    rcdone_path = bpy.path.ensure_ext("%s/%s/%s/%s" % (get_cry_root_path(), "Objects", get_project_path(), get_project_name()), ".dae.rcdone")
-    if (delete_files):
-        os.remove(dae_path)
-        os.remove(rcdone_path)
-    else:
-        dae_head, dae_tail = os.path.split(dae_path)
-        rcdone_head, rcdone_tail = os.path.split(rcdone_path)
-        dae_path_new = "%s/%s/%s" % (dae_head, "Dev", dae_tail)
-        rcdone_path_new = "%s/%s/%s" % (rcdone_head, "Dev", rcdone_tail)
-        if (not os.path.exists(dae_path_new)):
-            os.renames(dae_path, dae_path_new)
-        else:
-            shutil.copy(dae_path, dae_path_new)
-            os.remove(dae_path)
-        if (not os.path.exists(rcdone_path_new)):
-            os.renames(rcdone_path, rcdone_path_new)
-        else:
-            shutil.copy(rcdone_path, rcdone_path_new)
-            os.remove(rcdone_path)
-
-
 def run_rc(rc_path, files_to_process, params=None):
     cbPrint(rc_path)
     process_params = [rc_path]
@@ -285,8 +225,6 @@ def run_rc(rc_path, files_to_process, params=None):
         run_object = subprocess.Popen(process_params)
     except:
         raise exceptions.NoRcSelectedException
-
-    handle_dev_files(run_object)
 
     return run_object
 

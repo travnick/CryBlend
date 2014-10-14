@@ -1,6 +1,0 @@
-<?xml version="1.0" ?>
-<Params>
-	<AnimationList>
-        <Animation name="anim1" path="anim1.caf"/>
-	</AnimationList>
-</Params>
