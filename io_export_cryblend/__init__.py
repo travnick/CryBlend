@@ -1140,108 +1140,69 @@ class RemoveFakeBones(bpy.types.Operator):
             return {'FINISHED'}
 
 
-# fakebone keyframe
-class AddFakeBoneKeyframeList(bpy.types.Operator):
+class KeyframeFakebones(bpy.types.Operator):
     '''Adds a key frame list for the fakebones.'''
     bl_label = "Make Fakebone Keyframes List"
-    bl_idname = "armature.add_fakebone_keyframe_list"
+    bl_idname = "armature.keyframe_fakebones"
 
     def execute(self, context):
-        return add_fake_bone_keyframe_list(self, context)
+        return keyframe_fakebones()
 
 
-class AddFakeBoneKeyframe(bpy.types.Operator):
-    '''Adds a key frame to each fakebone.'''
-    bl_label = "Add Fakebone Keyframe"
-    bl_idname = "armature.add_fakebone_keyframe"
-
-    def execute(self, context):
-        return add_fake_bone_keyframe(self, context)
-
-
-# fakebones
-# keyframe insert for fake bones
-loclist = []
-rotlist = []
-# scene = bpy.context.scene
-
-
-def add_fake_bone_keyframe_list(self, context):
+def keyframe_fakebones():
     scene = bpy.context.scene
-    object_ = None
-    for a in bpy.context.scene.objects:
-        if a.type == 'ARMATURE':
-            object_ = a
-    bpy.ops.screen.animation_play()
+    location_list = []
+    rotation_list = []
+    keyframe_list = []
+    armature = None
+    for object_ in scene.objects:
+        if (object_.type == "ARMATURE"):
+            armature = object_
 
-    if object_:
-        for frame in range(scene.frame_end + 1):
-            # frame = frame + 5
-            '''do the inverse parent times current to get proper info here'''
-            cbPrint("Stage 1 auto-keyframe.")
-            scene.frame_set(frame)
-            for bone in object_.pose.bones:
-                if bone.parent:
-                    if bone.parent.parent:
-                        for bonep in bpy.context.scene.objects:
-                            if bonep.name == bone.parent.name:
-                                bonepm = bonep.matrix_local
-                        for bonec in bpy.context.scene.objects:
-                            if bonec.name == bone.name:
-                                bonecm = bonec.matrix_local
-                        animatrix = bonepm.inverted() * bonecm
-                        lm, rm, sm = animatrix.decompose()
-                        ltmp = [frame, bone.name, lm]
-                        rtmp = [frame, bone.name, rm.to_euler()]
-                        loclist.append(ltmp)
-                        rotlist.append(rtmp)
-                    else:
-                        for i in bpy.context.scene.objects:
-                            if i.name == bone.name:
-                                lm, rm, sm = i.matrix_local.decompose()
-                                ltmp = [frame, bone.name, lm]
-                                rtmp = [frame, bone.name, rm.to_euler()]
-                                loclist.append(ltmp)
-                                rotlist.append(rtmp)
-                else:
-                    for i in bpy.context.scene.objects:
-                        if i.name == bone.name:
-                            lm, rm, sm = i.matrix_local.decompose()
-                            ltmp = [frame, bone.name, lm]
-                            rtmp = [frame, bone.name, rm.to_euler()]
-                            loclist.append(ltmp)
-                            rotlist.append(rtmp)
-        bpy.ops.screen.animation_play()
-    return {'FINISHED'}
+    if (armature is None):
+        return {"FINISHED"}
 
+    # Stage 1: Find unique keyframes
+    action = armature.animation_data.action
+    for fcurve in action.fcurves:
+        for keyframe in fcurve.keyframe_points:
+            keyframe_entry = int(keyframe.co.x)
+            if (keyframe_entry not in keyframe_list):
+                keyframe_list.append(keyframe_entry)
 
-def add_fake_bone_keyframe(self, context):
-    scene = bpy.context.scene
-    sfc = scene.frame_current
-    object_ = None
-    for a in bpy.context.scene.objects:
-        if a.type == 'ARMATURE':
-            object_ = a
-            break
+    # Stage 2: Calculate fakebone transformation data
+    for frame in keyframe_list:
+        scene.frame_set(frame)
+        for bone in armature.pose.bones:
+            fakebone = scene.objects.get(bone.name)
+            if (fakebone is None):
+                return {"FINISHED"}
+            bonecm = fakebone.matrix_local
+            if (bone.parent and bone.parent.parent):
+                bonepm = scene.objects.get(bone.parent.name).matrix_local
+                # Relative to parent = inverse parent bone matrix * bone matrix
+                animatrix = bonepm.inverted() * bonecm
+            else:
+                # Root bone or bones connected directly to root
+                animatrix = bonecm
+            lm, rm, sm = animatrix.decompose()
+            location_list.append(lm)
+            rotation_list.append(rm.to_euler())
 
-    if object_:
-        for bone in object_.pose.bones:
-            i = bpy.context.scene.objects.get(bone.name)
-            if i is not None:
-                # TODO: merge those two for loops if possible
-                for fr in loclist:
-                    if fr[0] == sfc:
-                        if fr[1] == bone.name:
-                            cbPrint(fr[2])
-                            i.location = fr[2]
-                            i.keyframe_insert(data_path="location")
-                for fr in rotlist:
-                    cbPrint(fr)
-                    if fr[0] == sfc:
-                        if fr[1] == bone.name:
-                            cbPrint(fr[2])
-                            i.rotation_euler = fr[2]
-                            i.keyframe_insert(data_path="rotation_euler")
+    # Stage 3: Keyframe fakebones
+    i = 0
+    for frame in keyframe_list:
+        scene.frame_set(frame)
+        for bone in armature.pose.bones:
+            fakebone = scene.objects.get(bone.name)
+            fakebone.location = location_list[i]
+            fakebone.rotation_euler = rotation_list[i]
+            fakebone.keyframe_insert(data_path="location")
+            fakebone.keyframe_insert(data_path="rotation_euler")
+            i += 1
+            
+    scene.frame_set(scene.frame_start)
+
     return {'FINISHED'}
 
 
@@ -1545,7 +1506,8 @@ class Export(bpy.types.Operator, ExportHelper):
         return {'FINISHED'}
 
     def draw(self, context):
-        col = self.col
+        layout = self.layout
+        col = layout.column()
 
         box = col.box()
         box.label("General")
@@ -1681,8 +1643,7 @@ class BoneUtilitiesPanel(View3DPanel, Panel):
 
         col.label(text="Animation", icon='KEY_HLT')
         col.separator()
-        col.operator("armature.add_fakebone_keyframe_list", text="FakeBone Keyframe List")
-        col.operator("armature.add_fakebone_keyframe", text="FakeBone Keyframe")
+        col.operator("armature.keyframe_fakebones", text="Keyframe Fakebones")
         col.separator()
 
         col.label(text="Physics", icon="PHYSICS")
@@ -1773,7 +1734,7 @@ class BoneUtilitiesMenu(bpy.types.Menu):
         layout.separator()
 
         layout.label(text="Animation")
-        layout.operator("armature.add_fakebone_keyframe_list", text="Add FakeBone Keyframe List", icon='KEY_HLT')
+        layout.operator("armature.keyframe_fakebones", text="Add FakeBone Keyframe List", icon='KEY_HLT')
         layout.operator("armature.add_fakebone_keyframe", text="Add FakeBone Keyframe", icon='KEY_HLT')
         layout.separator()
 
@@ -1959,8 +1920,7 @@ def get_classes_to_register():
 
         AddFakeBone,
         RemoveFakeBones,
-        AddFakeBoneKeyframeList,
-        AddFakeBoneKeyframe,
+        KeyframeFakebones,
         RenamePhysBones,
         AddBoneGeometry,
         RemoveBoneGeometry,
