@@ -1163,7 +1163,10 @@ def keyframe_fakebones():
         return {"FINISHED"}
 
     # Stage 1: Find unique keyframes
-    action = armature.animation_data.action
+    animation_data = armature.animation_data
+    if (animation_data is None):
+        return {"FINISHED"}
+    action = animation_data.action
     for fcurve in action.fcurves:
         for keyframe in fcurve.keyframe_points:
             keyframe_entry = int(keyframe.co.x)
