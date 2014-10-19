@@ -17,6 +17,7 @@ from bpy_extras.io_utils import ExportHelper
 import bpy
 import bpy.ops
 import bpy_extras
+import re
 # from add_utils import AddObjectHelper, add_object_data
 
 
@@ -191,36 +192,43 @@ def add_deformable_property(self, context):
 def add_phys_default(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        me.active_material.name = "%s__physDefault" % me.active_material.name
+        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physDefault")
     return{'FINISHED'}
 
 
 def add_phys_none(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        me.active_material.name = "%s__physNone" % me.active_material.name
+        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physNone")
     return{'FINISHED'}
 
 
 def add_phys_proxy_no_draw(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        me.active_material.name = "%s__physProxyNoDraw" % me.active_material.name
+        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physProxyNoDraw")
     return{'FINISHED'}
 
 
 def add_phys_obstruct(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        me.active_material.name = "%s__physObstruct" % me.active_material.name
+        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physObstruct")
     return{'FINISHED'}
 
 
 def add_phys_no_collide(self, context):
     me = bpy.context.active_object
     if me.active_material:
-        me.active_material.name = "%s__physNoCollide" % me.active_material.name
+        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physNoCollide")
     return{'FINISHED'}
+
+
+def replacePhysMaterial(materialname, phys):
+    if "__phys" in materialname:
+        return re.sub(r"__phys.*", phys, materialname)
+    else:
+        return "{}{}".format(materialname, phys)
 
 
 # CGF/CGA/CHR
