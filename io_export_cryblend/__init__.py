@@ -223,6 +223,70 @@ class AddCryExportNode(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
 
+class AddProxy(bpy.types.Operator):
+    '''Click to add proxy to selected mesh. The proxy will always display as a box but will \
+be converted to the selected shape in CryEngine.'''
+    bl_label = "Add Proxy"
+    bl_idname = "object.add_proxy"
+    type = StringProperty()
+
+    def execute(self, context):
+        active = bpy.context.active_object
+
+        if (active.type == "MESH"):
+            already_exists = False
+            for object_ in bpy.data.objects:
+                if (object_.name == "{0}_{1}-proxy".format(active.name, getattr(self, "type")) or
+                        object_.name.endswith("-proxy")):
+                    already_exists = True
+                    break
+            if (not already_exists):
+                self.add_proxy(active, type)
+
+        message = "Adding %s proxy to active object" % getattr(self, "type")
+        self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+    def add_proxy(self, object_, type):
+        old_origin = object_.location.copy()
+        old_cursor = bpy.context.scene.cursor_location.copy()
+        bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
+        bpy.ops.object.select_all(action="DESELECT")
+        bpy.ops.mesh.primitive_cube_add()
+        bound_box = bpy.context.active_object
+        bound_box.name = "{0}_{1}-proxy".format(object_.name, getattr(self, "type"))
+        bound_box.draw_type = "WIRE"
+        bound_box.dimensions = object_.dimensions
+        bound_box.location = object_.location
+        bound_box.rotation_euler = object_.rotation_euler
+
+        for group in object_.users_group:
+            bpy.ops.object.group_link(group=group.name)
+
+        proxy_material = bpy.data.materials.new("{0}_{1}-proxy__physProxyNone".format(object_.name, getattr(self, "type")))
+        bound_box.data.materials.append(proxy_material)
+
+        if (getattr(self, "type") == "box"):
+            bpy.ops.object.add_box_proxy_property()
+        elif (getattr(self, "type") == "capsule"):
+            bpy.ops.object.add_capsule_proxy_property()
+        elif (getattr(self, "type") == "cylinder"):
+            bpy.ops.object.add_cylinder_proxy_property()
+        else: # sphere proxy
+            bpy.ops.object.add_sphere_proxy_property()
+
+        bpy.context.scene.cursor_location = old_origin
+        bpy.ops.object.select_all(action="DESELECT")
+        object_.select = True
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        object_.select = False
+        bound_box.select = True
+        bpy.context.scene.objects.active = bound_box
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        bpy.context.scene.cursor_location = old_cursor
+
+
 class AddAnimNode(bpy.types.Operator):
     '''Click to add an AnimNode to selection or with nothing selected
 add an AnimNode to the scene'''
@@ -1395,6 +1459,23 @@ def multiline_label(layout, text):
 # MENU:
 #------------------------------------------------------------------------------
 
+
+class AddPhysicsProxyMenu(bpy.types.Menu):
+    bl_label = "Add Physics Proxy"
+    bl_idname = "menu.add_physics_proxy"
+
+    def draw(self, context):
+        layout = self.layout
+        add_box_proxy = layout.operator("object.add_proxy", text="Box", icon="META_CUBE")
+        add_box_proxy.type = "box"
+        add_capsule_proxy = layout.operator("object.add_proxy", text="Capsule", icon="META_ELLIPSOID")
+        add_capsule_proxy.type = "capsule"
+        add_cylinder_proxy = layout.operator("object.add_proxy", text="Cylinder", icon="META_CAPSULE")
+        add_cylinder_proxy.type = "cylinder"
+        add_sphere_proxy = layout.operator("object.add_proxy", text="Sphere", icon="META_BALL")
+        add_sphere_proxy.type = "sphere"
+
+
 class MeshRepairToolsMenu(bpy.types.Menu):
     bl_label = "Weight Paint Repair"
     bl_idname = "menu.weight_paint_repair"
@@ -1525,6 +1606,7 @@ class Tools():
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("object.add_cry_export_node", icon='VIEW3D_VEC')
+        layout.menu("menu.add_physics_proxy", icon="ROTATE")
         layout.operator("object.add_joint", icon='META_CUBE')
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
@@ -1589,6 +1671,7 @@ def get_classes_to_register():
 
         AddBreakableJoint,
         AddCryExportNode,
+        AddProxy,
         AddAnimNode,
 
         OpenUDPWebpage,
@@ -1650,6 +1733,7 @@ def get_classes_to_register():
         ErrorHandler,
 
         ToolsMenu,
+        AddPhysicsProxyMenu,
         MeshRepairToolsMenu,
         AddMaterialPhysicsMenu,
         AddBreakablePropertiesMenu,
