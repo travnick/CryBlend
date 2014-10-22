@@ -1564,10 +1564,12 @@ class CrytekDaeExporter:
 
     def __get_objects_for_library_geometries(self):
         objects = []
-        for object_ in bpy.context.selected_objects:
-            if (object_.name[:6] != "_joint"):
-                if (object_.type == "MESH"):
-                    objects.append(object_)
+        for group in bpy.context.blend_data.groups:
+            if (group.name.startswith("CryExportNode_")):
+                for object_ in group.objects:
+                    if (object_.name[:6] != "_joint"):
+                        if (object_.type == "MESH"):
+                            objects.append(object_)
 
         return objects
 
@@ -1964,34 +1966,35 @@ class CrytekDaeExporter:
         # the same for <scene>
         visual_scene.setAttribute("id", "scene")
         visual_scene.setAttribute("name", "scene")
-        for item in bpy.context.blend_data.groups:
-            if item:
-                ename = str(item.id_data.name)
-                node1 = self.__doc.createElement("node")
-                node1.setAttribute("id", "%s" % (ename))
-                node1.setIdAttribute('id')
-            visual_scene.appendChild(node1)
-            node1 = self.write_visual_scene(item.objects, node1)
-            # export node settings
-            ext1 = self.__doc.createElement("extra")
-            tc3 = self.__doc.createElement("technique")
-            tc3.setAttribute("profile", "CryEngine")
-            prop1 = self.__doc.createElement("properties")
-            if self.__config.export_type == 'CGF':
-                pcgf = self.__doc.createTextNode("fileType=cgf")
-                prop1.appendChild(pcgf)
-            if self.__config.export_type == 'CGA & ANM':
-                pcga = self.__doc.createTextNode("fileType=cgaanm")
-                prop1.appendChild(pcga)
-            if self.__config.export_type == 'CHR & CAF':
-                pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
-                prop1.appendChild(pchrcaf)
-            if self.__config.donot_merge:
-                pdnm = self.__doc.createTextNode("DoNotMerge")
-                prop1.appendChild(pdnm)
-            tc3.appendChild(prop1)
-            ext1.appendChild(tc3)
-            node1.appendChild(ext1)
+        for group in bpy.context.blend_data.groups:
+            if (group.name.startswith("CryExportNode_")):
+                if group:
+                    ename = str(group.id_data.name)
+                    node1 = self.__doc.createElement("node")
+                    node1.setAttribute("id", "%s" % (ename))
+                    node1.setIdAttribute('id')
+                visual_scene.appendChild(node1)
+                node1 = self.write_visual_scene(group.objects, node1)
+                # export node settings
+                ext1 = self.__doc.createElement("extra")
+                tc3 = self.__doc.createElement("technique")
+                tc3.setAttribute("profile", "CryEngine")
+                prop1 = self.__doc.createElement("properties")
+                if self.__config.export_type == 'CGF':
+                    pcgf = self.__doc.createTextNode("fileType=cgf")
+                    prop1.appendChild(pcgf)
+                if self.__config.export_type == 'CGA & ANM':
+                    pcga = self.__doc.createTextNode("fileType=cgaanm")
+                    prop1.appendChild(pcga)
+                if self.__config.export_type == 'CHR & CAF':
+                    pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
+                    prop1.appendChild(pchrcaf)
+                if self.__config.donot_merge:
+                    pdnm = self.__doc.createTextNode("DoNotMerge")
+                    prop1.appendChild(pdnm)
+                tc3.appendChild(prop1)
+                ext1.appendChild(tc3)
+                node1.appendChild(ext1)
 
     def __export_scene(self, parent_element):
         # <scene> nothing really changes here or rather it doesn't need to.
