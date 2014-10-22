@@ -58,10 +58,11 @@ else:
     from io_export_cryblend import add, export, exceptions
 
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
-    FloatProperty, StringProperty
+    FloatProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.configuration import Configuration
 from io_export_cryblend.outPipe import cbPrint
+from xml.dom.minidom import Document, Element, parse, parseString
 import bmesh
 import bpy.ops
 import bpy_extras
@@ -70,6 +71,7 @@ import os
 import os.path
 import pickle
 import webbrowser
+import subprocess
 
 
 # for help
@@ -1391,9 +1393,163 @@ def multiline_label(layout, text):
 
 
 #------------------------------------------------------------------------------
+# Scripting
+# Module:
+#------------------------------------------------------------------------------
+
+
+class SelectScriptEditor(bpy.types.Operator, PathSelectTemplate):
+    '''Select a text editor of your choice to open scripts (i.e., notepad++.exe)'''
+
+    bl_label = "Select Script/Text Editor"
+    bl_idname = "file.select_script_editor"
+
+    filename_ext = ".exe"
+    filter_glob = StringProperty(default="*.exe", options={'HIDDEN'})
+
+    def process(self, filepath):
+        Configuration.script_editor = filepath
+
+    def invoke(self, context, event):
+        self.filepath = Configuration.script_editor
+
+        return ExportHelper.invoke(self, context, event)
+
+
+class GenerateScript(bpy.types.Operator, PathSelectTemplate):
+    bl_label = "Generate Script"
+    bl_idname = "wm.generate_script"
+
+    filename_ext = ""
+    filter_glob = StringProperty(options={'HIDDEN'})
+
+    type = StringProperty(options={'HIDDEN'})
+    entries = IntProperty(name="Entries", min=1, default=1)
+
+    def process(self, filepath):
+        if (getattr(self, "type") == "CHRPARAMS"):
+            self.generate_chrparams(filepath, self.entries)
+        elif (getattr(self, "type") == "CDF"):
+            self.generate_cdf(filepath, self.entries)
+        elif (getattr(self, "type") == "ENT"):
+            self.generate_ent(filepath)
+        elif (getattr(self, "type") == "LUA"):
+            self.generate_lua(filepath)
+
+    def invoke(self, context, event):
+        if (getattr(self, "type") == "CHRPARAMS"):
+            self.filename_ext = ".chrparams"
+            self.filter_glob = "*.chrparams"
+        elif (getattr(self, "type") == "CDF"):
+            self.filename_ext = ".cdf"
+            self.filter_glob = "*.cdf"
+        elif (getattr(self, "type") == "ENT"):
+            self.filename_ext = ".ent"
+            self.filter_glob = "*.ent"
+        elif (getattr(self, "type") == "LUA"):
+            self.filename_ext = ".lua"
+            self.filter_glob = "*.lua"
+        return ExportHelper.invoke(self, context, event)
+
+    def draw(self, context):
+        layout = self.layout
+        if (getattr(self, "type") == "CHRPARAMS" or
+                getattr(self, "type") == "CDF"):
+            layout.prop(self, "entries")
+
+    def generate_chrparams(self, filepath, entries):
+        contents = """<Params>\
+<AnimationList>\
+</AnimationList>\
+</Params>"""
+        script = parseString(contents)
+
+        animation_list = script.getElementsByTagName("AnimationList")[0]
+        animation = parseString("""<Animation name="???" path="???.caf"/>""").getElementsByTagName("Animation")[0]
+        for index in range(0, entries):
+            animation_list.appendChild(animation.cloneNode(deep=False))
+        contents = script.toprettyxml(indent="\t")
+
+        self.generate_file(filepath, contents)
+
+    def generate_cdf(self, filepath, entries):
+        contents = """<CharacterDefinition>\
+<Model File="???.chr" Material="???"/>\
+<AttachmentList>\
+</AttachmentList>\
+<ShapeDeformation COL0="0" COL1="0" COL2="0" COL3="0" COL4="0" COL5="0" COL6="0" COL7="0"/>\
+</CharacterDefinition>"""
+
+        script = parseString(contents)
+
+        attachment_list = script.getElementsByTagName("AttachmentList")[0]
+        attachment = parseString("""<Attachment AName="???" Type="CA_SKIN" Rotation="1,0,0,0" Position="0,0,0" \
+                                    BoneName="" Binding="???.chr" Flags="0"/>""").getElementsByTagName("Attachment")[0]
+        for index in range(0, entries):
+            attachment_list.appendChild(attachment.cloneNode(deep=False))
+        contents = script.toprettyxml(indent="\t")
+
+        self.generate_file(filepath, contents)
+
+    def generate_ent(self, filepath):
+        contents = """<?xml version="1.0" ?>
+<Entity
+\tName="???"
+\tScript="Scripts/Entities/???.lua"
+/>
+"""
+
+        self.generate_file(filepath, contents)
+
+    def generate_lua(self, filepath):
+        contents = ""
+
+        self.generate_file(filepath, contents)
+
+    def generate_file(self, filepath, contents):
+        file = open(filepath, "w")
+        file.write(contents)
+        file.close()
+
+        message="Please select a text editor .exe such as Notepad or Notepad++.\n\
+This will be used as the default program for opening scripts."
+        if (len(Configuration.script_editor) == 0):
+            try:
+                os.startfile(filepath)
+            except:
+                bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
+        else:
+            try:
+                process = subprocess.Popen([Configuration.script_editor, filepath])
+            except:
+                bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
+
+
+#------------------------------------------------------------------------------
 # CryBlend
 # MENU:
 #------------------------------------------------------------------------------
+
+
+class GenerateScriptMenu(bpy.types.Menu):
+    bl_label = "Generate Script"
+    bl_idname = "menu.generate_script"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Generate")
+        layout.separator()
+        chrparams_generator = layout.operator("wm.generate_script", text="CHRPARAMS", icon="SPACE2")
+        chrparams_generator.type = "CHRPARAMS"
+        cdf_generator = layout.operator("wm.generate_script", text="CDF", icon="SPACE2")
+        cdf_generator.type = "CDF"
+        ent_generator = layout.operator("wm.generate_script", text="ENT", icon="SPACE2")
+        ent_generator.type = "ENT"
+        lua_generator = layout.operator("wm.generate_script", text="LUA", icon="SPACE2")
+        lua_generator.type = "LUA"
+        layout.separator()
+        layout.operator("file.select_script_editor", icon="TEXT")
+
 
 class MeshRepairToolsMenu(bpy.types.Menu):
     bl_label = "Weight Paint Repair"
@@ -1553,6 +1709,8 @@ class Tools():
         layout.operator("object.find_degenerate_faces", icon='ZOOM_ALL')
         layout.operator("mesh.find_multiface_lines", icon='ZOOM_ALL')
         layout.separator()
+        layout.menu("menu.generate_script", icon='TEXT')
+        layout.separator()
         # layout.operator("object.fix_wheel_transforms", icon='ZOOM_ALL')
         layout.separator()
 
@@ -1649,7 +1807,11 @@ def get_classes_to_register():
         Export,
         ErrorHandler,
 
+        SelectScriptEditor,
+        GenerateScript,
+
         ToolsMenu,
+        GenerateScriptMenu,
         MeshRepairToolsMenu,
         AddMaterialPhysicsMenu,
         AddBreakablePropertiesMenu,
