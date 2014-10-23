@@ -1743,36 +1743,14 @@ class PropPanel():
         return scene and (scene.render.engine in cls.COMPAT_ENGINES)
 
 
+class View3DPanel():
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_category = "CryBlend"
+
+
 class CryBlendPanel(PropPanel, Panel):
     bl_label = "CryBlend"
-
-    def draw(self, context):
-        pass
-
-
-class GenerateScriptMenu(bpy.types.Menu):
-    bl_label = "Generate Script"
-    bl_idname = "menu.generate_script"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.label(text="Generate")
-        layout.separator()
-        chrparams_generator = layout.operator("wm.generate_script", text="CHRPARAMS", icon="SPACE2")
-        chrparams_generator.type = "CHRPARAMS"
-        cdf_generator = layout.operator("wm.generate_script", text="CDF", icon="SPACE2")
-        cdf_generator.type = "CDF"
-        ent_generator = layout.operator("wm.generate_script", text="ENT", icon="SPACE2")
-        ent_generator.type = "ENT"
-        lua_generator = layout.operator("wm.generate_script", text="LUA", icon="SPACE2")
-        lua_generator.type = "LUA"
-        layout.separator()
-        layout.operator("file.select_script_editor", icon="TEXT")
-
-
-class MeshRepairToolsMenu(bpy.types.Menu):
-    bl_label = "Weight Paint Repair"
-    bl_idname = "menu.weight_paint_repair"
 
     def draw(self, context):
         layout = self.layout
@@ -1786,12 +1764,6 @@ class MeshRepairToolsMenu(bpy.types.Menu):
         row.operator("file.select_textures_directory", text="Select Textures Folder")
         col.separator()
         col.operator("scene.export_to_game", icon="GAME")
-
-
-class View3DPanel():
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
-    bl_category = "CryBlend"
 
 
 class ExportUtilitiesPanel(View3DPanel, Panel):
@@ -1896,6 +1868,8 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.separator()
         layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
         layout.separator()
+        layout.menu("menu.generate_script", icon='TEXT')
+        layout.separator()
         layout.menu(HelpMenu.bl_idname, icon='QUESTION')
 
 
@@ -1913,8 +1887,6 @@ class BoneUtilitiesMenu(bpy.types.Menu):
 
         layout.label(text="Animation")
         layout.operator("armature.keyframe_fakebones", text="Keyframe Fakebones", icon='KEY_HLT')
-
-        layout.menu("menu.generate_script", icon='TEXT')
         layout.separator()
 
         layout.label(text="Physics")
@@ -2019,6 +1991,26 @@ class CustomPropertiesMenu(bpy.types.Menu):
         sub.label(" ")
         sub.label(" ")
         sub.separator()
+
+
+class GenerateScriptMenu(bpy.types.Menu):
+    bl_label = "Generate Script"
+    bl_idname = "menu.generate_script"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Generate")
+        layout.separator()
+        chrparams_generator = layout.operator("wm.generate_script", text="CHRPARAMS", icon="SPACE2")
+        chrparams_generator.type = "CHRPARAMS"
+        cdf_generator = layout.operator("wm.generate_script", text="CDF", icon="SPACE2")
+        cdf_generator.type = "CDF"
+        ent_generator = layout.operator("wm.generate_script", text="ENT", icon="SPACE2")
+        ent_generator.type = "ENT"
+        lua_generator = layout.operator("wm.generate_script", text="LUA", icon="SPACE2")
+        lua_generator.type = "LUA"
+        layout.separator()
+        layout.operator("file.select_script_editor", icon="TEXT")
 
 
 class HelpMenu(bpy.types.Menu):
@@ -2136,14 +2128,13 @@ def get_classes_to_register():
         TouchBendingMenu,
         MeshUtilitiesMenu,
         CustomPropertiesMenu,
+        GenerateScriptMenu,
         HelpMenu,
+
+        AddMaterialPhysicsMenu,
 
         SelectScriptEditor,
         GenerateScript,
-
-        GenerateScriptMenu,
-        MeshRepairToolsMenu,
-        AddMaterialPhysicsMenu,
     )
 
     return classes
