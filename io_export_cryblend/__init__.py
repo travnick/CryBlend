@@ -225,9 +225,9 @@ class AddCryExportNode(bpy.types.Operator):
 
 
 class SelectedToCryExportNodes(bpy.types.Operator):
-    '''Click to add selected objects to CryExportNodes using object names.'''
+    '''Click to add selected objects to individual CryExportNodes.'''
     bl_label = "Selected to CryExportNodes"
-    bl_idname = "object.selected_to_cry_epxort_nodes"
+    bl_idname = "object.selected_to_cry_export_nodes"
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
@@ -1546,7 +1546,7 @@ class Tools():
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("object.add_cry_export_node", icon='OBJECT_DATA')
-        layout.operator("object.selected_to_cry_epxort_nodes", icon='GROUP')
+        layout.operator("object.selected_to_cry_export_nodes", icon='GROUP')
         layout.operator("object.add_joint", icon='META_CUBE')
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
