@@ -26,7 +26,8 @@ class __Configuration:
     __CONFIG_FILEPATH = os.path.join(__CONFIG_PATH, __CONFIG_FILENAME)
     __DEFAULT_CONFIGURATION = {'RC_LOCATION': r'',
                               'RC_FOR_TEXTURES_CONVERSION': r'',
-                              'TEXTURES_DIR': r''}
+                              'TEXTURES_DIR': r'',
+                              'SCRIPT_EDITOR': r''}
 
     def __init__(self):
         self.__CONFIG = self.__load({})
@@ -57,6 +58,14 @@ class __Configuration:
     @textures_directory.setter
     def textures_directory(self, value):
         self.__CONFIG['TEXTURES_DIR'] = value
+
+    @property
+    def script_editor(self):
+        return self.__CONFIG['SCRIPT_EDITOR']
+
+    @script_editor.setter
+    def script_editor(self, value):
+        self.__CONFIG['SCRIPT_EDITOR'] = value
 
     def save(self):
         cbPrint("Saving configuration file.", 'debug')
