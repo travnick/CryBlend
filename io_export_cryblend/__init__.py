@@ -1637,22 +1637,10 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-
-<<<<<<< HEAD
-        layout.operator_context = 'INVOKE_REGION_WIN'
-        layout.label(text="Add Material Physics")
-        layout.separator()
-        layout.operator("material.add_phys_default", text="__physDefault", icon='PHYSICS')
-        layout.operator("material.add_phys_proxy_no_draw", text="__physProxyNoDraw", icon='PHYSICS')
-        layout.operator("material.add_phys_none", text="__physNone", icon='PHYSICS')
-        layout.operator("material.add_phys_obstruct", text="__physObstruct", icon='PHYSICS')
-        layout.operator("material.add_phys_no_collide", text="__physNoCollide", icon='PHYSICS')
-=======
         col.operator("object.add_cry_export_node")
         col.operator("object.add_anim_node")
         col.separator()
         col.operator("object.add_joint")
->>>>>>> origin/feature/gui
 
 
 class BoneUtilitiesPanel(View3DPanel, Panel):
@@ -1761,8 +1749,7 @@ class BoneUtilitiesMenu(bpy.types.Menu):
         layout.separator()
 
         layout.label(text="Animation")
-        layout.operator("armature.keyframe_fakebones", text="Add FakeBone Keyframe List", icon='KEY_HLT')
-        layout.operator("armature.add_fakebone_keyframe", text="Add FakeBone Keyframe", icon='KEY_HLT')
+        layout.operator("armature.keyframe_fakebones", text="Keyframe Fakebones", icon='KEY_HLT')
         layout.separator()
 
         layout.label(text="Physics")
