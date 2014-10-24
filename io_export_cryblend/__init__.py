@@ -225,7 +225,7 @@ class AddCryExportNode(bpy.types.Operator):
 
 
 
-class SetMaterialsNames(bpy.types.Operator):
+class SetMaterialNames(bpy.types.Operator):
     '''Materials will be named after the first CryExportNode the Object is in.'''
     """Set Material Names by heeding the RC naming scheme:
         - CryExportNode group name
@@ -233,7 +233,7 @@ class SetMaterialsNames(bpy.types.Operator):
         - Physics
     """
     bl_label = "Update material names in CryExportNodes"
-    bl_idname = "material.set_materials_names"
+    bl_idname = "material.set_material_names"
     physUserInput = StringProperty(name="Physics", default = "physDefault")
 
     def execute(self, context):
@@ -301,7 +301,7 @@ def extractCryBlendProperties(materialname):
     """Returns the CryBlend properties of a materialname as dict or
     None if name is invalid.
     """
-    if isCryBlendMaterialName(materialname):
+    if isCryBlendMaterial(materialname):
         groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
         properties = {}
         properties["ExportNode"] = groups[0][0]
@@ -1659,7 +1659,7 @@ class Tools():
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("object.add_cry_export_node", icon='VIEW3D_VEC')
-        layout.operator("material.set_materials_names", icon='MATERIAL')
+        layout.operator("material.set_material_names", icon='MATERIAL')
         layout.operator("object.add_joint", icon='META_CUBE')
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
@@ -1725,7 +1725,7 @@ def get_classes_to_register():
 
         AddBreakableJoint,
         AddCryExportNode,
-        SetMaterialsNames,
+        SetMaterialNames,
         AddAnimNode,
 
         OpenUDPWebpage,
