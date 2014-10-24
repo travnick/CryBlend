@@ -223,14 +223,15 @@ class AddCryExportNode(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
-###
-# Set Material Names by heeding the RC naming scheme:
-# - CryExportNode group name
-# - Strict number sequence beginning with 1 for each CryExportNode
-# - Physics
-##
+
+
 class SetMaterialsNames(bpy.types.Operator):
     '''Materials will be named after the first CryExportNode the Object is in.'''
+    """Set Material Names by heeding the RC naming scheme:
+        - CryExportNode group name
+        - Strict number sequence beginning with 1 for each CryExportNode (max 999)
+        - Physics
+    """
     bl_label = "Update material names in CryExportNodes"
     bl_idname = "material.set_materials_names"
     physUserInput = StringProperty(name="Physics", default = "physDefault")
@@ -242,7 +243,7 @@ class SetMaterialsNames(bpy.types.Operator):
 
         # Create a dictionary with all CryExportNodes to store the current number
         # of materials in it.
-        materialCounter = setMaterialCounter()
+        materialCounter = getMaterialCounter()
 
         for group in bpy.data.groups:
             if isExportNode(group.name):
@@ -250,12 +251,12 @@ class SetMaterialsNames(bpy.types.Operator):
                     for slot in object.material_slots:
 
                         # Skip materials that have been renamed already.
-                        if not isInExportNode(materialCounter, slot.material.name):
+                        if not isCryBlendMaterial(slot.material.name):
                             materialCounter[group.name] += 1
                             materialOldName = slot.material.name
 
                             # Load stored Physics if available for that material.
-                            if slot.material.name in physicsProperties:
+                            if physicsProperties.get(slot.material.name):
                                 physics = physicsProperties[slot.material.name]
                             else:
                                 physics = self.physUserInput
@@ -276,36 +277,32 @@ class SetMaterialsNames(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
-###
-# Returns a dictionary with all CryExportNodes
-##
-def setMaterialCounter():
+def getMaterialCounter():
+    """Returns a dictionary with all CryExportNodes."""
     materialCounter = {}
     for group in bpy.data.groups:
         if isExportNode(group.name):
             materialCounter[group.name] = 0
     return materialCounter
 
-###
-# Remove CryBlend properties from all material names and store their
-# Physics in a dictionary.
-##
 def revertMaterialNames():
+    """Removes CryBlend properties from all material names and store their
+    Physics in a dictionary.
+    """
     physicsProperties = {}
     for material in bpy.data.materials:
-        if isCryBlendMaterialName(material.name):
+        if isCryBlendMaterial(material.name):
             properties = extractCryBlendProperties(material.name)
             physicsProperties[properties["Name"]] = properties["Physics"]
             material.name = properties["Name"]
     return physicsProperties
 
-###
-# Returns the CryBlend properties of a materialname as dict or
-# None if name is invalid.
-##
 def extractCryBlendProperties(materialname):
+    """Returns the CryBlend properties of a materialname as dict or
+    None if name is invalid.
+    """
     if isCryBlendMaterialName(materialname):
-        groups = re.findall("(.+?)__([0-9]+?)__(.*?)__(phys[A-Za-z0-9]+)", materialname)
+        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
         properties = {}
         properties["ExportNode"] = groups[0][0]
         properties["Number"] = int(groups[0][1])
@@ -314,25 +311,22 @@ def extractCryBlendProperties(materialname):
         return properties
     return None
 
-###
-# Expand this function for more replacement rules.
-##
 def replaceInvalidRCCharacters(string):
-
     # Individual replacement rules.
     string = string.replace(" ", ""). \
         replace("__", "_"). \
         replace("ü", "ue"). \
         replace("ö", "oe"). \
         replace("ä", "ae")
+        # Expand with more individual replacement rules.
 
     # Remove all non alphanumeric characters.
     string = re.sub("[^0-9A-Za-z_]", "", string)
 
     return string
 
-def isCryBlendMaterialName(materialname):
-    if re.search(".+?__[0-9]+__.*?__phys[A-Za-z0-9]+", materialname):
+def isCryBlendMaterial(materialname):
+    if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
         return True
     else:
         return False
@@ -340,14 +334,7 @@ def isCryBlendMaterialName(materialname):
 def isExportNode(groupname):
     return groupname.startswith("CryExportNode_")
 
-def isInExportNode(groupDictionary, materialname):
-    for groupname in groupDictionary:
-        if isInSpecificExportNode(groupname, materialname):
-            return True
-    return False
 
-def isInSpecificExportNode(groupname, materialname):
-    return materialname.startswith(groupname.replace("CryExportNode_", "") + "__")
 
 class AddAnimNode(bpy.types.Operator):
     '''Click to add an AnimNode to selection or with nothing selected \
