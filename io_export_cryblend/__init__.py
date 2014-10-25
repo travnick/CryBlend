@@ -208,14 +208,28 @@ class AddBreakableJoint(bpy.types.Operator):
 
 
 class AddCryExportNode(bpy.types.Operator):
-    '''Click to add selection to a CryExportNode'''
-    bl_label = "Add CryExportNode"
+    '''Add selection to an existing or new CryExportNode'''
+    bl_label = "Add selected objects to CryExportNode"
     bl_idname = "object.add_cry_export_node"
     nodeNameUserInput = StringProperty(name="CryExportNode name")
 
     def execute(self, context):
-        bpy.ops.group.create(name="CryExportNode_%s" % (self.nodeNameUserInput))
-        message = "Adding CryExportNode_'%s'" % (self.nodeNameUserInput)
+        # Add to existing ExportNode.
+        for group in bpy.data.groups:
+            if isExportNode(group.name):
+                if group.name.endswith(self.nodeNameUserInput):
+                    selected = bpy.context.selected_objects
+                    for object in selected:
+                        if not object.name in group.objects:
+                            group.objects.link(object)
+                            message = "Added {} to {}".format(object.name, group.name)
+                            self.report({'INFO'}, message)
+                            cbPrint(message)
+                    return {'FINISHED'}
+
+        # Create new ExportNode.
+        bpy.ops.group.create(name="CryExportNode_{}".format(self.nodeNameUserInput))
+        message = "Created CryExportNode_{}".format(self.nodeNameUserInput)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
