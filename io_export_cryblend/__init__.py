@@ -216,7 +216,7 @@ class AddCryExportNode(bpy.types.Operator):
     def execute(self, context):
         # Add to existing ExportNode.
         for group in bpy.data.groups:
-            if isExportNode(group.name):
+            if utils.isExportNode(group.name):
                 if group.name.endswith(self.nodeNameUserInput):
                     selected = bpy.context.selected_objects
                     for object in selected:
