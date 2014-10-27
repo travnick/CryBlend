@@ -53,9 +53,10 @@ if "bpy" in locals():
     imp.reload(add)
     imp.reload(export)
     imp.reload(exceptions)
+    imp.reload(utils)
 else:
     import bpy
-    from io_export_cryblend import add, export, exceptions
+    from io_export_cryblend import add, export, exceptions, utils
 
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
     FloatProperty, StringProperty
@@ -69,7 +70,6 @@ import configparser
 import os
 import os.path
 import pickle
-import re
 import webbrowser
 
 
@@ -260,12 +260,12 @@ class SetMaterialNames(bpy.types.Operator):
         materialCounter = getMaterialCounter()
 
         for group in bpy.data.groups:
-            if isExportNode(group.name):
+            if utils.isExportNode(group.name):
                 for object in group.objects:
                     for slot in object.material_slots:
 
                         # Skip materials that have been renamed already.
-                        if not isCryBlendMaterial(slot.material.name):
+                        if not utils.isCryBlendMaterial(slot.material.name):
                             materialCounter[group.name] += 1
                             materialOldName = slot.material.name
 
@@ -279,9 +279,9 @@ class SetMaterialNames(bpy.types.Operator):
                             slot.material.name = "{}__{:03d}__{}__{}".format(
                                     group.name.replace("CryExportNode_", ""),
                                     materialCounter[group.name],
-                                    replaceInvalidRCCharacters(materialOldName),
+                                    utils.replaceInvalidRCCharacters(materialOldName),
                                     physics)
-                            message = "Renamed Material {} to {}".format(
+                            message = "Renamed {} to {}".format(
                                     materialOldName,
                                     slot.material.name)
                             self.report({'INFO'}, message)
@@ -291,11 +291,24 @@ class SetMaterialNames(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
+class RemoveCryBlendProperties(bpy.types.Operator):
+    '''Removes all CryBlend properties from material names. This includes \
+physics, so they get lost.'''
+    bl_label = "Remove CryBlend properties from material names"
+    bl_idname = "material.remove_cry_blend_properties"
+
+    def execute(self, context):
+        revertMaterialNames()
+        message = "Removed CryBlend properties from material names"
+        self.report({'INFO'}, message)
+        cbPrint(message)
+        return {'FINISHED'}
+
 def getMaterialCounter():
     """Returns a dictionary with all CryExportNodes."""
     materialCounter = {}
     for group in bpy.data.groups:
-        if isExportNode(group.name):
+        if utils.isExportNode(group.name):
             materialCounter[group.name] = 0
     return materialCounter
 
@@ -305,48 +318,11 @@ def revertMaterialNames():
     """
     physicsProperties = {}
     for material in bpy.data.materials:
-        if isCryBlendMaterial(material.name):
-            properties = extractCryBlendProperties(material.name)
+        properties = utils.extractCryBlendProperties(material.name)
+        if properties:
             physicsProperties[properties["Name"]] = properties["Physics"]
             material.name = properties["Name"]
     return physicsProperties
-
-def extractCryBlendProperties(materialname):
-    """Returns the CryBlend properties of a materialname as dict or
-    None if name is invalid.
-    """
-    if isCryBlendMaterial(materialname):
-        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
-        properties = {}
-        properties["ExportNode"] = groups[0][0]
-        properties["Number"] = int(groups[0][1])
-        properties["Name"] = groups[0][2]
-        properties["Physics"] = groups[0][3]
-        return properties
-    return None
-
-def replaceInvalidRCCharacters(string):
-    # Individual replacement rules.
-    string = string.replace(" ", ""). \
-        replace("__", "_"). \
-        replace("ü", "ue"). \
-        replace("ö", "oe"). \
-        replace("ä", "ae")
-        # Expand with more individual replacement rules.
-
-    # Remove all non alphanumeric characters.
-    string = re.sub("[^0-9A-Za-z_]", "", string)
-
-    return string
-
-def isCryBlendMaterial(materialname):
-    if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
-        return True
-    else:
-        return False
-
-def isExportNode(groupname):
-    return groupname.startswith("CryExportNode_")
 
 
 
@@ -1674,6 +1650,7 @@ class Tools():
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("object.add_cry_export_node", icon='VIEW3D_VEC')
         layout.operator("material.set_material_names", icon='MATERIAL')
+        layout.operator("material.remove_cry_blend_properties", icon='MATERIAL')
         layout.operator("object.add_joint", icon='META_CUBE')
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
@@ -1740,6 +1717,7 @@ def get_classes_to_register():
         AddBreakableJoint,
         AddCryExportNode,
         SetMaterialNames,
+        RemoveCryBlendProperties,
         AddAnimNode,
 
         OpenUDPWebpage,
