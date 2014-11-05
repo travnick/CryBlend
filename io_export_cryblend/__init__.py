@@ -238,7 +238,6 @@ class AddCryExportNode(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
 
-
 class SetMaterialNames(bpy.types.Operator):
     '''Materials will be named after the first CryExportNode the Object is in.'''
     """Set Material Names by heeding the RC naming scheme:
@@ -291,6 +290,7 @@ class SetMaterialNames(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
+
 class RemoveCryBlendProperties(bpy.types.Operator):
     '''Removes all CryBlend properties from material names. This includes \
 physics, so they get lost.'''
@@ -304,6 +304,7 @@ physics, so they get lost.'''
         cbPrint(message)
         return {'FINISHED'}
 
+
 def getMaterialCounter():
     """Returns a dictionary with all CryExportNodes."""
     materialCounter = {}
@@ -311,6 +312,7 @@ def getMaterialCounter():
         if utils.isExportNode(group.name):
             materialCounter[group.name] = 0
     return materialCounter
+
 
 def revertMaterialNames():
     """Removes CryBlend properties from all material names and store their
@@ -323,7 +325,6 @@ def revertMaterialNames():
             physicsProperties[properties["Name"]] = properties["Physics"]
             material.name = properties["Name"]
     return physicsProperties
-
 
 
 class AddAnimNode(bpy.types.Operator):
@@ -850,6 +851,7 @@ to find all items without UVs'''
                         obj.select = True
             return {'FINISHED'}
 
+
 class AddUVTexture(bpy.types.Operator):
         '''Add UVs to all meshes without UVs.'''
         bl_label = "Add UVs to Objects"
@@ -869,6 +871,7 @@ class AddUVTexture(bpy.types.Operator):
                         self.report({'INFO'}, message)
                         cbPrint(message)
             return {'FINISHED'}
+
 
 #------------------------------------------------------------------------------
 # Regarding Fakebones

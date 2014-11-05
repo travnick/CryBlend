@@ -233,6 +233,7 @@ def run_rc(rc_path, files_to_process, params=None):
 def get_path_with_new_extension(image_path, extension):
     return "%s.%s" % (os.path.splitext(image_path)[0], extension)
 
+
 def get_extension_from_path(image_path):
     return "%s" % (os.path.splitext(image_path)[1])
 
@@ -290,6 +291,7 @@ def replaceInvalidRCCharacters(string):
     string = re.sub("[^0-9A-Za-z]", "", string)
 
     return string
+
 
 # this is needed if you want to access more than the first def
 if __name__ == "__main__":
