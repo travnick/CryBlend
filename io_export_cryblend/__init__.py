@@ -189,14 +189,15 @@ class AddCryExportNode(bpy.types.Operator):
     '''Click to add selection to a CryExportNode.'''
     bl_label = "Add ExportNode"
     bl_idname = "object.add_cry_export_node"
+    bl_options = {"REGISTER", "UNDO"}
     my_string = StringProperty(name="CryExportNode name")
 
     def execute(self, context):
         bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
         message = "Adding CryExportNode_'%s'" % (self.my_string)
-        self.report({'INFO'}, message)
+        self.report({"INFO"}, message)
         cbPrint(message)
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -264,6 +265,26 @@ be converted to the selected shape in CryEngine.'''
         bpy.context.scene.objects.active = bound_box
         bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
         bpy.context.scene.cursor_location = old_cursor
+
+
+class SelectedToCryExportNodes(bpy.types.Operator):
+    '''Click to add selected objects to individual CryExportNodes.'''
+    bl_label = "Selected to CryExportNodes"
+    bl_idname = "object.selected_to_cry_export_nodes"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        selected = bpy.context.selected_objects
+        bpy.ops.object.select_all(action="DESELECT")
+        for object_ in selected:
+            object_.select = True
+            if (len(object_.users_group) == 0):
+                bpy.ops.group.create(name="CryExportNode_%s" % (object_.name))
+            object_.select = False
+
+        message = "Adding Selected to CryExportNodes"
+        self.report({"INFO"}, message)
+        return {"FINISHED"}
 
 
 class AddAnimNode(bpy.types.Operator):
@@ -1953,7 +1974,14 @@ class CryBlendMainMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
-        layout.operator("object.add_cry_export_node", icon='VIEW3D_VEC')
+
+        # version number
+        layout.label(text='v%s' % VERSION)
+        # layout.operator("open_donate.wp", icon='FORCE_DRAG')
+        layout.operator("object.add_cry_export_node", icon='OBJECT_DATA')
+        layout.operator("object.selected_to_cry_export_nodes", icon='GROUP')
+        layout.operator("object.add_joint", icon='META_CUBE')
+        layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
         layout.separator()
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
@@ -2148,6 +2176,7 @@ def get_classes_to_register():
         SaveCryBlendConfiguration,
 
         AddCryExportNode,
+        SelectedToCryExportNodes,
         AddAnimNode,
         AddProxy,
         AddBreakableJoint,
