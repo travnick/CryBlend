@@ -251,8 +251,9 @@ class SetMaterialNames(bpy.types.Operator):
 
     def execute(self, context):
         # Revert all materials to fetch also those that are no longer in a group
-        # and store their possible Physics Properties in a dictionary.
-        physicsProperties = revertMaterialNames()
+        # and store their possible physics properties in a dictionary.
+        physicsProperties = getMaterialPhysics()
+        removeCryBlendProperties()
 
         # Create a dictionary with all CryExportNodes to store the current number
         # of materials in it.
@@ -298,7 +299,7 @@ physics, so they get lost.'''
     bl_idname = "material.remove_cry_blend_properties"
 
     def execute(self, context):
-        revertMaterialNames()
+        removeCryBlendProperties()
         message = "Removed CryBlend properties from material names"
         self.report({'INFO'}, message)
         cbPrint(message)
@@ -314,16 +315,22 @@ def getMaterialCounter():
     return materialCounter
 
 
-def revertMaterialNames():
-    """Removes CryBlend properties from all material names and store their
-    Physics in a dictionary.
-    """
+def removeCryBlendProperties():
+    """Removes CryBlend properties from all material names."""
+    for material in bpy.data.materials:
+        properties = utils.extractCryBlendProperties(material.name)
+        if properties:
+            material.name = properties["Name"]
+    return {'FINISHED'}
+
+
+def getMaterialPhysics():
+    """Returns a dictionary with the physics of all material names."""
     physicsProperties = {}
     for material in bpy.data.materials:
         properties = utils.extractCryBlendProperties(material.name)
         if properties:
             physicsProperties[properties["Name"]] = properties["Physics"]
-            material.name = properties["Name"]
     return physicsProperties
 
 
