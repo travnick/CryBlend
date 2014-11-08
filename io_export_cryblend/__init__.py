@@ -321,7 +321,6 @@ def removeCryBlendProperties():
         properties = utils.extractCryBlendProperties(material.name)
         if properties:
             material.name = properties["Name"]
-    return {'FINISHED'}
 
 
 def getMaterialPhysics():
