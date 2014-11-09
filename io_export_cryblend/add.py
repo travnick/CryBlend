@@ -70,21 +70,21 @@ def add_entity_property(self, context):
     return{'FINISHED'}
 
 
-def add_mass_property(self, context):
+def add_mass_property(self, context, mass):
     ob = bpy.context.active_object
-    ob["mass"] = "mass=15"
+    ob["mass"] = "mass=%s" % mass
     return{'FINISHED'}
 
 
-def add_density_property(self, context):
+def add_density_property(self, context, density):
     ob = bpy.context.active_object
-    ob["density"] = "density=15"
+    ob["density"] = "density=%s" % density
     return{'FINISHED'}
 
 
-def add_pieces_property(self, context):
+def add_pieces_property(self, context, pieces):
     ob = bpy.context.active_object
-    ob["pieces"] = "pieces=EG:_piece01,_piece02.."
+    ob["pieces"] = "pieces=%s" % pieces
     return{'FINISHED'}
 
 
@@ -101,90 +101,94 @@ def add_dynamic_property(self, context):
 
 
 # joint
-def add_critical_property(self, context):
+def add__gameplay_critical_property(self, context):
     ob = bpy.context.active_object
     ob["gameplay_critical"] = "gameplay_critical=1"
     return{'FINISHED'}
 
 
-def add_breakable_property(self, context):
+def add_player_can_break_property(self, context):
     ob = bpy.context.active_object
-    ob["player_can_break"] = "player_can_break"
+    ob["player_can_break"] = "player_can_break=1"
     return{'FINISHED'}
 
 
-def add_bend_property(self, context):
+def add_bend_property(self, context, bendValue):
     ob = bpy.context.active_object
-    ob["bend"] = "bend=value"
+    ob["bend"] = "bend=%s" % bendValue
     return{'FINISHED'}
 
 
-def add_twist_property(self, context):
+def add_twist_property(self, context, twistValue):
     ob = bpy.context.active_object
-    ob["twist"] = "twist=value"
+    ob["twist"] = "twist=%s" % twistValue
     return{'FINISHED'}
 
 
-def add_pull_property(self, context):
+def add_pull_property(self, context, pullValue):
     ob = bpy.context.active_object
-    ob["pull"] = "pull=value"
+    ob["pull"] = "pull=%s" % pullValue
     return{'FINISHED'}
 
 
-def add_push_property(self, context):
+def add_push_property(self, context, pushValue):
     ob = bpy.context.active_object
-    ob["push"] = "push=value"
+    ob["push"] = "push=%s" % pushValue
     return{'FINISHED'}
 
 
-def add_shift_property(self, context):
+def add_shift_property(self, context, shiftValue):
     ob = bpy.context.active_object
-    ob["shift"] = "shift=value"
+    ob["shift"] = "shift=%s" % shiftValue
     return{'FINISHED'}
 
 
-def add_limit_constraint(self, context):
+def add_limit_constraint(self, context, limit):
     ob = bpy.context.active_object
-    ob["constraint_limit"] = "constraint_limit=value"
+    ob["constraint_limit"] = "constraint_limit=%s" % limit
     return{'FINISHED'}
 
 
-def add_min_angle_constraint(self, context):
+def add_min_angle_constraint(self, context, minAngle):
     ob = bpy.context.active_object
-    ob["constraint_minang"] = "constraint_minang=value"
+    ob["constraint_minang"] = "constraint_minang=%s" % minAngle
     return{'FINISHED'}
 
 
-def add_max_angle_constraint(self, context):
+def add_max_angle_constraint(self, context, maxAngle):
     ob = bpy.context.active_object
-    ob["consrtaint_maxang"] = "consrtaint_maxang=value"
+    ob["consrtaint_maxang"] = "consrtaint_maxang=%s" % maxAngle
     return{'FINISHED'}
 
 
 def add_damping_constraint(self, context):
     ob = bpy.context.active_object
-    ob["constraint_damping"] = "constraint_damping=value"
+    ob["constraint_damping"] = "constraint_damping=1"
     return{'FINISHED'}
 
 
 def add_collision_constraint(self, context):
     ob = bpy.context.active_object
-    ob["constraint_collides"] = "constraint_collides=value"
+    ob["constraint_collides"] = "constraint_collides=1"
     return{'FINISHED'}
 
 
 # deformable
-def add_deformable_property(self, context):
+def add_deformable_property(self, context, mass, stiffness, hardness,
+        max_stretch, max_impulse, skin_dist, thickness, explosion_scale, is_primitive):
         ob = bpy.context.active_object
-        ob["stfns"] = "stiffness=10"
-        ob["stfns"] = "hardness=10"
-        ob["mxstr"] = "max_stretch=0.01"
-        ob["mxstr"] = "max_impulse=10"
-        ob["skdist"] = "skin_dist=0.4"
-        ob["thkns"] = "thickness=0.01"
-        ob["notap"] = "notaprim=1"
-        ob["thkns"] = "explosion_scale=0.01"
-        ob["mass"] = "mass=0.05"  # might move
+        ob["mass"] = "mass=%s" % mass
+        ob["stfns"] = "stiffness=%s" % stiffness
+        ob["stfns"] = "hardness=%s" % hardness
+        ob["mxstr"] = "max_stretch=%s" % max_stretch
+        ob["mxstr"] = "max_impulse=%s" % max_impulse
+        ob["skdist"] = "skin_dist=%s" % skin_dist
+        ob["thkns"] = "thickness=%s" % thickness
+        ob["thkns"] = "explosion_scale=%s" % explosion_scale
+        if (is_primitive == "Yes"):
+            ob["notap"] = "notaprim=0"
+        else:
+            ob["notap"] = "notaprim=1"
         return{'FINISHED'}
 
 
