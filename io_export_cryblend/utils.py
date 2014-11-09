@@ -26,6 +26,7 @@ import fnmatch
 import math
 import os
 import random
+import re
 import subprocess
 import sys
 import xml.dom.minidom
@@ -232,8 +233,64 @@ def run_rc(rc_path, files_to_process, params=None):
 def get_path_with_new_extension(image_path, extension):
     return "%s.%s" % (os.path.splitext(image_path)[0], extension)
 
+
 def get_extension_from_path(image_path):
     return "%s" % (os.path.splitext(image_path)[1])
+
+
+def extractCryBlendProperties(materialname):
+    """Returns the CryBlend properties of a materialname as dict or
+    None if name is invalid.
+    """
+    if isCryBlendMaterial(materialname):
+        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
+        properties = {}
+        properties["ExportNode"] = groups[0][0]
+        properties["Number"] = int(groups[0][1])
+        properties["Name"] = groups[0][2]
+        properties["Physics"] = groups[0][3]
+        return properties
+    return None
+
+
+def isCryBlendMaterial(materialname):
+    if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
+        return True
+    else:
+        return False
+
+
+def isExportNode(groupname):
+    return groupname.startswith("CryExportNode_")
+
+
+def replaceInvalidRCCharacters(string):
+    character_map = {
+        "a":  "àáâå",
+        "c":  "ç",
+        "e":  "èéêë",
+        "i":  "ìíîï",
+        "l":  "ł",
+        "n":  "ñ",
+        "o":  "òóô",
+        "u":  "ùúû",
+        "y":  "ÿ",
+        "ss": "ß",
+        "ae": "äæ",
+        "oe": "ö",
+        "ue": "ü"
+    } # Expand with more individual replacement rules.
+
+    # Individual replacement.
+    for good, bad in character_map.items():
+        for char in bad:
+            string = string.replace(char, good)
+            string = string.replace(char.upper(), good.upper())
+
+    # Remove all remaining non alphanumeric characters.
+    string = re.sub("[^0-9A-Za-z]", "", string)
+
+    return string
 
 
 # this is needed if you want to access more than the first def

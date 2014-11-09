@@ -53,9 +53,10 @@ if "bpy" in locals():
     imp.reload(add)
     imp.reload(export)
     imp.reload(exceptions)
+    imp.reload(utils)
 else:
     import bpy
-    from io_export_cryblend import add, export, exceptions
+    from io_export_cryblend import add, export, exceptions, utils
 
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
     FloatProperty, IntProperty, StringProperty
@@ -186,16 +187,30 @@ class SaveCryBlendConfiguration(bpy.types.Operator):
 
 
 class AddCryExportNode(bpy.types.Operator):
-    '''Click to add selection to a CryExportNode.'''
-    bl_label = "Add ExportNode"
+    '''Add selected objects to an existing or new CryExportNode'''
+    bl_label = "Add selection to a single CryExportNode"
     bl_idname = "object.add_cry_export_node"
     bl_options = {"REGISTER", "UNDO"}
-    my_string = StringProperty(name="CryExportNode name")
+    nodeNameUserInput = StringProperty(name="CryExportNode name")
 
     def execute(self, context):
-        bpy.ops.group.create(name="CryExportNode_%s" % (self.my_string))
-        message = "Adding CryExportNode_'%s'" % (self.my_string)
-        self.report({"INFO"}, message)
+        # Add to existing ExportNode.
+        for group in bpy.data.groups:
+            if utils.isExportNode(group.name):
+                if group.name.endswith(self.nodeNameUserInput):
+                    selected = bpy.context.selected_objects
+                    for object in selected:
+                        if not object.name in group.objects:
+                            group.objects.link(object)
+                            message = "Added {} to {}".format(object.name, group.name)
+                            self.report({'INFO'}, message)
+                            cbPrint(message)
+                    return {'FINISHED'}
+
+        # Create new ExportNode.
+        bpy.ops.group.create(name="CryExportNode_{}".format(self.nodeNameUserInput))
+        message = "Created CryExportNode_{}".format(self.nodeNameUserInput)
+        self.report({'INFO'}, message)
         cbPrint(message)
         return {"FINISHED"}
 
@@ -268,8 +283,8 @@ be converted to the selected shape in CryEngine.'''
 
 
 class SelectedToCryExportNodes(bpy.types.Operator):
-    '''Click to add selected objects to individual CryExportNodes.'''
-    bl_label = "Selected to CryExportNodes"
+    '''Add selected objects to individual CryExportNodes.'''
+    bl_label = "Add selection to individual CryExportNodes"
     bl_idname = "object.selected_to_cry_export_nodes"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -287,12 +302,107 @@ class SelectedToCryExportNodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class SetMaterialNames(bpy.types.Operator):
+    '''Materials will be named after the first CryExportNode the Object is in.'''
+    """Set Material Names by heeding the RC naming scheme:
+        - CryExportNode group name
+        - Strict number sequence beginning with 1 for each CryExportNode (max 999)
+        - Physics
+    """
+    bl_label = "Update material names in CryExportNodes"
+    bl_idname = "material.set_material_names"
+    physUserInput = StringProperty(name="Physics", default = "physDefault")
+
+    def execute(self, context):
+        # Revert all materials to fetch also those that are no longer in a group
+        # and store their possible physics properties in a dictionary.
+        physicsProperties = getMaterialPhysics()
+        removeCryBlendProperties()
+
+        # Create a dictionary with all CryExportNodes to store the current number
+        # of materials in it.
+        materialCounter = getMaterialCounter()
+
+        for group in bpy.data.groups:
+            if utils.isExportNode(group.name):
+                for object in group.objects:
+                    for slot in object.material_slots:
+
+                        # Skip materials that have been renamed already.
+                        if not utils.isCryBlendMaterial(slot.material.name):
+                            materialCounter[group.name] += 1
+                            materialOldName = slot.material.name
+
+                            # Load stored Physics if available for that material.
+                            if physicsProperties.get(slot.material.name):
+                                physics = physicsProperties[slot.material.name]
+                            else:
+                                physics = self.physUserInput
+
+                            # Rename.
+                            slot.material.name = "{}__{:03d}__{}__{}".format(
+                                    group.name.replace("CryExportNode_", ""),
+                                    materialCounter[group.name],
+                                    utils.replaceInvalidRCCharacters(materialOldName),
+                                    physics)
+                            message = "Renamed {} to {}".format(
+                                    materialOldName,
+                                    slot.material.name)
+                            self.report({'INFO'}, message)
+                            cbPrint(message)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+
+class RemoveCryBlendProperties(bpy.types.Operator):
+    '''Removes all CryBlend properties from material names. This includes \
+physics, so they get lost.'''
+    bl_label = "Remove CryBlend properties from material names"
+    bl_idname = "material.remove_cry_blend_properties"
+
+    def execute(self, context):
+        removeCryBlendProperties()
+        message = "Removed CryBlend properties from material names"
+        self.report({'INFO'}, message)
+        cbPrint(message)
+        return {'FINISHED'}
+
+
+def getMaterialCounter():
+    """Returns a dictionary with all CryExportNodes."""
+    materialCounter = {}
+    for group in bpy.data.groups:
+        if utils.isExportNode(group.name):
+            materialCounter[group.name] = 0
+    return materialCounter
+
+
+def removeCryBlendProperties():
+    """Removes CryBlend properties from all material names."""
+    for material in bpy.data.materials:
+        properties = utils.extractCryBlendProperties(material.name)
+        if properties:
+            material.name = properties["Name"]
+
+
+def getMaterialPhysics():
+    """Returns a dictionary with the physics of all material names."""
+    physicsProperties = {}
+    for material in bpy.data.materials:
+        properties = utils.extractCryBlendProperties(material.name)
+        if properties:
+            physicsProperties[properties["Name"]] = properties["Physics"]
+    return physicsProperties
+
+
 class AddAnimNode(bpy.types.Operator):
     '''Click to add an AnimNode to selection or, with nothing selected, \
 add an AnimNode to the scene.'''
     bl_label = "Add AnimNode"
     bl_idname = "object.add_anim_node"
-    my_string = StringProperty(name="Animation Name")
+    animNameUserInput = StringProperty(name="Animation Name")
     start_frame = FloatProperty(name="Start Frame")
     end_frame = FloatProperty(name="End Frame")
 
@@ -303,7 +413,7 @@ add an AnimNode to the scene.'''
         bpy.ops.object.add(type='EMPTY')
         empty_object = bpy.context.active_object
         empty_object.name = 'animnode'
-        empty_object["animname"] = self.my_string
+        empty_object["animname"] = self.animNameUserInput
         empty_object["startframe"] = self.start_frame
         empty_object["endframe"] = self.end_frame
 
@@ -312,7 +422,7 @@ add an AnimNode to the scene.'''
             bpy.context.scene.objects.active = object_
 
         bpy.ops.object.parent_set(type='OBJECT')
-        message = "Adding AnimNode '%s'" % (self.my_string)
+        message = "Adding AnimNode '%s'" % (self.animNameUserInput)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {'FINISHED'}
@@ -1026,7 +1136,8 @@ it's mesh before running this.'''
 
 
 class FindWeightless(bpy.types.Operator):
-    '''Select the object in object mode with nothing in its mesh selected before running this.'''
+    '''Select the object in object mode with nothing in its mesh selected \
+before running this'''
     bl_label = "Find Weightless Vertices"
     bl_idname = "mesh.find_weightless"
 
@@ -1075,7 +1186,7 @@ class RemoveAllWeight(bpy.types.Operator):
 class FindNoUVs(bpy.types.Operator):
         '''Use this with no objects selected in object mode
 to find all items without UVs.'''
-        bl_label = "Find All Objects with No UVs"
+        bl_label = "Find All Objects with No UV's"
         bl_idname = "scene.find_no_uvs"
 
         def execute(self, context):
@@ -1091,6 +1202,27 @@ to find all items without UVs.'''
                         break
                     if not a:
                         obj.select = True
+            return {'FINISHED'}
+
+
+class AddUVTexture(bpy.types.Operator):
+        '''Add UVs to all meshes without UVs.'''
+        bl_label = "Add UV's to Objects"
+        bl_idname = "mesh.add_uv_texture"
+
+        def execute(self, context):
+            for obj in bpy.data.objects:
+                if obj.type == 'MESH':
+                    uv = False
+                    for i in obj.data.uv_textures:
+                        uv = True
+                        break
+                    if not uv:
+                        bpy.context.scene.objects.active = obj
+                        bpy.ops.mesh.uv_texture_add()
+                        message = "Added UV map to {}".format(obj.name)
+                        self.report({'INFO'}, message)
+                        cbPrint(message)
             return {'FINISHED'}
 
 
@@ -1943,7 +2075,8 @@ class MeshUtilitiesPanel(View3DPanel, Panel):
 
         col.label(text="UV Repair", icon="UV_FACESEL")
         col.separator()
-        col.operator("scene.find_no_uvs", text="Find No UV's")
+        col.operator("scene.find_no_uvs", text="Find All Objects with No UV's")
+        col.operator("mesh.add_uv_texture", text="Add UV's to Objects")
 
 
 class CustomPropertiesPanel(View3DPanel, Panel):
@@ -1978,8 +2111,10 @@ class CryBlendMainMenu(bpy.types.Menu):
         # version number
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
-        layout.operator("object.add_cry_export_node", icon='OBJECT_DATA')
+        layout.operator("object.add_cry_export_node", icon='GROUP')
         layout.operator("object.selected_to_cry_export_nodes", icon='GROUP')
+        layout.operator("material.set_material_names", icon='MATERIAL')
+        layout.operator("material.remove_cry_blend_properties", icon='MATERIAL')
         layout.operator("object.add_joint", icon='META_CUBE')
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
@@ -2052,7 +2187,8 @@ class MeshUtilitiesMenu(bpy.types.Menu):
         layout.separator()
 
         layout.label(text="UV Repair")
-        layout.operator("scene.find_no_uvs", text="Find No UV's", icon="UV_FACESEL")
+        layout.operator("scene.find_no_uvs", text="Find All Objects with No UV's", icon="UV_FACESEL")
+        layout.operator("mesh.add_uv_texture", text="Add UV's to Objects", icon="UV_FACESEL")
 
 
 class CustomPropertiesMenu(bpy.types.Menu):
@@ -2177,6 +2313,8 @@ def get_classes_to_register():
 
         AddCryExportNode,
         SelectedToCryExportNodes,
+        SetMaterialNames,
+        RemoveCryBlendProperties,
         AddAnimNode,
         AddProxy,
         AddBreakableJoint,
@@ -2232,6 +2370,7 @@ def get_classes_to_register():
         FindWeightless,
         RemoveAllWeight,
         FindNoUVs,
+        AddUVTexture,
 
         AddFakeBone,
         RemoveFakeBones,
