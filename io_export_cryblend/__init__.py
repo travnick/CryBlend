@@ -2023,10 +2023,49 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.operator("object.add_cry_export_node")
+        col.operator("object.add_cry_export_node", text="Add ExportNode")
+        col.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
+        col.separator()
         col.operator("object.add_anim_node")
+
+
+class CryUtilitiesPanel(View3DPanel, Panel):
+    bl_label = "Cry Utilities"
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column(align=True)
+
+        col.label("Materials:", icon="MATERIAL")
+        col.separator()
+        col.operator("material.set_material_names", text="Update Material Names")
+        col.operator("material.remove_cry_blend_properties", text="Remove Material Properties")
+        col.separator()
+
+        col.label("Add Physics Proxy", icon="ROTATE")
+        col.separator()
+        row = col.row(align=True)
+        add_box_proxy = row.operator("object.add_proxy", text="Box")
+        add_box_proxy.type = "box"
+        add_capsule_proxy = row.operator("object.add_proxy", text="Capsule")
+        add_capsule_proxy.type = "capsule"
+
+        row = col.row(align=True)
+        add_cylinder_proxy = row.operator("object.add_proxy", text="Cylinder")
+        add_cylinder_proxy.type = "cylinder"
+        add_sphere_proxy = row.operator("object.add_proxy", text="Sphere")
+        add_sphere_proxy.type = "sphere"
+        col.separator()
+
+        col.label("Breakables:", icon="PARTICLES")
         col.separator()
         col.operator("object.add_joint")
+        col.separator()
+
+        col.label("Touch-Bending:", icon="MOD_SIMPLEDEFORM")
+        col.separator()
+        col.operator("mesh.add_branch")
+        col.operator("mesh.add_branch_joint")
 
 
 class BoneUtilitiesPanel(View3DPanel, Panel):
@@ -2111,18 +2150,19 @@ class CryBlendMainMenu(bpy.types.Menu):
         # version number
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
-        layout.operator("object.add_cry_export_node", icon='GROUP')
-        layout.operator("object.selected_to_cry_export_nodes", icon='GROUP')
-        layout.operator("material.set_material_names", icon='MATERIAL')
-        layout.operator("material.remove_cry_blend_properties", icon='MATERIAL')
-        layout.operator("object.add_joint", icon='META_CUBE')
+        layout.operator("object.add_cry_export_node", text="Add ExportNode", icon='GROUP')
+        layout.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
+        layout.separator()
+        layout.operator("material.set_material_names", text="Update Material Names", icon="MATERIAL")
+        layout.operator("material.remove_cry_blend_properties", text="Remove Material Properties")
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
         layout.separator()
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
-        layout.operator("object.add_joint", icon='PROP_ON')
         layout.separator()
         layout.menu(BoneUtilitiesMenu.bl_idname, icon='BONE_DATA')
+        layout.separator()
+        layout.menu(BreakablesMenu.bl_idname, icon='PARTICLES')
         layout.separator()
         layout.menu(TouchBendingMenu.bl_idname, icon='OUTLINER_OB_EMPTY')
         layout.separator()
@@ -2155,6 +2195,17 @@ class BoneUtilitiesMenu(bpy.types.Menu):
         layout.operator("armature.add_bone_geometry", icon="PHYSICS")
         layout.operator("armature.remove_bone_geometry", icon="PHYSICS")
         layout.operator("armature.rename_phys_bones", icon="PHYSICS")
+
+
+class BreakablesMenu(bpy.types.Menu):
+    bl_label = "Breakables"
+    bl_idname = "view3d.breakables"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.label(text="Add")
+        layout.operator("object.add_joint", icon="PROP_ON")
 
 
 class TouchBendingMenu(bpy.types.Menu):
@@ -2385,6 +2436,7 @@ def get_classes_to_register():
         CryBlendPanel,
 
         ExportUtilitiesPanel,
+        CryUtilitiesPanel,
         BoneUtilitiesPanel,
         MeshUtilitiesPanel,
         CustomPropertiesPanel,
@@ -2393,6 +2445,7 @@ def get_classes_to_register():
         CryBlendMainMenu,
         AddPhysicsProxyMenu,
         BoneUtilitiesMenu,
+        BreakablesMenu,
         TouchBendingMenu,
         MeshUtilitiesMenu,
         CustomPropertiesMenu,
