@@ -297,6 +297,7 @@ def keyframe_fakebones():
     for object_ in scene.objects:
         if (object_.type == "ARMATURE"):
             armature = object_
+            break
 
     if (armature is None):
         return {"FINISHED"}
