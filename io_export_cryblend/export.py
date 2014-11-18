@@ -51,6 +51,7 @@ import threading
 import time
 import xml.dom.minidom
 import bmesh
+import subprocess
 
 
 AXES = {
@@ -2006,14 +2007,24 @@ def write_to_file(config, doc, file_name, exe):
 
     dae_file_for_rc = utils.get_absolute_path_for_rc(file_name)
     rc_params = ["/verbose", "/threads=processors"]
-    if config.refresh_rc:
-        rc_params.append("/refresh")
+    rc_params.append("/refresh")
 
     if config.run_rc or config.do_materials:
         if config.do_materials:
             rc_params.append("/createmtl=1")
 
         rc_process = utils.run_rc(exe, dae_file_for_rc, rc_params)
+
+        if rc_process is not None:
+            rc_process.wait()
+            extension = "cgf"
+            if config.export_type == 'CGA & ANM':
+                extension = "cga"
+            elif config.export_type == 'CHR & CAF':
+                extension = "chr"
+            out_file = "{0}.{1}".format(dae_file_for_rc[:-4], extension)
+            args = [exe, "/refresh", out_file]
+            rc_second_pass = subprocess.Popen(args)
 
         if config.do_materials:
             mtl_fix_thread = threading.Thread(
