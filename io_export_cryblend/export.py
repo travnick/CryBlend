@@ -111,9 +111,8 @@ class CrytekDaeExporter:
 
         utils.add_fakebones()
         self.__export_library_controllers(root_element)
-        utils.remove_fakebones()
-        
         self.__export_library_animation_clips_and_animations(root_element)
+        utils.remove_fakebones()
         self.__export_library_visual_scenes(root_element)
         self.__export_scene(root_element)
 
@@ -698,11 +697,11 @@ class CrytekDaeExporter:
             if matrix_local == 0:
                 return
 
-            cbPrint("matrix_local %s" % matrix_local, 'debug')
-
             utils.negate_z_axis_of_matrix(matrix_local)
 
+            cbPrint("matrix_local:")
             for row in matrix_local:
+                cbPrint("%s" % row, 'debug')
                 row_string = utils.floats_to_string(row)
                 float_array.appendChild(self.__doc.createTextNode(row_string))
 
