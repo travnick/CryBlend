@@ -1543,7 +1543,7 @@ def add_bone_geometry():
 
 
 class RemoveBoneGeometry(bpy.types.Operator):
-    '''Remove BoneGeometry for bones in selected armatures.'''
+    '''Remove BoneGeometry for bones in selected armatures'''
     bl_label = "Remove BoneGeometry"
     bl_idname = "armature.remove_bone_geometry"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2158,6 +2158,7 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.separator()
         layout.operator("object.add_anim_node", icon='POSE_HLT')
         layout.separator()
+
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
         layout.separator()
         layout.menu(BoneUtilitiesMenu.bl_idname, icon='BONE_DATA')
@@ -2167,6 +2168,14 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.menu(TouchBendingMenu.bl_idname, icon='OUTLINER_OB_EMPTY')
         layout.separator()
         layout.menu(MeshUtilitiesMenu.bl_idname, icon='MESH_CUBE')
+
+        layout.operator("armature.add_bone_geometry", icon="PHYSICS")
+        layout.operator("armature.remove_bone_geometry", icon="PHYSICS")
+        layout.operator("armature.rename_phys_bones", icon="PHYSICS")
+        layout.separator()
+        # layout.operator_context = 'EXEC_AREA'
+        # layout.label(text="Add Material Physics", icon="PHYSICS")
+        layout.menu("menu.add_material_physics", icon='PHYSICS')
         layout.separator()
         layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
         layout.separator()

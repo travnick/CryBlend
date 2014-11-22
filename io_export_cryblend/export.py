@@ -50,6 +50,8 @@ import os
 import threading
 import time
 import xml.dom.minidom
+import bmesh
+import subprocess
 
 
 AXES = {
@@ -85,20 +87,9 @@ class CrytekDaeExporter:
     def export(self):
         # Ensure the correct extension for chosen path
         filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
-        self.__select_all_export_nodes()
 
         if self.__config.correct_weight:
             self.__correct_weights()
-
-        # Duo Oratar
-        # This is a small bit risky (I don't know if including more things
-        # in the selected objects will mess things up or not...
-        # Easiest solution to the problem though
-        cbPrint("Searching for boneGeoms...")
-        for object_ in bpy.context.selectable_objects:
-            if "_boneGeometry" in object_.name:
-                bpy.data.objects[object_.name].select = True
-                cbPrint("Bone Geometry found: %s" % object_.name)
 
         root_element = self.__doc.createElement('collada')
         root_element.setAttribute("xmlns",
@@ -108,26 +99,20 @@ class CrytekDaeExporter:
 
         self.__export_asset(root_element)
 
-        # just here for future use
-        libcam = self.__doc.createElement("library_cameras")
-        root_element.appendChild(libcam)
-        liblights = self.__doc.createElement("library_lights")
-        root_element.appendChild(liblights)
+        # Just here for future use:
+        self.__export_library_cameras(root_element)
+        self.__export_library_lights(root_element)
+        ###
 
         self.__export_library_images(root_element)
         self.__export_library_effects(root_element)
         self.__export_library_materials(root_element)
         self.__export_library_geometries(root_element)
 
-        # Duo Oratar
-        # Remove the boneGeometry from the selection so we can get on
-        # with business as usual
-        for object_ in bpy.context.selected_objects:
-            if '_boneGeometry' in object_.name:
-                bpy.data.objects[object_.name].select = False
-
+        utils.add_fakebones()
         self.__export_library_controllers(root_element)
         self.__export_library_animation_clips_and_animations(root_element)
+        utils.remove_fakebones()
         self.__export_library_visual_scenes(root_element)
         self.__export_scene(root_element)
 
@@ -136,27 +121,29 @@ class CrytekDaeExporter:
                       self.__config.rc_path)
 
     def __correct_weights(self):
-        for group in bpy.context.blend_data.groups:
-            for object_ in group.objects:
-                if object_.type == 'MESH':
-                    override = {'weight_paint_object': object_}
-                    try:
-                        bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
-                    except:
-                        raise exceptions.CryBlendException("Please fix weightless vertices first.")
+        if self.__config.export_type == 'CHR & CAF':
+            for group in bpy.context.blend_data.groups:
+                for object_ in group.objects:
+                    if object_.type == 'MESH':
+                        override = {'weight_paint_object': object_}
+                        try:
+                            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+                        except:
+                            raise exceptions.CryBlendException("Please fix weightless vertices first.")
         cbPrint("Weights Corrected.")
 
-    def __select_all_export_nodes(self):
+    def __get_objects_in_export_nodes(self):
+        objects = []
         for group in bpy.context.blend_data.groups:
-            for object_ in group.objects:
-                object_.select = True
-                cbPrint("{!r} selected.".format(object_.name))
+            if (group.name.startswith("CryExportNode_")):
+                for object_ in group.objects:
+                    if (object_.name[:6] != "_joint"):
+                        if (object_.type == "MESH"):
+                            objects.append(object_)
 
-    def __get_object_children(self, Parent):
-        return [Object for Object in Parent.children
-                if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+        return objects
 
-    def write_bone_list(self, pname, bones, obj, node1):
+    def __write_bone_list(self, pname, bones, obj, node1):
         cbPrint("{!r} bones".format(len(bones)))
         boneExtendedNames = []
         for bone in bones:
@@ -293,7 +280,7 @@ class CrytekDaeExporter:
             else:
                 node1.appendChild(nodename)
 
-    def write_visual_scene(self, objects, node1):
+    def __write_visual_scene(self, objects, node1):
         for object_ in objects:
             fby = 0
             for ai in object_.rna_type.id_data.items():
@@ -432,7 +419,7 @@ class CrytekDaeExporter:
                 if object_.type == 'ARMATURE':
                     cbPrint("Armature appended.")
                     bonelist = self.__get_bones(object_)
-                    self.write_bone_list(cname, bonelist, object_, node1)
+                    self.__write_bone_list(cname, bonelist, object_, node1)
 
                 if object_.children:
                     if object_.parent:
@@ -450,13 +437,13 @@ class CrytekDaeExporter:
                                     "Object already appended to parent.")
                                 else:
                                     nodeparent.appendChild(nodename)
-                            ChildList = self.__get_object_children(object_)
-                            self.write_visual_scene(ChildList, node1)
+                            ChildList = utils.get_object_children(object_)
+                            self.__write_visual_scene(ChildList, node1)
                     else:
                         if object_.type != 'ARMATURE':
                             node1.appendChild(nodename)
-                            ChildList = self.__get_object_children(object_)
-                            self.write_visual_scene(ChildList, node1)
+                            ChildList = utils.get_object_children(object_)
+                            self.__write_visual_scene(ChildList, node1)
 
                 else:
                     if object_.parent:
@@ -698,9 +685,6 @@ class CrytekDaeExporter:
 
         return animation_element
 
-    def __get_bone_names_for_idref(self, bones):
-        return " ".join(bone.name for bone in bones)
-
     def __export_float_array(self, armature_bones, float_array):
         for bone in armature_bones:
             matrix_local = 0
@@ -713,17 +697,13 @@ class CrytekDaeExporter:
             if matrix_local == 0:
                 return
 
-            cbPrint("matrix_local %s" % matrix_local, 'debug')
+            utils.negate_z_axis_of_matrix(matrix_local)
 
-            self.__negate_z_axis_of_matrix(matrix_local)
-
+            cbPrint("matrix_local:")
             for row in matrix_local:
+                cbPrint("%s" % row, 'debug')
                 row_string = utils.floats_to_string(row)
                 float_array.appendChild(self.__doc.createTextNode(row_string))
-
-    def __negate_z_axis_of_matrix(self, matrix_local):
-        for i in range(0, 3):
-            matrix_local[i][3] = -matrix_local[i][3]
 
     def __export_asset(self, parent_element):
         # Attributes are x=y values inside a tag
@@ -754,6 +734,14 @@ class CrytekDaeExporter:
         zup = self.__doc.createTextNode("Z_UP")
         uax.appendChild(zup)
         asset.appendChild(uax)
+
+    def __export_library_cameras(self, root_element):
+        libcam = self.__doc.createElement("library_cameras")
+        root_element.appendChild(libcam)
+
+    def __export_library_lights(self, root_element):
+        liblights = self.__doc.createElement("library_lights")
+        root_element.appendChild(liblights)
 
     def __export_library_images(self, parent_element):
         library_images = self.__doc.createElement("library_images")
@@ -808,12 +796,12 @@ class CrytekDaeExporter:
         return list(set(images))
 
     def __get_textures_for_selected_objects(self):
-        materials = self.__get_materials_for_selected_objects()
+        materials = self.__get_materials_in_export_nodes()
         return self.__get_textures_for_materials(materials)
 
-    def __get_materials_for_selected_objects(self):
+    def __get_materials_in_export_nodes(self):
         materials = []
-        for object_ in bpy.context.selected_objects:
+        for object_ in self.__get_objects_in_export_nodes():
             for material_slot in object_.material_slots:
                 material = material_slot.material
                 materialName = material.name
@@ -901,7 +889,7 @@ class CrytekDaeExporter:
         current_element = self.__doc.createElement("library_effects")
         parent_element.appendChild(current_element)
 
-        for material in self.__get_materials_for_selected_objects():
+        for material in self.__get_materials_in_export_nodes():
             self.__export_library_effects_material(material, current_element)
 
     def __export_library_effects_material(self, material, current_element):
@@ -1098,7 +1086,7 @@ class CrytekDaeExporter:
 
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
-        materials = self.__get_materials_for_selected_objects()
+        materials = self.__get_materials_in_export_nodes()
 
         for material in materials:
             material_element = self.__doc.createElement("material")
@@ -1116,7 +1104,8 @@ class CrytekDaeExporter:
         parent_element.appendChild(libgeo)
 
         start_time = clock()
-        for object_ in self.__get_objects_for_library_geometries():
+        for object_ in self.__get_objects_in_export_nodes():
+            bpy.context.scene.objects.active = object_
             if object_.mode == 'EDIT':
                 bpy.ops.object.mode_set(mode='OBJECT')
             object_.data.update(calc_tessface=1)
@@ -1280,7 +1269,18 @@ class CrytekDaeExporter:
             if uvlay:
                 cbPrint("Found UV map.")
             elif (object_.type == "MESH"):
-                override = {'object': object_}
+                win      = bpy.context.window
+                scr      = win.screen
+                areas3d  = [area for area in scr.areas if area.type == 'VIEW_3D']
+                region   = [region for region in areas3d[0].regions if region.type == 'WINDOW']
+
+                override = {'window': win,
+                            'screen': scr,
+                            'area'  : areas3d[0],
+                            'region': region[0],
+                            'scene' : bpy.context.scene,
+                            'active_object': object_,
+                            }
                 bpy.ops.object.mode_set(override, mode='EDIT')
                 bpy.ops.mesh.select_all(override, action='SELECT')
                 bpy.ops.uv.smart_project(override, angle_limit=66, island_margin=0.03, user_area_weight=0)
@@ -1562,19 +1562,10 @@ class CrytekDaeExporter:
 
             # bpy.data.meshes.remove(mesh)
 
-    def __get_objects_for_library_geometries(self):
-        objects = []
-        for object_ in bpy.context.selected_objects:
-            if (object_.name[:6] != "_joint"):
-                if (object_.type == "MESH"):
-                    objects.append(object_)
-
-        return objects
-
     def __export_library_controllers(self, parent_element):
         library_node = self.__doc.createElement("library_controllers")
 
-        for selected_object in bpy.context.selected_objects:
+        for selected_object in self.__get_objects_in_export_nodes():
             if not "_boneGeometry" in selected_object.name:
                 # "some" code borrowed from dx exporter
                 armatures = self.__get_armatures(selected_object)
@@ -1680,7 +1671,7 @@ class CrytekDaeExporter:
         idref_array_node.setAttribute("id", "%s_%s_joints_array"
                                       % (armature_name, object_name))
         idref_array_node.setAttribute("count", "%s" % len(armature_bones))
-        bone_names = self.__get_bone_names_for_idref(armature_bones)
+        bone_names = " ".join(bone.name for bone in armature_bones)
 
         cbPrint(bone_names)
 
@@ -1964,34 +1955,39 @@ class CrytekDaeExporter:
         # the same for <scene>
         visual_scene.setAttribute("id", "scene")
         visual_scene.setAttribute("name", "scene")
-        for item in bpy.context.blend_data.groups:
-            if item:
-                ename = str(item.id_data.name)
-                node1 = self.__doc.createElement("node")
-                node1.setAttribute("id", "%s" % (ename))
-                node1.setIdAttribute('id')
-            visual_scene.appendChild(node1)
-            node1 = self.write_visual_scene(item.objects, node1)
-            # export node settings
-            ext1 = self.__doc.createElement("extra")
-            tc3 = self.__doc.createElement("technique")
-            tc3.setAttribute("profile", "CryEngine")
-            prop1 = self.__doc.createElement("properties")
-            if self.__config.export_type == 'CGF':
-                pcgf = self.__doc.createTextNode("fileType=cgf")
-                prop1.appendChild(pcgf)
-            if self.__config.export_type == 'CGA & ANM':
-                pcga = self.__doc.createTextNode("fileType=cgaanm")
-                prop1.appendChild(pcga)
-            if self.__config.export_type == 'CHR & CAF':
-                pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
-                prop1.appendChild(pchrcaf)
-            if self.__config.donot_merge:
-                pdnm = self.__doc.createTextNode("DoNotMerge")
-                prop1.appendChild(pdnm)
-            tc3.appendChild(prop1)
-            ext1.appendChild(tc3)
-            node1.appendChild(ext1)
+        for group in bpy.context.blend_data.groups:
+            if group:
+                if (group.name.startswith("CryExportNode_")):
+                    self.__write_visual_scene_node(group, visual_scene)
+                    
+
+    def __write_visual_scene_node(self, group, visual_scene):
+        ename = str(group.id_data.name)
+        node1 = self.__doc.createElement("node")
+        node1.setAttribute("id", "%s" % (ename))
+        node1.setIdAttribute('id')
+        visual_scene.appendChild(node1)
+        node1 = self.__write_visual_scene(group.objects, node1)
+        # export node settings
+        ext1 = self.__doc.createElement("extra")
+        tc3 = self.__doc.createElement("technique")
+        tc3.setAttribute("profile", "CryEngine")
+        prop1 = self.__doc.createElement("properties")
+        if self.__config.export_type == 'CGF':
+            pcgf = self.__doc.createTextNode("fileType=cgf")
+            prop1.appendChild(pcgf)
+        if self.__config.export_type == 'CGA & ANM':
+            pcga = self.__doc.createTextNode("fileType=cgaanm")
+            prop1.appendChild(pcga)
+        if self.__config.export_type == 'CHR & CAF':
+            pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
+            prop1.appendChild(pchrcaf)
+        if self.__config.donot_merge:
+            pdnm = self.__doc.createTextNode("DoNotMerge")
+            prop1.appendChild(pdnm)
+        tc3.appendChild(prop1)
+        ext1.appendChild(tc3)
+        node1.appendChild(ext1)
 
     def __export_scene(self, parent_element):
         # <scene> nothing really changes here or rather it doesn't need to.
@@ -2010,14 +2006,24 @@ def write_to_file(config, doc, file_name, exe):
 
     dae_file_for_rc = utils.get_absolute_path_for_rc(file_name)
     rc_params = ["/verbose", "/threads=processors"]
-    if config.refresh_rc:
-        rc_params.append("/refresh")
+    rc_params.append("/refresh")
 
     if config.run_rc or config.do_materials:
         if config.do_materials:
             rc_params.append("/createmtl=1")
 
         rc_process = utils.run_rc(exe, dae_file_for_rc, rc_params)
+
+        if rc_process is not None:
+            rc_process.wait()
+            extension = "cgf"
+            if config.export_type == 'CGA & ANM':
+                extension = "cga"
+            elif config.export_type == 'CHR & CAF':
+                extension = "chr"
+            out_file = "{0}.{1}".format(dae_file_for_rc[:-4], extension)
+            args = [exe, "/refresh", out_file]
+            rc_second_pass = subprocess.Popen(args)
 
         if config.do_materials:
             mtl_fix_thread = threading.Thread(

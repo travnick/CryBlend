@@ -293,6 +293,136 @@ def replaceInvalidRCCharacters(string):
     return string
 
 
+def get_armature():
+    for group in bpy.data.groups:
+        if group.name.startswith("CryExportNode_"):
+            for object_ in group.objects:
+                if object_.type == "ARMATURE":
+                    return object_
+
+
+def remove_unused_meshes():
+    for mesh in bpy.data.meshes:
+        if mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+
+
+def tag_fakebone(pose_bone):
+    for object_ in bpy.context.scene.objects:
+        if object_.name == pose_bone.name:
+            object_["fakebone"] = "fakebone"
+
+def deselect_all():
+    for object_ in bpy.context.scene.objects:
+        object_.select = False
+
+
+def add_fakebones():
+    '''Add helpers to track bone transforms.'''
+    scene = bpy.context.scene
+    remove_unused_meshes()
+    armature = get_armature()
+    if armature is None:
+        return
+
+    deselect_all()
+    scene.frame_set(scene.frame_start)
+    for pose_bone in armature.pose.bones:
+        bmatrix = pose_bone.bone.head_local
+        bpy.ops.mesh.primitive_cube_add(radius=.1, location=bmatrix)
+        fakebone = bpy.context.active_object
+        fakebone.name = pose_bone.name
+        fakebone["fakebone"] = "fakebone"
+        scene.objects.active = armature
+        armature.data.bones.active = pose_bone.bone
+        bpy.ops.object.parent_set(type='BONE')
+
+    keyframe_fakebones(armature)
+
+
+def remove_fakebones():
+    '''Select to remove all fakebones from the scene.'''
+    deselect_all()
+    for object_ in bpy.context.scene.objects:
+        is_fakebone = False
+        try:
+            throwaway = object_['fakebone']
+            is_fakebone = True
+        except:
+            pass
+        if (is_fakebone):
+            object_.select = True
+            bpy.ops.object.delete(use_global=False)
+
+
+def keyframe_fakebones(armature):
+    scene = bpy.context.scene
+
+    keyframes = get_keyframes(armature)
+    if keyframes is None:
+        return
+
+    locations, rotations = calculate_fakebone_transforms(armature, keyframes)
+    i = 0
+    for frame in keyframes:
+        scene.frame_set(frame)
+        for bone in armature.pose.bones:
+            fakebone = scene.objects.get(bone.name)
+            fakebone.location = locations[i]
+            fakebone.rotation_euler = rotations[i]
+            fakebone.keyframe_insert(data_path="location")
+            fakebone.keyframe_insert(data_path="rotation_euler")
+            i += 1
+            
+    scene.frame_set(scene.frame_start)
+
+
+def get_keyframes(armature):
+    keyframes = []
+    animation_data = armature.animation_data
+    if (animation_data is None):
+        return
+    action = animation_data.action
+    for fcurve in action.fcurves:
+        for keyframe in fcurve.keyframe_points:
+            keyframe_entry = int(keyframe.co.x)
+            if (keyframe_entry not in keyframes):
+                keyframes.append(keyframe_entry)
+    return keyframes
+
+
+def calculate_fakebone_transforms(armature, keyframes):
+    scene = bpy.context.scene
+    locations = rotations = []
+    for frame in keyframes:
+        scene.frame_set(frame)
+        for bone in armature.pose.bones:
+            fakebone = scene.objects.get(bone.name)
+            if (fakebone is None):
+                return {"FINISHED"}
+            bonecm = fakebone.matrix_local
+            if (bone.parent and bone.parent.parent):
+                bonepm = scene.objects.get(bone.parent.name).matrix_local
+                # Relative to parent = inverse parent bone matrix * bone matrix
+                animatrix = bonepm.inverted() * bonecm
+            else:
+                # Root bone or bones connected directly to root
+                animatrix = bonecm
+            lm, rm, sm = animatrix.decompose()
+            locations.append(lm)
+            rotations.append(rm.to_euler())
+    return locations, rotations
+
+def get_object_children(Parent):
+    return [Object for Object in Parent.children
+            if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+
+
+def negate_z_axis_of_matrix(matrix_local):
+    for i in range(0, 3):
+        matrix_local[i][3] = -matrix_local[i][3]
+
+
 # this is needed if you want to access more than the first def
 if __name__ == "__main__":
     register()
