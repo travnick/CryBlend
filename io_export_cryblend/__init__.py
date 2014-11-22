@@ -1971,6 +1971,7 @@ class CryBlendPanel(PropPanel, Panel):
 
     def draw(self, context): 
         layout = self.layout 
+
         col = layout.column(align=True) 
         col.label(text="Configuration Paths", icon="SCRIPT") 
         col.separator() 
@@ -1989,6 +1990,7 @@ class AddPhysicsProxyMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
+
         add_box_proxy = layout.operator("object.add_proxy", text="Box", icon="META_CUBE")
         add_box_proxy.type = "box"
         add_capsule_proxy = layout.operator("object.add_proxy", text="Capsule", icon="META_ELLIPSOID")
@@ -2005,6 +2007,7 @@ class MeshRepairToolsMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
+
         col = layout.column(align=True)
         col.label(text="Configuration Paths", icon="SCRIPT")
         col.separator()
@@ -2022,9 +2025,15 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+
         col = layout.column(align=True)
+        col.label("Nodes:", icon="GROUP")
+        col.separator()
         col.operator("object.add_cry_export_node", text="Add ExportNode")
         col.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
+        col.separator()
+
+        col.label("Animation:", icon="POSE_HLT")
         col.separator()
         col.operator("object.add_anim_node")
 
@@ -2068,23 +2077,12 @@ class CryUtilitiesPanel(View3DPanel, Panel):
         col.operator("mesh.add_branch_joint")
 
 
-class BoneUtilitiesPanel(View3DPanel, Panel):
-    bl_label = "Bone Utilities"
+class BonePhysicsPanel(View3DPanel, Panel):
+    bl_label = "Bone Physics"
 
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-
-        col.label(text="Skeleton", icon='BONE_DATA')
-        col.separator()
-        col.operator("armature.add_fake_bone", text="Add Fakebone")
-        col.operator("scene.remove_fake_bones", text="Remove Fakebones")
-        col.separator()
-
-        col.label(text="Animation", icon='KEY_HLT')
-        col.separator()
-        col.operator("armature.keyframe_fakebones", text="Keyframe Fakebones")
-        col.separator()
 
         col.label(text="Physics", icon="PHYSICS")
         col.separator()
@@ -2123,6 +2121,8 @@ class CustomPropertiesPanel(View3DPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+
+        layout.label("Properties:", icon="SCRIPT")
         layout.menu("menu.add_property")
 
 
@@ -2153,52 +2153,37 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.operator("object.add_cry_export_node", text="Add ExportNode", icon='GROUP')
         layout.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
         layout.separator()
+
+        layout.operator("object.add_anim_node", icon='POSE_HLT')
+        layout.separator()
+
         layout.operator("material.set_material_names", text="Update Material Names", icon="MATERIAL")
         layout.operator("material.remove_cry_blend_properties", text="Remove Material Properties")
-        layout.separator()
-        layout.operator("object.add_anim_node", icon='POSE_HLT')
         layout.separator()
 
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
         layout.separator()
-        layout.menu(BoneUtilitiesMenu.bl_idname, icon='BONE_DATA')
+        layout.menu(BonePhysicsMenu.bl_idname, icon='BONE_DATA')
         layout.separator()
         layout.menu(BreakablesMenu.bl_idname, icon='PARTICLES')
         layout.separator()
         layout.menu(TouchBendingMenu.bl_idname, icon='OUTLINER_OB_EMPTY')
         layout.separator()
         layout.menu(MeshUtilitiesMenu.bl_idname, icon='MESH_CUBE')
-
-        layout.operator("armature.add_bone_geometry", icon="PHYSICS")
-        layout.operator("armature.remove_bone_geometry", icon="PHYSICS")
-        layout.operator("armature.rename_phys_bones", icon="PHYSICS")
-        layout.separator()
-        # layout.operator_context = 'EXEC_AREA'
-        # layout.label(text="Add Material Physics", icon="PHYSICS")
-        layout.menu("menu.add_material_physics", icon='PHYSICS')
         layout.separator()
         layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
         layout.separator()
-        layout.menu("menu.generate_script", icon='TEXT')
+        layout.menu(GenerateScriptMenu.bl_idname, icon='TEXT')
         layout.separator()
         layout.menu(HelpMenu.bl_idname, icon='QUESTION')
 
 
-class BoneUtilitiesMenu(bpy.types.Menu):
-    bl_label = "Bone Utilities"
+class BonePhysicsMenu(bpy.types.Menu):
+    bl_label = "Bone Physics"
     bl_idname = "view3d.bone_utilities"
 
     def draw(self, context):
         layout = self.layout
-
-        layout.label(text="Skeleton")
-        layout.operator("armature.add_fake_bone", text="Add Fakebone", icon='BONE_DATA')
-        layout.operator("scene.remove_fake_bones", text="Remove Fakebones", icon='BONE_DATA')
-        layout.separator()
-
-        layout.label(text="Animation")
-        layout.operator("armature.keyframe_fakebones", text="Keyframe Fakebones", icon='KEY_HLT')
-        layout.separator()
 
         layout.label(text="Physics")
         layout.operator("armature.add_bone_geometry", icon="PHYSICS")
@@ -2344,9 +2329,9 @@ class HelpMenu(bpy.types.Menu):
         layout = self.layout
 
         layout.label(text="Resources")
-        layout.operator("file.open_crydev_webpage", text = "Ask a Question on the CryDev Forums", icon='SPACE2')
-        layout.operator("file.open_github_webpage", text = "Visit the CryBlend Tutorial Wiki", icon='SPACE2')
-        layout.operator("file.open_cryengine_docs_webpage", text = "Open the CryEngine Docs Page", icon='SPACE2')
+        layout.operator("file.open_crydev_webpage", text = "CryDev Forums", icon='SPACE2')
+        layout.operator("file.open_github_webpage", text = "CryBlend Wiki", icon='SPACE2')
+        layout.operator("file.open_cryengine_docs_webpage", text = "CryEngine Docs", icon='SPACE2')
 
 
 class AddMaterialPhysicsMenu(bpy.types.Menu):
@@ -2355,6 +2340,7 @@ class AddMaterialPhysicsMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
+
         layout.label(text="Add Material Physics")
         layout.separator()
         layout.operator("material.add_phys_default", text="__physDefault", icon='PHYSICS')
@@ -2446,14 +2432,14 @@ def get_classes_to_register():
 
         ExportUtilitiesPanel,
         CryUtilitiesPanel,
-        BoneUtilitiesPanel,
+        BonePhysicsPanel,
         MeshUtilitiesPanel,
         CustomPropertiesPanel,
         HelpPanel,
 
         CryBlendMainMenu,
         AddPhysicsProxyMenu,
-        BoneUtilitiesMenu,
+        BonePhysicsMenu,
         BreakablesMenu,
         TouchBendingMenu,
         MeshUtilitiesMenu,
