@@ -260,6 +260,10 @@ def isCryBlendMaterial(materialname):
         return False
 
 
+def isExportNode(groupname):
+    return groupname.startswith("CryExportNode_")
+
+
 def replaceInvalidRCCharacters(string):
     character_map = {
         "a":  "àáâå",
@@ -287,133 +291,6 @@ def replaceInvalidRCCharacters(string):
     string = re.sub("[^0-9A-Za-z]", "", string)
 
     return string
-
-
-def get_objects_in_export_nodes():
-    objects = []
-    for group in bpy.data.groups:
-        if group.name.startswith("CryExportNode_"):
-            for object_ in group.objects:
-                if object_.name[:6] != "_joint":
-                    if object_.type == "MESH":
-                        objects.append(object_)
-
-    return objects
-
-
-def get_materials_in_export_nodes():
-    materials = []
-    for object_ in get_objects_in_export_nodes():
-        for material_slot in object_.material_slots:
-            materials.append(material_slot.material)
-
-    return materials
-
-
-def get_textures_in_export_nodes():
-    texture_slots = get_texture_slots_in_export_nodes()
-    return [texture_slot.texture for texture_slot in texture_slots]
-
-
-def get_texture_slots_in_export_nodes():
-    all_texture_slots = []
-    materials = get_materials_in_export_nodes()
-    for material in materials:
-        texture_slots = get_texture_slots_for_material(material)
-        all_texture_slots.extend(texture_slots)
-
-    return all_texture_slots
-
-
-def get_texture_slots_for_material(material):
-    texture_slots = []
-    for texture_slot in material.texture_slots:
-        if texture_slot and texture_slot.texture.type == 'IMAGE':
-            texture_slots.append(texture_slot)
-
-    validate_texture_slots(texture_slots)
-
-    return texture_slots
-
-
-def validate_texture_slots(texture_slots):
-    texture_types = count_texture_types(texture_slots)
-    raise_exception_if_textures_have_same_type(texture_types)
-
-
-def count_texture_types(texture_slots):
-    texture_types = {
-        'DIFFUSE': 0,
-        'SPECULAR': 0,
-        'NORMAL MAP': 0
-    }
-
-    for texture_slot in texture_slots:
-        if texture_slot.use_map_color_diffuse:
-            texture_types['DIFFUSE'] += 1
-        if texture_slot.use_map_color_spec:
-            texture_types['SPECULAR'] += 1
-        if texture_slot.use_map_normal:
-            texture_types['NORMAL MAP'] += 1
-
-    return texture_types
-
-
-def raise_exception_if_textures_have_same_type(texture_types):
-    ERROR_TEMPLATE = "There is more than one texture of type {!r}."
-    error_messages = []
-
-    for type_name, type_count in  texture_types.items():
-        if type_count > 1:
-            error_messages.append(ERROR_TEMPLATE.format(type_name.lower()))
-
-    if error_messages:
-        raise exceptions.CryBlendException("\n".join(error_messages) + "\n"
-                                    + "Please correct that and try again.")
-
-
-def is_valid_image(image):
-    return image.has_data and image.filepath
-
-
-def get_material_color(material, type):
-    if type == "emission":
-        r = b = g = material.emit
-    elif type == "ambient":
-        r = b = g = material.ambient
-    elif type == "diffuse":
-        r = material.diffuse_color.r
-        g = material.diffuse_color.g
-        b = material.diffuse_color.b
-    elif type == "specular":
-        r = material.specular_color.r
-        g = material.specular_color.g
-        b = material.specular_color.b
-
-    col = color_to_string(r, g, b, 1.0)
-    return col
-
-def get_material_attribute(material, type):
-    if type == "shininess":
-        float = material.specular_hardness
-    elif type == "index_refraction":
-        float = material.alpha
-
-    return str(float)
-
-
-def is_export_node(groupname):
-    return groupname.startswith("CryExportNode_")
-
-
-def get_node_type(groupname):
-    node_components = groupname.split(".")
-    return node_components[len(node_components)-1]
-
-
-def get_node_name(groupname):
-    node_type = get_node_type(groupname)
-    return groupname[:len(node_type)+1]
 
 
 def get_armature():
@@ -454,7 +331,6 @@ def add_fakebones():
         bmatrix = pose_bone.bone.head_local
         bpy.ops.mesh.primitive_cube_add(radius=.1, location=bmatrix)
         fakebone = bpy.context.active_object
-        armature.users_group[0].objects.link(fakebone)
         fakebone.name = pose_bone.name
         fakebone["fakebone"] = "fakebone"
         scene.objects.active = armature
@@ -504,7 +380,7 @@ def keyframe_fakebones(armature):
 def get_keyframes(armature):
     keyframes = []
     animation_data = armature.animation_data
-    if (animation_data is None or animation_data.action is None):
+    if (animation_data is None):
         return
     action = animation_data.action
     for fcurve in action.fcurves:

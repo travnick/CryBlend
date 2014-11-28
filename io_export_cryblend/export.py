@@ -112,13 +112,36 @@ class CrytekDaeExporter:
         utils.add_fakebones()
         self.__export_library_controllers(root_element)
         self.__export_library_animation_clips_and_animations(root_element)
-        self.__export_library_visual_scenes(root_element)
         utils.remove_fakebones()
+        self.__export_library_visual_scenes(root_element)
         self.__export_scene(root_element)
 
         write_to_file(self.__config,
                       self.__doc, filepath,
                       self.__config.rc_path)
+
+    def __correct_weights(self):
+        if self.__config.export_type == 'CHR & CAF':
+            for group in bpy.context.blend_data.groups:
+                for object_ in group.objects:
+                    if object_.type == 'MESH':
+                        override = {'weight_paint_object': object_}
+                        try:
+                            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+                        except:
+                            raise exceptions.CryBlendException("Please fix weightless vertices first.")
+        cbPrint("Weights Corrected.")
+
+    def __get_objects_in_export_nodes(self):
+        objects = []
+        for group in bpy.context.blend_data.groups:
+            if (group.name.startswith("CryExportNode_")):
+                for object_ in group.objects:
+                    if (object_.name[:6] != "_joint"):
+                        if (object_.type == "MESH"):
+                            objects.append(object_)
+
+        return objects
 
     def __write_bone_list(self, pname, bones, obj, node1):
         cbPrint("{!r} bones".format(len(bones)))
@@ -443,7 +466,10 @@ class CrytekDaeExporter:
                         else:
                             node1.appendChild(nodename)
                     else:
-                        node1.appendChild(nodename)
+                        if object_.name == "animnode":
+                            cbPrint("Animnode.")
+                        else:
+                            node1.appendChild(nodename)
         return node1
 
     def __get_animation_location(self, object_, axis):
@@ -483,107 +509,181 @@ class CrytekDaeExporter:
         source_prefix = "#{!s}".format(id_prefix)
 
         for curve in object_.animation_data.action.fcurves:
-            if (curve.data_path == attribute_type and curve.array_index == AXES[axis]):
+            if (curve.data_path == attribute_type and
+                curve.array_index == AXES[axis]):
+                animation_element = self.__doc.createElement("animation")
+                animation_element.setAttribute("id", id_prefix)
+                intangx = ""
+                outtangx = ""
+                inpx = ""
+                outpx = ""
+                intx = ""
                 keyframe_points = curve.keyframe_points
-                sources = {
-                    "input": "",
-                    "output": "",
-                    "interpolation": "",
-                    "intangent": "",
-                    "outangent": ""
-                }
+                ii = len(keyframe_points)
                 for keyframe_point in keyframe_points:
                     khlx = keyframe_point.handle_left[0]
                     khly = keyframe_point.handle_left[1]
                     khrx = keyframe_point.handle_right[0]
                     khry = keyframe_point.handle_right[1]
                     frame, value = keyframe_point.co
+                    time = utils.convert_time(frame)
+                    intx += "%s " % (keyframe_point.interpolation)
+                    inpx += "%.6f " % (time)
+                    outpx += "%.6f " % (value * multiplier)
+                    intangfirst = utils.convert_time(khlx)
+                    outangfirst = utils.convert_time(khrx)
+                    intangx += "%.6f %.6f " % (intangfirst, khly)
+                    outtangx += "%.6f %.6f " % (outangfirst, khry)
 
-                    sources["input"] += "%.6f " % (utils.convert_time(frame))
-                    sources["output"] += "%.6f " % (value * multiplier)
-                    sources["interpolation"] += "%s " % (keyframe_point.interpolation)
-                    sources["intangent"] += "%.6f %.6f " % (utils.convert_time(khlx), khly)
-                    sources["outangent"] += "%.6f %.6f " % (utils.convert_time(khrx), khry)
+                # input
+                sinpx = self.__doc.createElement("source")
+                sinpx.setAttribute("id", id_prefix + "-input")
+                inpxfa = self.__doc.createElement("float_array")
+                inpxfa.setAttribute("id", id_prefix + "-input-array")
+                inpxfa.setAttribute("count", "%s" % (ii))
+                sinpxdat = self.__doc.createTextNode("%s" % (inpx))
+                inpxfa.appendChild(sinpxdat)
+                tcinpx = self.__doc.createElement("technique_common")
+                accinpx = self.__doc.createElement("accessor")
+                accinpx.setAttribute("source", source_prefix + "-input-array")
+                accinpx.setAttribute("count", "%s" % (ii))
+                accinpx.setAttribute("stride", "1")
+                parinpx = self.__doc.createElement("param")
+                parinpx.setAttribute("name", "TIME")
+                parinpx.setAttribute("type", "float")
+                accinpx.appendChild(parinpx)
+                tcinpx.appendChild(accinpx)
+                sinpx.appendChild(inpxfa)
+                sinpx.appendChild(tcinpx)
+                # output
+                soutpx = self.__doc.createElement("source")
+                soutpx.setAttribute("id", id_prefix + "-output")
+                outpxfa = self.__doc.createElement("float_array")
+                outpxfa.setAttribute("id", id_prefix + "-output-array")
+                outpxfa.setAttribute("count", "%s" % (ii))
+                soutpxdat = self.__doc.createTextNode("%s" % (outpx))
+                outpxfa.appendChild(soutpxdat)
+                tcoutpx = self.__doc.createElement("technique_common")
+                accoutpx = self.__doc.createElement("accessor")
+                accoutpx.setAttribute("source", source_prefix + "-output-array")
+                accoutpx.setAttribute("count", "%s" % (ii))
+                accoutpx.setAttribute("stride", "1")
+                paroutpx = self.__doc.createElement("param")
+                paroutpx.setAttribute("name", "VALUE")
+                paroutpx.setAttribute("type", "float")
+                accoutpx.appendChild(paroutpx)
+                tcoutpx.appendChild(accoutpx)
+                soutpx.appendChild(outpxfa)
+                soutpx.appendChild(tcoutpx)
+                # interpolation
+                sintpx = self.__doc.createElement("source")
+                sintpx.setAttribute("id", id_prefix + "-interpolation")
+                intpxfa = self.__doc.createElement("Name_array")
+                intpxfa.setAttribute("id", id_prefix + "-interpolation-array")
+                intpxfa.setAttribute("count", "%s" % (ii))
+                sintpxdat = self.__doc.createTextNode("%s" % (intx))
+                intpxfa.appendChild(sintpxdat)
+                tcintpx = self.__doc.createElement("technique_common")
+                accintpx = self.__doc.createElement("accessor")
+                accintpx.setAttribute("source", source_prefix + "-interpolation-array")
+                accintpx.setAttribute("count", "%s" % (ii))
+                accintpx.setAttribute("stride", "1")
+                parintpx = self.__doc.createElement("param")
+                parintpx.setAttribute("name", "INTERPOLATION")
+                parintpx.setAttribute("type", "name")
+                accintpx.appendChild(parintpx)
+                tcintpx.appendChild(accintpx)
+                sintpx.appendChild(intpxfa)
+                sintpx.appendChild(tcintpx)
+                # intangent
+                sintangpx = self.__doc.createElement("source")
+                sintangpx.setAttribute("id", id_prefix + "-intangent")
+                intangpxfa = self.__doc.createElement("float_array")
+                intangpxfa.setAttribute("id", id_prefix + "-intangent-array")
+                intangpxfa.setAttribute("count", "%s" % ((ii) * 2))
+                sintangpxdat = self.__doc.createTextNode("%s" % (intangx))
+                intangpxfa.appendChild(sintangpxdat)
+                tcintangpx = self.__doc.createElement("technique_common")
+                accintangpx = self.__doc.createElement("accessor")
+                accintangpx.setAttribute("source", source_prefix + "-intangent-array")
+                accintangpx.setAttribute("count", "%s" % (ii))
+                accintangpx.setAttribute("stride", "2")
+                parintangpx = self.__doc.createElement("param")
+                parintangpx.setAttribute("name", "X")
+                parintangpx.setAttribute("type", "float")
+                parintangpxy = self.__doc.createElement("param")
+                parintangpxy.setAttribute("name", "Y")
+                parintangpxy.setAttribute("type", "float")
+                accintangpx.appendChild(parintangpx)
+                accintangpx.appendChild(parintangpxy)
+                tcintangpx.appendChild(accintangpx)
+                sintangpx.appendChild(intangpxfa)
+                sintangpx.appendChild(tcintangpx)
+                # outtangent
+                soutangpx = self.__doc.createElement("source")
+                soutangpx.setAttribute("id", id_prefix + "-outtangent")
+                outangpxfa = self.__doc.createElement("float_array")
+                outangpxfa.setAttribute("id", id_prefix + "-outtangent-array")
+                outangpxfa.setAttribute("count", "%s" % ((ii) * 2))
+                soutangpxdat = self.__doc.createTextNode("%s" % (outtangx))
+                outangpxfa.appendChild(soutangpxdat)
+                tcoutangpx = self.__doc.createElement("technique_common")
+                accoutangpx = self.__doc.createElement("accessor")
+                accoutangpx.setAttribute("source", source_prefix + "-outtangent-array")
+                accoutangpx.setAttribute("count", "%s" % (ii))
+                accoutangpx.setAttribute("stride", "2")
+                paroutangpx = self.__doc.createElement("param")
+                paroutangpx.setAttribute("name", "X")
+                paroutangpx.setAttribute("type", "float")
+                paroutangpxy = self.__doc.createElement("param")
+                paroutangpxy.setAttribute("name", "Y")
+                paroutangpxy.setAttribute("type", "float")
+                accoutangpx.appendChild(paroutangpx)
+                accoutangpx.appendChild(paroutangpxy)
+                tcoutangpx.appendChild(accoutangpx)
+                soutangpx.appendChild(outangpxfa)
+                soutangpx.appendChild(tcoutangpx)
+                # sampler
+                samx = self.__doc.createElement("sampler")
+                samx.setAttribute("id", id_prefix + "-sampler")
+                semip = self.__doc.createElement("input")
+                semip.setAttribute("semantic", "INPUT")
+                semip.setAttribute("source", source_prefix + "-input")
+                semop = self.__doc.createElement("input")
+                semop.setAttribute("semantic", "OUTPUT")
+                semop.setAttribute("source", source_prefix + "-output")
+                seminter = self.__doc.createElement("input")
+                seminter.setAttribute("semantic", "INTERPOLATION")
+                seminter.setAttribute("source", source_prefix + "-interpolation")
+                semintang = self.__doc.createElement("input")
+                semintang.setAttribute("semantic", "IN_TANGENT")
+                semintang.setAttribute("source", source_prefix + "-intangent")
+                semoutang = self.__doc.createElement("input")
+                semoutang.setAttribute("semantic", "OUT_TANGENT")
+                semoutang.setAttribute("source", source_prefix + "-outtangent")
+                samx.appendChild(semip)
+                samx.appendChild(semop)
+                samx.appendChild(seminter)
+                chanx = self.__doc.createElement("channel")
+                chanx.setAttribute("source", source_prefix + "-sampler")
+                chanx.setAttribute("target", target)
+                animation_element.appendChild(sinpx)
+                animation_element.appendChild(soutpx)
+                animation_element.appendChild(sintpx)
+                animation_element.appendChild(sintangpx)
+                animation_element.appendChild(soutangpx)
+                animation_element.appendChild(samx)
+                animation_element.appendChild(chanx)
 
-                animation_element = self.__doc.createElement("animation")
-                animation_element.setAttribute("id", id_prefix)
+                cbPrint("keyframe_points count: {!s}".format(ii))
+                cbPrint(inpx)
+                cbPrint(outpx)
+                cbPrint(intx)
+                cbPrint(intangx)
+                cbPrint(outtangx)
+                cbPrint("done {!s} {!s}".format(attribute_type, axis))
 
-                for type, data in sources.items():
-                    animation_node = __create_animation_node(type, data, len(keyframe_points))
-                    animation_element.appendChild(animation_node)
-
-                sampler = __create_sampler()
-                channel = self.__doc.createElement("channel")
-                channel.setAttribute("source", source_prefix + "-sampler")
-                channel.setAttribute("target", target)
-
-                animation_element.appendChild(sampler)
-                animation_element.appendChild(channel)
-
-                return animation_element
-
-    def __create_animation_node(type, item, num_keyframes):
-        if type == "intang" or type == "outang":
-            axes = 2
-        else:
-            axes = 1
-        source = self.__doc.createElement("source")
-        source.setAttribute("id", id_prefix + "-{}".format(type))
-        float_array = self.__doc.createElement("float_array")
-        float_array.setAttribute("id", id_prefix + "-{}-array".format(type))
-        float_array.setAttribute("count", "{}".format(num_keyframes * axes))
-        source_text_node = self.__doc.createTextNode("{}".format(item))
-        float_array.appendChild(source_text_node)
-        technique_common = self.__doc.createElement("technique_common")
-        accessor = self.__doc.createElement("accessor")
-        accessor.setAttribute("source", source_prefix + "-{}-array".format(type))
-        accessor.setAttribute("count", "{}".format(num_keyframes))
-        accessor.setAttribute("stride", "1")
-        if axes == 2:
-            param_x = self.__doc.createElement("param")
-            param_x.setAttribute("name", "X")
-            param_x.setAttribute("type", "float")
-            param_y = self.__doc.createElement("param")
-            param_y.setAttribute("name", "Y")
-            param_y.setAttribute("type", "float")
-            accessor.appendChild(param_x)
-            accessor.appendChild(param_y)
-        else:
-            param = self.__doc.createElement("param")
-            param.setAttribute("name", "TIME")
-            param.setAttribute("type", "float")
-            accessor.appendChild(param)
-        technique_common.appendChild(accessor)
-        source.appendChild(float_array)
-        source.appendChild(technique_common)
-
-        return source
-
-    def __create_sampler():
-        sampler = self.__doc.createElement("sampler")
-        sampler.setAttribute("id", id_prefix + "-sampler")
-        input = self.__doc.createElement("input")
-        input.setAttribute("semantic", "INPUT")
-        input.setAttribute("source", source_prefix + "-input")
-        output = self.__doc.createElement("input")
-        output.setAttribute("semantic", "OUTPUT")
-        output.setAttribute("source", source_prefix + "-output")
-        interpolation = self.__doc.createElement("input")
-        interpolation.setAttribute("semantic", "INTERPOLATION")
-        interpolation.setAttribute("source", source_prefix + "-interpolation")
-        intangent = self.__doc.createElement("input")
-        intangent.setAttribute("semantic", "IN_TANGENT")
-        intangent.setAttribute("source", source_prefix + "-intangent")
-        outangent = self.__doc.createElement("input")
-        outangent.setAttribute("semantic", "OUT_TANGENT")
-        outangent.setAttribute("source", source_prefix + "-outtangent")
-        sampler.appendChild(input)
-        sampler.appendChild(output)
-        sampler.appendChild(interpolation)
-        sampler.appendChild(intangent)
-        sampler.appendChild(outangent)
-
-        return sampler
+        return animation_element
 
     def __export_float_array(self, armature_bones, float_array):
         for bone in armature_bones:
@@ -649,7 +749,7 @@ class CrytekDaeExporter:
 
         images_to_convert = []
 
-        for image in self.__get_image_textures_in_export_nodes():
+        for image in self.__get_texture_images_for_selected_objects():
             image_element = self.__export_library_image(images_to_convert,
                                                         image)
             library_images.appendChild(image_element)
@@ -679,13 +779,13 @@ class CrytekDaeExporter:
 
         return image_element
 
-    def __get_image_textures_in_export_nodes(self):
+    def __get_texture_images_for_selected_objects(self):
         images = []
-        textures = utils.get_textures_in_export_nodes()
+        textures = self.__get_textures_for_selected_objects()
 
         for texture in textures:
             try:
-                if utils.is_valid_image(texture.image):
+                if self.is_valid_image(texture.image):
                     images.append(texture.image)
 
             except AttributeError:
@@ -694,6 +794,89 @@ class CrytekDaeExporter:
 
         # return only unique images
         return list(set(images))
+
+    def __get_textures_for_selected_objects(self):
+        materials = self.__get_materials_in_export_nodes()
+        return self.__get_textures_for_materials(materials)
+
+    def __get_materials_in_export_nodes(self):
+        materials = []
+        for object_ in self.__get_objects_in_export_nodes():
+            for material_slot in object_.material_slots:
+                material = material_slot.material
+                materialName = material.name
+                materialComponents = materialName.split("__")
+                id = materialComponents[1]
+                if (len(id) == 1 and id.isdigit()):
+                    id = id.rjust(2, '0')  # pad single digit ID's
+                material.name = "%s__%s__%s__%s" % (materialComponents[0], id, materialComponents[2], materialComponents[3]) 
+                materials.append(material)
+
+        return materials
+
+    def __get_textures_for_materials(self, materials):
+        texture_slots = self.__get_texture_slots_for_materials(materials)
+        return self.__get_textures_for_texture_slots(texture_slots)
+
+    def __get_texture_slots_for_materials(self, materials):
+        texture_slots = []
+
+        for material in materials:
+            texture_slots.extend(
+                            self.__get_texture_slots_for_material(material))
+
+        return texture_slots
+
+    def __get_texture_slots_for_material(self, material):
+        texture_slots = []
+        for texture_slot in material.texture_slots:
+            # texture_slot is able to be None
+            if texture_slot and texture_slot.texture.type == 'IMAGE':
+                texture_slots.append(texture_slot)
+
+        self.__is_texture_slot_valid(texture_slots)
+
+        return texture_slots
+
+    def __is_texture_slot_valid(self, texture_slots):
+        texture_types = self.__count_texture_types(texture_slots)
+
+        self.__raise_exception_if_textures_have_same_type(texture_types)
+
+    def __count_texture_types(self, texture_slots):
+        texture_types = {
+            'DIFFUSE': 0,
+            'SPECULAR': 0,
+            'NORMAL MAP': 0
+        }
+
+        for texture_slot in texture_slots:
+            if texture_slot.use_map_color_diffuse:
+                texture_types['DIFFUSE'] += 1
+            if texture_slot.use_map_color_spec:
+                texture_types['SPECULAR'] += 1
+            if texture_slot.use_map_normal:
+                texture_types['NORMAL MAP'] += 1
+
+        return texture_types
+
+    def __raise_exception_if_textures_have_same_type(self, texture_types):
+        ERROR_TEMPLATE = "There is more than one texture of type {!r}."
+        error_messages = []
+
+        for type_name, type_count in  texture_types.items():
+            if type_count > 1:
+                error_messages.append(ERROR_TEMPLATE.format(type_name.lower()))
+
+        if error_messages:
+            raise exceptions.CryBlendException("\n".join(error_messages) + "\n"
+                                        + "Please correct that and try again.")
+
+    def __get_textures_for_texture_slots(self, texture_slots):
+        return [texture_slot.texture for texture_slot in texture_slots]
+
+    def is_valid_image(self, image):
+        return image.has_data and image.filepath
 
     def __convert_images_to_dds(self, images_to_convert):
         converter = DdsConverterRunner(
@@ -706,144 +889,204 @@ class CrytekDaeExporter:
         current_element = self.__doc.createElement("library_effects")
         parent_element.appendChild(current_element)
 
-        for material in utils.get_materials_in_export_nodes():
+        for material in self.__get_materials_in_export_nodes():
             self.__export_library_effects_material(material, current_element)
 
     def __export_library_effects_material(self, material, current_element):
-        images = [[], [], []]
-        texture_slots = utils.get_texture_slots_for_material(material)
+        diffuse_count = 0
+        specular_count = 0
+        normal_map_count = 0
+        diffuse_image = ""
+        specular_image = ""
+        normal_map_image = ""
+
+        texture_slots = self.__get_texture_slots_for_material(material)
         for texture_slot in texture_slots:
             image = texture_slot.texture.image
+
             if not image:
                 raise exceptions.CryBlendException(
                             "One of texture slots has no image assigned.")
 
-            surface, sampler = self.__create_surface_and_sampler(image.name)
             if texture_slot.use_map_color_diffuse:
-                images[0] = [image.name, surface, sampler] 
+                diffuse_count += 1
+                diffuse_image = image.name
+                dnpsurf = self.__doc.createElement("newparam")
+                dnpsurf.setAttribute("sid", "%s-surface" % image.name)
+                surface_node = self.__doc.createElement("surface")
+                surface_node.setAttribute("type", "2D")
+                init_from_node = self.__doc.createElement("init_from")
+                temp_node = self.__doc.createTextNode(image.name)
+                init_from_node.appendChild(temp_node)
+                surface_node.appendChild(init_from_node)
+                dnpsurf.appendChild(surface_node)
+                dnpsamp = self.__doc.createElement("newparam")
+                dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                sampler_node = self.__doc.createElement("sampler2D")
+                source_node = self.__doc.createElement("source")
+                temp_node = self.__doc.createTextNode(
+                                                "%s-surface" % (image.name))
+                source_node.appendChild(temp_node)
+                sampler_node.appendChild(source_node)
+                dnpsamp.appendChild(sampler_node)
             if texture_slot.use_map_color_spec:
-                images[1] = [image.name, surface, sampler]
+                specular_count += 1
+                specular_image = image.name
+                snpsurf = self.__doc.createElement("newparam")
+                snpsurf.setAttribute("sid", "%s-surface" % image.name)
+                surface_node = self.__doc.createElement("surface")
+                surface_node.setAttribute("type", "2D")
+                init_from_node = self.__doc.createElement("init_from")
+                temp_node = self.__doc.createTextNode(image.name)
+                init_from_node.appendChild(temp_node)
+                surface_node.appendChild(init_from_node)
+                snpsurf.appendChild(surface_node)
+                snpsamp = self.__doc.createElement("newparam")
+                snpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                sampler_node = self.__doc.createElement("sampler2D")
+                source_node = self.__doc.createElement("source")
+                temp_node = self.__doc.createTextNode(
+                                                "%s-surface" % (image.name))
+                source_node.appendChild(temp_node)
+                sampler_node.appendChild(source_node)
+                snpsamp.appendChild(sampler_node)
             if texture_slot.use_map_normal:
-                images[2] = [image.name, surface, sampler]
+                normal_map_count += 1
+                normal_map_image = image.name
+                nnpsurf = self.__doc.createElement("newparam")
+                nnpsurf.setAttribute("sid", "%s-surface" % image.name)
+                surface_node = self.__doc.createElement("surface")
+                surface_node.setAttribute("type", "2D")
+                init_from_node = self.__doc.createElement("init_from")
+                temp_node = self.__doc.createTextNode(image.name)
+                init_from_node.appendChild(temp_node)
+                surface_node.appendChild(init_from_node)
+                nnpsurf.appendChild(surface_node)
+                nnpsamp = self.__doc.createElement("newparam")
+                nnpsamp.setAttribute("sid", "%s-sampler" % image.name)
+                sampler_node = self.__doc.createElement("sampler2D")
+                source_node = self.__doc.createElement("source")
+                temp_node = self.__doc.createTextNode(
+                                                "%s-surface" % (image.name))
+                source_node.appendChild(temp_node)
+                sampler_node.appendChild(source_node)
+                nnpsamp.appendChild(sampler_node)
 
         effect_node = self.__doc.createElement("effect")
-        effect_node.setAttribute("id", "%s_fx" % material.name)
+        effect_node.setAttribute("id", "%s_fx" % (material.name))
         profile_node = self.__doc.createElement("profile_COMMON")
-        for image in images:
-            if len(image) != 0:
-                profile_node.appendChild(image[1])
-                profile_node.appendChild(image[2])
-        technique_common = self.__doc.createElement("technique")
-        technique_common.setAttribute("sid", "common")
-
-        phong = self.__create_material_node(material, images)
-        technique_common.appendChild(phong)
-        profile_node.appendChild(technique_common)
-        
-        extra = self.__create_double_sided_extra("GOOGLEEARTH")
+        if diffuse_count:
+            profile_node.appendChild(dnpsurf)
+            profile_node.appendChild(dnpsamp)
+        if specular_count:
+            profile_node.appendChild(snpsurf)
+            profile_node.appendChild(snpsamp)
+        if normal_map_count:
+            profile_node.appendChild(nnpsurf)
+            profile_node.appendChild(nnpsamp)
+        tech_com = self.__doc.createElement("technique")
+        tech_com.setAttribute("sid", "common")
+        phong = self.__doc.createElement("phong")
+        emis = self.__doc.createElement("emission")
+        color = self.__doc.createElement("color")
+        color.setAttribute("sid", "emission")
+        cot = utils.color_to_string(material.emit,
+                                    material.emit,
+                                    material.emit,
+                                    1.0)
+        emit = self.__doc.createTextNode(cot)
+        color.appendChild(emit)
+        emis.appendChild(color)
+        amb = self.__doc.createElement("ambient")
+        color = self.__doc.createElement("color")
+        color.setAttribute("sid", "ambient")
+        cot = utils.color_to_string(material.ambient,
+                                    material.ambient,
+                                    material.ambient,
+                                    1.0)
+        ambcol = self.__doc.createTextNode(cot)
+        color.appendChild(ambcol)
+        amb.appendChild(color)
+        dif = self.__doc.createElement("diffuse")
+        if diffuse_count:
+            dtexr = self.__doc.createElement("texture")
+            dtexr.setAttribute("texture", "%s-sampler" % diffuse_image)
+            dif.appendChild(dtexr)
+        else:
+            color = self.__doc.createElement("color")
+            color.setAttribute("sid", "diffuse")
+            cot = utils.color_to_string(material.diffuse_color.r,
+                                        material.diffuse_color.g,
+                                        material.diffuse_color.b,
+                                        1.0)
+            difcol = self.__doc.createTextNode(cot)
+            color.appendChild(difcol)
+            dif.appendChild(color)
+        spec = self.__doc.createElement("specular")
+        if specular_count:
+            stexr = self.__doc.createElement("texture")
+            stexr.setAttribute("texture", "%s-sampler" % specular_image)
+            spec.appendChild(stexr)
+        else:
+            color = self.__doc.createElement("color")
+            color.setAttribute("sid", "specular")
+            cot = utils.color_to_string(material.specular_color.r,
+                                        material.specular_color.g,
+                                        material.specular_color.b,
+                                        1.0)
+            speccol = self.__doc.createTextNode(cot)
+            color.appendChild(speccol)
+            spec.appendChild(color)
+        shin = self.__doc.createElement("shininess")
+        flo = self.__doc.createElement("float")
+        flo.setAttribute("sid", "shininess")
+        shinval = self.__doc.createTextNode("%s" % material.specular_hardness)
+        flo.appendChild(shinval)
+        shin.appendChild(flo)
+        ioref = self.__doc.createElement("index_of_refraction")
+        flo = self.__doc.createElement("float")
+        flo.setAttribute("sid", "index_of_refraction")
+        iorval = self.__doc.createTextNode("%s" % material.alpha)
+        flo.appendChild(iorval)
+        ioref.appendChild(flo)
+        phong.appendChild(emis)
+        phong.appendChild(amb)
+        phong.appendChild(dif)
+        phong.appendChild(spec)
+        phong.appendChild(shin)
+        phong.appendChild(ioref)
+        if normal_map_count:
+            bump = self.__doc.createElement("normal")
+            ntexr = self.__doc.createElement("texture")
+            ntexr.setAttribute("texture", "%s-sampler" % normal_map_image)
+            bump.appendChild(ntexr)
+            phong.appendChild(bump)
+        tech_com.appendChild(phong)
+        profile_node.appendChild(tech_com)
+        extra = self.__doc.createElement("extra")
+        techn = self.__doc.createElement("technique")
+        techn.setAttribute("profile", "GOOGLEEARTH")
+        ds = self.__doc.createElement("double_sided")
+        dsval = self.__doc.createTextNode("1")
+        ds.appendChild(dsval)
+        techn.appendChild(ds)
+        extra.appendChild(techn)
         profile_node.appendChild(extra)
         effect_node.appendChild(profile_node)
-
-        extra = self.__create_double_sided_extra("MAX3D")
+        extra = self.__doc.createElement("extra")
+        techn = self.__doc.createElement("technique")
+        techn.setAttribute("profile", "MAX3D")
+        ds = self.__doc.createElement("double_sided")
+        dsval = self.__doc.createTextNode("1")
+        ds.appendChild(dsval)
+        techn.appendChild(ds)
+        extra.appendChild(techn)
         effect_node.appendChild(extra)
         current_element.appendChild(effect_node)
 
-    def __create_surface_and_sampler(self, image_name):
-        surface = self.__doc.createElement("newparam")
-        surface.setAttribute("sid", "%s-surface" % image_name)
-        surface_node = self.__doc.createElement("surface")
-        surface_node.setAttribute("type", "2D")
-        init_from_node = self.__doc.createElement("init_from")
-        temp_node = self.__doc.createTextNode(image_name)
-        init_from_node.appendChild(temp_node)
-        surface_node.appendChild(init_from_node)
-        surface.appendChild(surface_node)
-        sampler = self.__doc.createElement("newparam")
-        sampler.setAttribute("sid", "%s-sampler" % image_name)
-        sampler_node = self.__doc.createElement("sampler2D")
-        source_node = self.__doc.createElement("source")
-        temp_node = self.__doc.createTextNode(
-                                        "%s-surface" % (image_name))
-        source_node.appendChild(temp_node)
-        sampler_node.appendChild(source_node)
-        sampler.appendChild(sampler_node)
-
-        return surface, sampler
-
-    def __create_material_node(self, material, images):
-        phong = self.__doc.createElement("phong")
-
-        emission = self.__create_color_node(material, "emission")
-        ambient = self.__create_color_node(material, "ambient")
-        if len(images[0]) != 0:
-            diffuse = self.__create_texture_node(images[0][0], "diffuse")
-        else:
-            diffuse = self.__create_color_node(material, "diffuse")
-        if len(images[1]) != 0:
-            specular = self.__create_texture_node(images[1][0], "specular")
-        else:
-            specular = self.__create_color_node(material, "specular")
-
-        shininess = self.__create_attribute_node(material, "shininess")
-        index_refraction = self.__create_attribute_node(material, "index_refraction")
-
-        phong.appendChild(emission)
-        phong.appendChild(ambient)
-        phong.appendChild(diffuse)
-        phong.appendChild(specular)
-        phong.appendChild(shininess)
-        phong.appendChild(index_refraction)
-        if len(images[2]) != 0:
-            normal = self.__create_texture_node(images[2][0], "normal")
-            phong.appendChild(normal)
-
-        return phong
-
-    def __create_color_node(self, material, type):
-        node = self.__doc.createElement(type)
-        color = self.__doc.createElement("color")
-        color.setAttribute("sid", type)
-        col = utils.get_material_color(material, type)
-        color_text = self.__doc.createTextNode(col)
-        color.appendChild(color_text)
-        node.appendChild(color)
-
-        return node
-
-    def __create_texture_node(self, image_name, type):
-        node = self.__doc.createElement(type)
-        texture = self.__doc.createElement("texture")
-        texture.setAttribute("texture", "%s-sampler" % image_name)
-        node.appendChild(texture)
-
-        return node
-
-    def __create_attribute_node(self, material, type):
-        node = self.__doc.createElement(type)
-        float = self.__doc.createElement("float")
-        float.setAttribute("sid", type)
-        val = utils.get_material_attribute(material, type)
-        value = self.__doc.createTextNode(val)
-        float.appendChild(value)
-        node.appendChild(float)
-
-        return node
-
-    def __create_double_sided_extra(self, profile):
-        extra = self.__doc.createElement("extra")
-        technique = self.__doc.createElement("technique")
-        technique.setAttribute("profile", profile)
-        double_sided = self.__doc.createElement("double_sided")
-        double_sided_value = self.__doc.createTextNode("1")
-        double_sided.appendChild(double_sided_value)
-        technique.appendChild(double_sided)
-        extra.appendChild(technique)
-
-        return extra
-
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
-        materials = utils.get_materials_in_export_nodes()
+        materials = self.__get_materials_in_export_nodes()
 
         for material in materials:
             material_element = self.__doc.createElement("material")
@@ -861,7 +1104,7 @@ class CrytekDaeExporter:
         parent_element.appendChild(libgeo)
 
         start_time = clock()
-        for object_ in utils.get_objects_in_export_nodes():
+        for object_ in self.__get_objects_in_export_nodes():
             bpy.context.scene.objects.active = object_
             if object_.mode == 'EDIT':
                 bpy.ops.object.mode_set(mode='OBJECT')
@@ -1322,7 +1565,7 @@ class CrytekDaeExporter:
     def __export_library_controllers(self, parent_element):
         library_node = self.__doc.createElement("library_controllers")
 
-        for selected_object in utils.get_objects_in_export_nodes():
+        for selected_object in self.__get_objects_in_export_nodes():
             if not "_boneGeometry" in selected_object.name:
                 # "some" code borrowed from dx exporter
                 armatures = self.__get_armatures(selected_object)
@@ -1543,40 +1786,137 @@ class CrytekDaeExporter:
         parent_element.appendChild(libanmcl)
         parent_element.appendChild(libanm)
 
-        scene = bpy.context.scene
-        for group in bpy.data.groups:
-            if utils.isExportNode(group.name):
-                type = utils.get_node_type(group.name)
-                if type == "cga" or type == "chr":
-                    node_name = group.name[14:]
-                    animation_clip = self.__doc.createElement("animation_clip")
-                    animation_clip.setAttribute("id",
-                                                "%s-%s" % (scene.name, node_name))
-                    animation_clip.setAttribute("start",
-                                                "%s" % (utils.convert_time(scene.frame_start)))
-                    animation_clip.setAttribute("end",
-                                                "%s" % (utils.convert_time(scene.frame_end)))
-                    is_animation = False
-                    for object_ in group.objects:
-                        if (object_.type != 'ARMATURE' and object_.animation_data and
-                                object_.animation_data.action):
+        is_merge_inprogress = 0
+        ande = 0
+        ande2 = 0
+        for object_ in bpy.context.selected_objects:
+            lnname = str(object_.name)
+            for item in bpy.context.blend_data.groups:
+                if item:
+                    ename = str(item.id_data.name)
 
-                            is_animation = True
-                            for axis in iter(AXES):
-                                animation = self.__get_animation_location(object_, axis)
-                                if animation is not None:
-                                    libanm.appendChild(animation)
+            if lnname[:8] == "animnode":
+                ande2 = 1
+                actname = object_["animname"]
+                sf = object_["startframe"]
+                ef = object_["endframe"]
+                cbPrint(actname)
+                cbPrint(sf)
+                cbPrint(ef)
+                animation_clip = self.__doc.createElement("animation_clip")
+                animation_clip.setAttribute("id",
+                                            "%s-%s" % (actname, ename[14:]))
+                animation_clip.setAttribute("start",
+                                            "%s" % (utils.convert_time(sf)))
+                animation_clip.setAttribute("end",
+                                            "%s" % (utils.convert_time(ef)))
+                for object_ in bpy.context.selected_objects:
+                    if object_.animation_data:
+                        if object_.type == 'ARMATURE':
+                            cbPrint("Object is armature, cannot process animations.")
+                        elif object_.animation_data.action:
 
                             for axis in iter(AXES):
-                                animation = self.__get_animation_rotation(object_, axis)
-                                if animation is not None:
-                                    libanm.appendChild(animation)
+                                anm = self.__get_animation_location(object_, axis)
+                                libanm.appendChild(anm)
+
+                            for axis in iter(AXES):
+                                anm = self.__get_animation_rotation(object_, axis)
+                                libanm.appendChild(anm)
 
                             self.__export_instance_animation_parameters(object_,
                                                                 animation_clip)
 
-                    if is_animation:
-                        libanmcl.appendChild(animation_clip)
+                libanmcl.appendChild(animation_clip)
+
+        if ande2 == 0:
+            for object_ in bpy.context.selected_objects:
+                if object_.animation_data:
+                    if object_.type == 'ARMATURE':
+                        cbPrint("Object is armature, cannot process animations.")
+                    else:
+                        if object_.animation_data.action:
+                            for item in bpy.context.blend_data.groups:
+                                if item:
+                                    ename = str(item.id_data.name)
+
+                            act = object_.animation_data.action
+                            curves = act.fcurves
+                            frstrt = curves.data.frame_range[0]
+                            frend = curves.data.frame_range[1]
+                            anmlx = self.__get_animation_location(object_, 'X')
+                            anmly = self.__get_animation_location(object_, 'Y')
+                            anmlz = self.__get_animation_location(object_, 'Z')
+                            anmrx = self.__get_animation_rotation(object_, 'X')
+                            anmry = self.__get_animation_rotation(object_, 'Y')
+                            anmrz = self.__get_animation_rotation(object_, 'Z')
+                            # animation clip name and frame range
+                            for ai in object_.children:
+                                aname = str(ai.name)
+                                if aname[:8] == "animnode":
+                                    ande = 1
+                                    cbPrint(ai["animname"])
+                                    cbPrint(ai["startframe"])
+                                    cbPrint(ai["endframe"])
+                                    act_name = ai["animname"]
+                                    start_frame = ai["startframe"]
+                                    end_frame = ai["endframe"]
+
+                                    animation_clip = self.__export__animation_clip(
+                                                                object_,
+                                                                ename,
+                                                                act_name,
+                                                                start_frame,
+                                                                end_frame)
+                                    libanmcl.appendChild(animation_clip)
+
+                            if ande == 0:
+                                if self.__config.merge_anm:
+                                    if is_merge_inprogress == 0:
+                                        animation_clip = self.__export__animation_clip(
+                                                                object_,
+                                                                ename,
+                                                                act.name,
+                                                                frstrt,
+                                                                frend)
+                                        is_merge_inprogress = 1
+                                    else:
+                                        cbPrint("Merging clips.")
+                                        self.__export_merge_animation_clip(
+                                                                object_,
+                                                                animation_clip,
+                                                                frstrt,
+                                                                frend)
+                                else:
+                                    animation_clip = self.__export__animation_clip(
+                                                                object_,
+                                                                ename,
+                                                                act.name,
+                                                                frstrt,
+                                                                frend)
+                        if is_merge_inprogress == 0:
+                            libanmcl.appendChild(animation_clip)
+                        libanm.appendChild(anmlx)
+                        libanm.appendChild(anmly)
+                        libanm.appendChild(anmlz)
+                        libanm.appendChild(anmrx)
+                        libanm.appendChild(anmry)
+                        libanm.appendChild(anmrz)
+
+            if is_merge_inprogress == 1:
+                libanmcl.appendChild(animation_clip)
+
+    def __export_merge_animation_clip(self, object_, animation_clip,
+                                      start_frame, end_frame):
+        if self.__merged_clip_start > start_frame:
+            animation_clip.setAttribute("start",
+                                      "%f" % (utils.convert_time(start_frame)))
+            self.__merged_clip_start = start_frame
+        if self.__merged_clip_end < end_frame:
+            animation_clip.setAttribute("end",
+                                        "%f" % (utils.convert_time(end_frame)))
+            self.__merged_clip_end = end_frame
+        self.__export_instance_animation_parameters(object_, animation_clip)
 
     def __export__animation_clip(self, object_, ename, act_name,
                                  start_frame, end_frame):
@@ -1624,7 +1964,7 @@ class CrytekDaeExporter:
     def __write_visual_scene_node(self, group, visual_scene):
         ename = str(group.id_data.name)
         node1 = self.__doc.createElement("node")
-        node1.setAttribute("id", "%s" % (utils.get_node_name(ename)))
+        node1.setAttribute("id", "%s" % (ename))
         node1.setIdAttribute('id')
         visual_scene.appendChild(node1)
         node1 = self.__write_visual_scene(group.objects, node1)
@@ -1632,22 +1972,16 @@ class CrytekDaeExporter:
         ext1 = self.__doc.createElement("extra")
         tc3 = self.__doc.createElement("technique")
         tc3.setAttribute("profile", "CryEngine")
-        node_type = utils.get_node_type(ename)
         prop1 = self.__doc.createElement("properties")
-        if node_type == 'cgf':
-            type = self.__doc.createTextNode("fileType=cgf")
-            prop1.appendChild(type)
-        elif node_type == 'cga':
-            type = self.__doc.createTextNode("fileType=anm")
-            prop1.appendChild(type)
-        elif node_type == 'chr':
-            type = self.__doc.createTextNode("fileType=chrcaf")
-            prop1.appendChild(type)
-        elif node_type == 'skin':
-            type = self.__doc.createTextNode("fileType=skin")
-            prop1.appendChild(type)
-        else:
-            cbPrint("Unable to recognize node type.")
+        if self.__config.export_type == 'CGF':
+            pcgf = self.__doc.createTextNode("fileType=cgf")
+            prop1.appendChild(pcgf)
+        if self.__config.export_type == 'CGA & ANM':
+            pcga = self.__doc.createTextNode("fileType=cgaanm")
+            prop1.appendChild(pcga)
+        if self.__config.export_type == 'CHR & CAF':
+            pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
+            prop1.appendChild(pchrcaf)
         if self.__config.donot_merge:
             pdnm = self.__doc.createTextNode("DoNotMerge")
             prop1.appendChild(pdnm)
@@ -1682,25 +2016,14 @@ def write_to_file(config, doc, file_name, exe):
 
         if rc_process is not None:
             rc_process.wait()
-            extension = None
-            for group in bpy.data.groups:
-                if utils.isExportNode(group.name):
-                    node_type = utils.get_node_type(group.name)
-                    if node_type == 'cgf':
-                        extension = "cgf"
-                    elif node_type == 'cga':
-                        extension = "anm"
-                    elif node_type == 'chr':
-                        extension = "chr"
-                    elif node_type == 'skin':
-                        extension = "skin"
-                    else:
-                        cbPrint("File does not exist.")
-
-                    if extension is not None:
-                        out_file = "{0}.{1}".format(dae_file_for_rc[:-4], extension)
-                        args = [exe, "/refresh", out_file]
-                        rc_second_pass = subprocess.Popen(args)
+            extension = "cgf"
+            if config.export_type == 'CGA & ANM':
+                extension = "cga"
+            elif config.export_type == 'CHR & CAF':
+                extension = "chr"
+            out_file = "{0}.{1}".format(dae_file_for_rc[:-4], extension)
+            args = [exe, "/refresh", out_file]
+            rc_second_pass = subprocess.Popen(args)
 
         if config.do_materials:
             mtl_fix_thread = threading.Thread(
