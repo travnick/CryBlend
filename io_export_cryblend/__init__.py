@@ -188,16 +188,31 @@ class SaveCryBlendConfiguration(bpy.types.Operator):
 
 class AddCryExportNode(bpy.types.Operator):
     '''Add selected objects to an existing or new CryExportNode'''
-    bl_label = "Add selection to a single CryExportNode"
+    bl_label = "Add ExportNode"
     bl_idname = "object.add_cry_export_node"
     bl_options = {"REGISTER", "UNDO"}
-    nodeNameUserInput = StringProperty(name="CryExportNode name")
+    node_name = StringProperty(name="Name")
+    node_type = EnumProperty(
+            name="Type",
+            items=(
+                ("cgf", "CGF",
+                 "Static Geometry"),
+                ("cga", "CGA",
+                 "Geometry Animation"),
+                ("chr", "CHR",
+                 "Character"),
+                ("skin", "SKIN",
+                 "Skinned Render Mesh")
+            ),
+            default="cgf",
+    )
 
     def execute(self, context):
+        node = "{}.{}".format(self.node_name, self.node_type)
         # Add to existing ExportNode.
         for group in bpy.data.groups:
             if utils.isExportNode(group.name):
-                if group.name.endswith(self.nodeNameUserInput):
+                if group.name.endswith(node):
                     selected = bpy.context.selected_objects
                     for object in selected:
                         if not object.name in group.objects:
@@ -208,8 +223,8 @@ class AddCryExportNode(bpy.types.Operator):
                     return {'FINISHED'}
 
         # Create new ExportNode.
-        bpy.ops.group.create(name="CryExportNode_{}".format(self.nodeNameUserInput))
-        message = "Created CryExportNode_{}".format(self.nodeNameUserInput)
+        bpy.ops.group.create(name="CryExportNode_{}".format(node))
+        message = "Created CryExportNode_{}".format(node)
         self.report({'INFO'}, message)
         cbPrint(message)
         return {"FINISHED"}
@@ -284,7 +299,7 @@ be converted to the selected shape in CryEngine.'''
 
 class SelectedToCryExportNodes(bpy.types.Operator):
     '''Add selected objects to individual CryExportNodes.'''
-    bl_label = "Add selection to individual CryExportNodes"
+    bl_label = "ExportNodes from Objects"
     bl_idname = "object.selected_to_cry_export_nodes"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -341,7 +356,7 @@ class SetMaterialNames(bpy.types.Operator):
 
                             # Rename.
                             slot.material.name = "{}__{:03d}__{}__{}".format(
-                                    group.name.replace("CryExportNode_", ""),
+                                    utils.get_node_name(group.name.replace("CryExportNode_", "")),
                                     materialCounter[group.name],
                                     utils.replaceInvalidRCCharacters(materialOldName),
                                     physics)
@@ -1619,19 +1634,6 @@ class Export(bpy.types.Operator, ExportHelper):
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
-    export_type = EnumProperty(
-            name="File Type",
-            description="Select a file type to export.",
-            items=(
-                ("CGF", "CGF",
-                 "Static geometry"),
-                ("CHR & CAF", "CHR",
-                 "Flexible animated geometry, i.e. characters."),
-                ("CGA & ANM", "CGA",
-                 "Hard body animated geometry.")
-            ),
-            default="CGF",
-    )
     merge_anm = BoolProperty(
             name="Merge Animations",
             description="For animated models - merge animations into 1.",
@@ -1697,7 +1699,6 @@ class Export(bpy.types.Operator, ExportHelper):
         def __init__(self, config):
             attributes = (
                 'filepath',
-                'export_type',
                 'merge_anm',
                 'donot_merge',
                 'avg_pface',
@@ -1746,7 +1747,6 @@ class Export(bpy.types.Operator, ExportHelper):
 
         box = col.box()
         box.label("General")
-        box.prop(self, "export_type")
         box.prop(self, "donot_merge")
         box.prop(self, "avg_pface")
 
