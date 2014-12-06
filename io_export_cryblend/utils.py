@@ -21,6 +21,8 @@ else:
 
 
 from io_export_cryblend.outPipe import cbPrint
+from mathutils import Matrix, Vector
+from xml.dom.minidom import Document
 import bpy
 import fnmatch
 import math
@@ -37,13 +39,13 @@ toDegrees = 180.0 / math.pi
 
 
 def color_to_string(r, g, b, a):
-    return "%s %s %s %s" % (r, g, b, a)
+    return "{:f} {:f} {:f} {:f}".format(r, g, b, a)
 
 
-def convert_time(frx):
+def convert_time(frame):
     fps_base = bpy.context.scene.render.fps_base
     fps = bpy.context.scene.render.fps
-    return (fps_base * frx) / fps
+    return (fps_base * frame) / fps
 
 
 # the following func is from
@@ -105,9 +107,9 @@ def veckey3d2(v):
 
 
 def veckey3d21(v):
-    return (round(v.x, 6),
+    return [round(v.x, 6),
             round(v.y, 6),
-            round(v.z, 6))
+            round(v.z, 6)]
 
 
 def veckey3d3(vn, fn):
@@ -128,6 +130,16 @@ def matrix_to_string(matrix):
 def floats_to_string(floats, separator=" ", precision="%.6f"):
     return separator.join(precision % x for x in floats)
 
+
+def strings_to_string(strings, separator=" "):
+    return separator.join(string for string in strings)
+
+
+def write_matrix(matrix, node):
+    doc = Document()
+    for row in matrix:
+        row_string = floats_to_string(row)
+        node.appendChild(doc.createTextNode(row_string))
 
 def get_absolute_path(file_path):
     [is_relative, file_path] = strip_blender_path_prefix(file_path)
@@ -238,11 +250,11 @@ def get_extension_from_path(image_path):
     return "%s" % (os.path.splitext(image_path)[1])
 
 
-def extractCryBlendProperties(materialname):
+def extract_cryblend_properties(materialname):
     """Returns the CryBlend properties of a materialname as dict or
     None if name is invalid.
     """
-    if isCryBlendMaterial(materialname):
+    if is_cryblend_material(materialname):
         groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
         properties = {}
         properties["ExportNode"] = groups[0][0]
@@ -253,14 +265,14 @@ def extractCryBlendProperties(materialname):
     return None
 
 
-def isCryBlendMaterial(materialname):
+def is_cryblend_material(materialname):
     if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
         return True
     else:
         return False
 
 
-def replaceInvalidRCCharacters(string):
+def replace_invalid_rc_characters(string):
     character_map = {
         "a":  "àáâå",
         "c":  "ç",
@@ -296,7 +308,8 @@ def get_objects_in_export_nodes():
             for object_ in group.objects:
                 if object_.name[:6] != "_joint":
                     if object_.type == "MESH":
-                        objects.append(object_)
+                        if not search(object_, objects):
+                            objects.append(object_)
 
     return objects
 
@@ -402,6 +415,14 @@ def get_material_attribute(material, type):
     return str(float)
 
 
+def get_bounding_box(object_):
+    box = object_.bound_box
+    vmin = Vector([box[0][0], box[0][1], box[0][2]])
+    vmax = Vector([box[6][0], box[6][1], box[6][2]])
+
+    return vmin[0], vmin[1], vmin[2], vmax[0], vmax[1], vmax[2]
+
+
 def is_export_node(groupname):
     return groupname.startswith("CryExportNode_")
 
@@ -413,7 +434,7 @@ def get_node_type(groupname):
 
 def get_node_name(groupname):
     node_type = get_node_type(groupname)
-    return groupname[:len(node_type)+1]
+    return groupname[:-(len(node_type)+1)]
 
 
 def get_armature():
@@ -422,6 +443,27 @@ def get_armature():
             for object_ in group.objects:
                 if object_.type == "ARMATURE":
                     return object_
+
+
+def get_armature_modifiers(object_):
+    return [modifier
+            for modifier in object_.modifiers
+            if modifier.type == "ARMATURE"]
+
+
+def get_bones(armature):
+    return [bone for bone in armature.data.bones]
+
+
+def is_fakebone(object_):
+    fakebone = 0
+    for prop in object_.rna_type.id_data.items():
+        if prop:
+            if prop[1] == "fakebone":
+                fakebone = 1
+                break
+
+    return fakebone
 
 
 def remove_unused_meshes():
@@ -438,6 +480,12 @@ def tag_fakebone(pose_bone):
 def deselect_all():
     for object_ in bpy.context.scene.objects:
         object_.select = False
+
+
+def find_fakebone(bonename):
+    for object_ in bpy.context.scene.objects:
+        if object_.name == bonename:
+            return object_
 
 
 def add_fakebones():
@@ -545,6 +593,69 @@ def get_object_children(Parent):
 def negate_z_axis_of_matrix(matrix_local):
     for i in range(0, 3):
         matrix_local[i][3] = -matrix_local[i][3]
+
+
+def write_source(id, type, array, params, doc):
+    length = len(array)
+    stride = len(params)
+    count = int(length / stride)
+
+    source = doc.createElement("source")
+    source.setAttribute("id", id)
+
+    source_data = doc.createElement("{!s}_array".format(type))
+    source_data.setAttribute("id", "{!s}-array".format(id))
+    source_data.setAttribute("count", str(length))
+    try:
+        write_matrix(array, source_data)
+    except TypeError:
+        try:
+            source_data.appendChild(doc.createTextNode(floats_to_string(array)))
+        except TypeError:
+            source_data.appendChild(doc.createTextNode(strings_to_string(array)))
+    technique_common = doc.createElement("technique_common")
+    accessor = doc.createElement("accessor")
+    accessor.setAttribute("source", "#{!s}-array".format(id))
+    accessor.setAttribute("count", str(count))
+    accessor.setAttribute("stride", str(stride))
+    for param in params:
+        param_node = doc.createElement("param")
+        param_node.setAttribute("name", param)
+        param_node.setAttribute("type", "float")
+        accessor.appendChild(param_node)
+    technique_common.appendChild(accessor)
+
+    source.appendChild(source_data)
+    source.appendChild(technique_common)
+
+    return source
+
+
+def write_input(name, type, semantic, offset, doc):
+    id = "{!s}-{!s}".format(name, type)
+    input = doc.createElement("input")
+
+    if offset is not None:
+        input.setAttribute("offset", str(offset))
+    input.setAttribute("semantic", semantic)
+    if semantic == "TEXCOORD":
+        input.setAttribute("set", "0")
+    input.setAttribute("source", "#{!s}".format(id))
+
+    return input
+
+
+def join(*strings):
+    return "".join(strings)
+
+
+def search(search_object, objects):
+    found = False
+    for object_ in objects:
+        if search_object.name == object_.name:
+            found = True
+
+    return found
 
 
 # this is needed if you want to access more than the first def
