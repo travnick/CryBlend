@@ -211,7 +211,7 @@ class AddCryExportNode(bpy.types.Operator):
         node = "{}.{}".format(self.node_name, self.node_type)
         # Add to existing ExportNode.
         for group in bpy.data.groups:
-            if utils.isExportNode(group.name):
+            if utils.is_export_node(group.name):
                 if group.name.endswith(node):
                     selected = bpy.context.selected_objects
                     for object in selected:
@@ -339,12 +339,12 @@ class SetMaterialNames(bpy.types.Operator):
         materialCounter = getMaterialCounter()
 
         for group in bpy.data.groups:
-            if utils.isExportNode(group.name):
+            if utils.is_export_node(group.name):
                 for object in group.objects:
                     for slot in object.material_slots:
 
                         # Skip materials that have been renamed already.
-                        if not utils.isCryBlendMaterial(slot.material.name):
+                        if not utils.is_cryblend_material(slot.material.name):
                             materialCounter[group.name] += 1
                             materialOldName = slot.material.name
 
@@ -358,7 +358,7 @@ class SetMaterialNames(bpy.types.Operator):
                             slot.material.name = "{}__{:03d}__{}__{}".format(
                                     utils.get_node_name(group.name.replace("CryExportNode_", "")),
                                     materialCounter[group.name],
-                                    utils.replaceInvalidRCCharacters(materialOldName),
+                                    utils.replace_invalid_rc_characters(materialOldName),
                                     physics)
                             message = "Renamed {} to {}".format(
                                     materialOldName,
@@ -389,7 +389,7 @@ def getMaterialCounter():
     """Returns a dictionary with all CryExportNodes."""
     materialCounter = {}
     for group in bpy.data.groups:
-        if utils.isExportNode(group.name):
+        if utils.is_export_node(group.name):
             materialCounter[group.name] = 0
     return materialCounter
 
@@ -397,7 +397,7 @@ def getMaterialCounter():
 def removeCryBlendProperties():
     """Removes CryBlend properties from all material names."""
     for material in bpy.data.materials:
-        properties = utils.extractCryBlendProperties(material.name)
+        properties = utils.extract_cryblend_properties(material.name)
         if properties:
             material.name = properties["Name"]
 
@@ -406,7 +406,7 @@ def getMaterialPhysics():
     """Returns a dictionary with the physics of all material names."""
     physicsProperties = {}
     for material in bpy.data.materials:
-        properties = utils.extractCryBlendProperties(material.name)
+        properties = utils.extract_cryblend_properties(material.name)
         if properties:
             physicsProperties[properties["Name"]] = properties["Physics"]
     return physicsProperties

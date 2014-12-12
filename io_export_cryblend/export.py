@@ -37,22 +37,22 @@ else:
     import bpy
     from io_export_cryblend import utils, exceptions
 
-
-from bpy_extras.io_utils import ExportHelper
-from datetime import datetime
 from io_export_cryblend.dds_converter import DdsConverterRunner
 from io_export_cryblend.outPipe import cbPrint
 from io_export_cryblend.utils import join
+
+from bpy_extras.io_utils import ExportHelper
+from datetime import datetime
 from mathutils import Matrix, Vector
 from time import clock
 from xml.dom.minidom import Document
+import bmesh
 import copy
 import os
 import threading
+import subprocess
 import time
 import xml.dom.minidom
-import bmesh
-import subprocess
 
 
 AXES = {
@@ -92,7 +92,7 @@ class CrytekDaeExporter:
         root_element.setAttribute("version", "1.4.1")
         self.__doc.appendChild(root_element)
 
-        self.__export_asset(root_element)
+        self.__create_file_header(root_element)
 
         # Just here for future use:
         self.__export_library_cameras(root_element)
@@ -116,7 +116,7 @@ class CrytekDaeExporter:
                       self.__doc, filepath,
                       self.__config.rc_path)
 
-    def __export_asset(self, parent_element):
+    def __create_file_header(self, parent_element):
         # Attributes are x=y values inside a tag
         asset = self.__doc.createElement("asset")
         parent_element.appendChild(asset)
@@ -367,6 +367,50 @@ class CrytekDaeExporter:
 
         parent_element.appendChild(library_materials)
 
+    def __export_library_geometries(self, parent_element):
+        libgeo = self.__doc.createElement("library_geometries")
+        parent_element.appendChild(libgeo)
+
+        for object_ in utils.get_objects_in_export_nodes():
+            bpy.context.scene.objects.active = object_
+            if object_.mode != 'OBJECT':
+                bpy.ops.object.mode_set(mode='OBJECT')
+            object_.data.update(calc_tessface=1)
+            mesh = object_.data
+            object_.name = object_.name
+            geometry_node = self.__doc.createElement("geometry")
+            geometry_node.setAttribute("id", "%s" % (object_.name))
+            mesh_node = self.__doc.createElement("mesh")
+
+            start_time = clock()
+            self.__write_positions(object_, mesh, mesh_node)
+            cbPrint('Positions took %.4f sec.' % (clock() - start_time))
+
+            start_time = clock()
+            self.__write_normals(object_, mesh, mesh_node)
+            cbPrint('Normals took %.4f sec.' % (clock() - start_time))
+
+            start_time = clock()
+            self.__write_uvs(object_, mesh, mesh_node)
+            cbPrint('UVs took %.4f sec.' % (clock() - start_time))
+
+            start_time = clock()
+            self.__write_vertex_colors(object_, mesh, mesh_node)
+            cbPrint('Vertex colors took %.4f sec.' % (clock() - start_time))
+
+            start_time = clock()
+            self.__write_vertices(object_, mesh, mesh_node)
+            cbPrint('Vertices took %.4f sec.' % (clock() - start_time))
+
+            start_time = clock()
+            self.__write_polylist(object_, mesh, mesh_node)
+            cbPrint('Polylist took %.4f sec.' % (clock() - start_time))
+
+            extra = self.__create_double_sided_extra("MAYA")
+            mesh_node.appendChild(extra)
+            geometry_node.appendChild(mesh_node)
+            libgeo.appendChild(geometry_node)
+
     def __write_positions(self, object_, mesh, root):
         float_positions = []
         for vertex in mesh.vertices[:]:
@@ -384,64 +428,34 @@ class CrytekDaeExporter:
         float_normals = []
         float_normals_count = ""
 
-        # mesh.sort_faces()
-        # mesh.calc_normals()
-        ush = 0
-        has_sharp_edges = 0
-        # for f in mesh.tessfaces:
-        for f in mesh.tessfaces:
-            if f.use_smooth:
-                for v_idx in f.vertices:
-                    for e_idx in mesh.edges:
-                        for ev in e_idx.vertices:
-                            if ev == v_idx:
-                                if e_idx.use_edge_sharp:
-                                    ush = 1
-                                    has_sharp_edges = 1
-                                else:
-                                    ush = 2
-
-                    if ush == 1:
-                        v = me_verts[v_idx]
-                        noKey = utils.veckey3d21(f.normal)
-                        float_normals.extend(f.normal)
-                    if ush == 2:
-                        v = me_verts[v_idx]
-                        noKey = utils.veckey3d21(v.normal)
-                        float_normals.extend(v.normal)
-                    ush = 0
+        for face in mesh.tessfaces:
+            if face.use_smooth:
+                for vert in face.vertices:
+                    vertex = mesh.vertices[vert]
+                    normal = utils.veckey3d21(vertex.normal)
+                    float_normals.extend(normal)
 
             else:
-                fnc = ""
-                fns = 0
-                fnlx = 0
-                fnly = 0
-                fnlz = 0
                 if self.__config.avg_pface:
-                    if fns == 0:
-                        fnlx = f.normal.x
-                        fnly = f.normal.y
-                        fnlz = f.normal.z
-                        fnc += "1"
-                        cbPrint("face%s" % fnlx)
-                    for fn in mesh.tessfaces:
-                        if (f.normal.angle(fn.normal) <
-                            .052):
-                            if (f.normal.angle(fn.normal) >
-                                - .052):
-                                fnlx = fn.normal.x + fnlx
-                                fnly = fn.normal.x + fnly
-                                fnlz = fn.normal.x + fnlz
-                                fnc += "1"
-                                fns = 1
+                    count = 1
+                    nx = face.normal.x
+                    ny = face.normal.y
+                    nz = face.normal.z
 
-                    cbPrint("facen2%s" % (fnlx / len(fnc)))
-                    float_normals.append(fnlx / len(fnc))
-                    float_normals.append(fnly / len(fnc))
-                    float_normals.append(fnlz / len(fnc))
+                    for planar_face in mesh.tessfaces:
+                        angle = face.normal.angle(planar_face.normal)
+                        if (-.052 < angle and angle < .052):
+                            nx += planar_face.normal.x
+                            ny += planar_face.normal.y
+                            nz += planar_face.normal.z
+                            count += 1
+
+                    float_normals.append(nx / count)
+                    float_normals.append(ny / count)
+                    float_normals.append(nz / count)
                 else:
-                    noKey = utils.veckey3d21(f.normal)
-                    float_normals.extend(f.normal)
+                    normal = utils.veckey3d21(face.normal)
+                    float_normals.extend(normal)
 
         id = "{!s}-normals".format(object_.name)
         source = utils.write_source(id,
@@ -452,53 +466,22 @@ class CrytekDaeExporter:
         root.appendChild(source)
 
     def __write_uvs(self, object_, mesh, root):
-        # We will make assumptions here because this is
-        # for a game export so there should always
-        # be a uv set
-        uvs = self.__doc.createElement("source")
-        uvlay = []
-
-        uvlay = object_.data.tessface_uv_textures
-        if uvlay:
+        uvdata = object_.data.tessface_uv_textures
+        if uvdata is not None:
             cbPrint("Found UV map.")
-        elif (object_.type == "MESH"):
-            win      = bpy.context.window
-            scr      = win.screen
-            areas3d  = [area for area in scr.areas if area.type == 'VIEW_3D']
-            region   = [region for region in areas3d[0].regions if region.type == 'WINDOW']
-
-            override = {'window': win,
-                        'screen': scr,
-                        'area'  : areas3d[0],
-                        'region': region[0],
-                        'scene' : bpy.context.scene,
-                        'active_object': object_,
-                        }
-            bpy.ops.object.mode_set(override, mode='EDIT')
-            bpy.ops.mesh.select_all(override, action='SELECT')
-            bpy.ops.uv.smart_project(override, angle_limit=66, island_margin=0.03, user_area_weight=0)
-            bpy.ops.object.mode_set(override, mode='OBJECT')
-            object_.data.update(calc_tessface=1)
-            cbPrint("Missing UV map.  Mesh unwrapped using smart UV project", message_type='warning')
+        else:
+            bpy.ops.mesh.uv_texture_add()
+            cbPrint("Your UV map is missing, adding.")
 
         float_uvs = []
-        for uvindex, uvlayer in enumerate(uvlay):
+        for uvindex, uvlayer in enumerate(uvdata):
             mapslot = uvindex
-            mapname = str(uvlayer.name)
-            uvid = "%s-%s-%s" % (object_.name, mapname, mapslot)
-            i = -1
+            mapname = uvlayer.name
+            uvid = "{!s}-{!s}-{!s}".format(object_.name, mapname, mapslot)
+
             for uf in uvlayer.data:
-            # workaround, since uf.uv iteration
-            # is wrong atm
                 for uv in uf.uv:
-                    if i == -1:
-                        float_uvs.extend(uv)
-                        i = 0
-                    else:
-                        if i == 7:
-                            i = 0
-                        float_uvs.extend(uv)
-                    i += 1
+                    float_uvs.extend(uv)
 
         id = "{!s}-UVMap-0".format(object_.name)
         source = utils.write_source(id,
@@ -589,156 +572,75 @@ class CrytekDaeExporter:
             root.appendChild(source)
 
     def __write_vertices(self, object_, mesh, root):
-        vertic = self.__doc.createElement("vertices")
-        vertic.setAttribute("id", "%s-vertices" % (object_.name))
-        inputsem1 = self.__doc.createElement("input")
-        inputsem1.setAttribute("semantic", "POSITION")
-        inputsem1.setAttribute("source", "#%s-positions" % (object_.name))
-        vertic.appendChild(inputsem1)
-        root.appendChild(vertic)
+        vertices = self.__doc.createElement("vertices")
+        vertices.setAttribute("id", "%s-vertices" % (object_.name))
+        input = utils.write_input(object_.name, None,
+                                    "positions", "POSITION")
+        vertices.appendChild(input)
+        root.appendChild(vertices)
 
     def __write_polylist(self, object_, mesh, root):
-        mat = mesh.materials[:]
-        if mat:
-            for im in enumerate(mat):
+        materials = mesh.materials[:]
+        if materials:
+            for matindex, material in enumerate(materials):
+                vert_data = ""
+                verts_per_poly = ""
+                poly_count = normal = texcoord = 0
+
+                for face in mesh.tessfaces:
+                    if face.material_index == matindex:
+                        verts_per_poly = join(verts_per_poly, len(face.vertices), " ")
+                        poly_count += 1
+                        for vert in face.vertices:
+                            data = self.__write_vertex_data(mesh, face, vert, normal, texcoord)
+                            vert_data = join(vert_data, data)
+                            texcoord += 1
+                    else:
+                        texcoord += len(face.vertices)
+
+                    if face.use_smooth:
+                        normal += len(face.vertices)
+                    else:
+                        normal += 1
+
                 polylist = self.__doc.createElement("polylist")
-                polylist.setAttribute("material", im[1].name)
-                verts = ""
-                face_count = ""
-                face_counter = 0
-                ni = 0
-                texindex = 0
-                num_verts = ""
-                for f in mesh.tessfaces:
-                    fi = f.vertices[:]
-                    if f.material_index == im[0]:
-                        num_verts += str(len(f.vertices)) + " "
-                        face_count += str(
-                            "%s" % (face_counter))
-                        for v in f.vertices:
-                            verts += str(v) + " "
-                            if f.use_smooth:
-                                if has_sharp_edges == 1:
-                                    verts += str("%s " % (ni))
-                                    ni += 1
-                                else:
-                                    verts += str(v) + " "
-                                # verts += str("%s "%(ni))
-                                # ni += 1
-                            else:
-                                verts += str("%s " % (ni))
-                            verts += str("%s " % (texindex))
-                            if mesh.vertex_colors:
-                                verts += str(
-                                    "%s " % (texindex))
-                            texindex += 1
+                polylist.setAttribute("material", material.name)
+                polylist.setAttribute("count", str(poly_count))
 
-                    if f.use_smooth:
-                        if has_sharp_edges != 1:
-                            ni += len(f.vertices)
-                    else:
-                        ni += 1  # #<--naughty naughty
-                    if f.material_index == im[0]:
-                        texindex = texindex
-                    else:
-                        texindex += len(fi)  # 4#3
-
-                cbPrint(str(ni))
-                verts += ""
-                polylist.setAttribute("count", "%s" % (len(face_count)))
-
-                input = utils.write_input(object_.name,
-                                            "vertices",
-                                            "VERTEX",
-                                            0,
-                                            self.__doc)
-                polylist.appendChild(input)
-
-                input = utils.write_input(object_.name,
-                                            "normals",
-                                            "NORMAL",
-                                            1,
-                                            self.__doc)
-                polylist.appendChild(input)
-
-                input = utils.write_input(object_.name,
-                                            "UVMap-0",
-                                            "TEXCOORD",
-                                            2,
-                                            self.__doc)
-                polylist.appendChild(input)
-
+                inputs = []
+                inputs.append(utils.write_input(object_.name, 0,
+                                            "vertices", "VERTEX"))
+                inputs.append(utils.write_input(object_.name, 1,
+                                            "normals", "NORMAL"))
+                inputs.append(utils.write_input(object_.name, 2,
+                                            "UVMap-0", "TEXCOORD"))
                 if mesh.vertex_colors:
-                    input = utils.write_input(object_.name,
-                                                "colors",
-                                                "COLOR",
-                                                3,
-                                                self.__doc)
+                    inputs.append(utils.write_input(object_.name, 3,
+                                                    "colors", "COLOR"))
+
+                for input in inputs:
                     polylist.appendChild(input)
 
                 vcount = self.__doc.createElement("vcount")
-                vcount_text_node = self.__doc.createTextNode("%s" % (num_verts))
+                vcount_text_node = self.__doc.createTextNode(verts_per_poly)
                 vcount.appendChild(vcount_text_node)
 
                 p = self.__doc.createElement("p")
-                p_text_node = self.__doc.createTextNode("%s" % (verts))
+                p_text_node = self.__doc.createTextNode(vert_data)
                 p.appendChild(p_text_node)
 
                 polylist.appendChild(vcount)
                 polylist.appendChild(p)
                 root.appendChild(polylist)
 
+    def __write_vertex_data(self, mesh, face, vert, normal, texcoord):
+        if face.use_smooth:
+            normal = vert
 
-    def __export_library_geometries(self, parent_element):
-        libgeo = self.__doc.createElement("library_geometries")
-        parent_element.appendChild(libgeo)
-
-        for object_ in utils.get_objects_in_export_nodes():
-            bpy.context.scene.objects.active = object_
-            if object_.mode != 'OBJECT':
-                bpy.ops.object.mode_set(mode='OBJECT')
-            object_.data.update(calc_tessface=1)
-            mesh = object_.data
-            object_.name = object_.name
-            geometry_node = self.__doc.createElement("geometry")
-            geometry_node.setAttribute("id", "%s" % (object_.name))
-            mesh_node = self.__doc.createElement("mesh")
-
-            start_time = clock()
-            self.__write_positions(object_, mesh, mesh_node)
-            cbPrint('Positions took %.4f sec.' % (clock() - start_time))
-
-            start_time = clock()
-            self.__write_normals(object_, mesh, mesh_node)
-            cbPrint('Normals took %.4f sec.' % (clock() - start_time))
-
-            start_time = clock()
-            self.__write_uvs(object_, mesh, mesh_node)
-            cbPrint('UVs took %.4f sec.' % (clock() - start_time))
-
-            start_time = clock()
-            self.__write_vertex_colors(object_, mesh, mesh_node)
-            cbPrint('Vertex colors took %.4f sec.' % (clock() - start_time))
-
-            start_time = clock()
-            self.__write_vertices(object_, mesh, mesh_node)
-            cbPrint('Vertices took %.4f sec.' % (clock() - start_time))
-
-            start_time = clock()
-            self.__write_polylist(object_, mesh, mesh_node)
-            cbPrint('Polylist took %.4f sec.' % (clock() - start_time))
-
-            extra = self.__doc.createElement("extra")
-            technique = self.__doc.createElement("technique")
-            technique.setAttribute("profile", "MAYA")
-            double_sided = self.__doc.createElement("double_sided")
-            double_sided_text_node = self.__doc.createTextNode("1")
-            double_sided.appendChild(double_sided_text_node)
-            technique.appendChild(double_sided)
-            extra.appendChild(technique)
-            mesh_node.appendChild(extra)
-            geometry_node.appendChild(mesh_node)
-            libgeo.appendChild(geometry_node)
+        if mesh.vertex_colors:
+            return "{:d} {:d} {:d} {:d} ".format(vert, normal, texcoord, texcoord)
+        else :
+            return "{:d} {:d} {:d} ".format(vert, normal, texcoord)
 
     def __export_library_controllers(self, parent_element):
         library_node = self.__doc.createElement("library_controllers")
@@ -755,13 +657,14 @@ class CrytekDaeExporter:
         parent_element.appendChild(library_node)
 
     def __process_bones(self, parent_node, object_, armatures):
+        mesh = object_.data
         armature = armatures[0].object
+        id = "{!s}_{!s}".format(armature.name, object.name)
 
         controller_node = self.__doc.createElement("controller")
         parent_node.appendChild(controller_node)
 
-        controller_node.setAttribute("id", "%s_%s" % (armature.name,
-                                                      object_.name))
+        controller_node.setAttribute("id", id)
         skin_node = self.__doc.createElement("skin")
         skin_node.setAttribute("source", "#%s" % object_.name)
         controller_node.appendChild(skin_node)
@@ -787,47 +690,32 @@ class CrytekDaeExporter:
                                                  armature.name,
                                                  armature_bones)
 
-        jnts = self.__doc.createElement("joints")
-        is1 = self.__doc.createElement("input")
-        is1.setAttribute("semantic", "JOINT")
-        is1.setAttribute("source", "#%s_%s_joints"
-                         % (armature.name, object_.name))
-        jnts.appendChild(is1)
+        joints = self.__doc.createElement("joints")
 
-        is2 = self.__doc.createElement("input")
-        is2.setAttribute("semantic", "INV_BIND_MATRIX")
-        is2.setAttribute("source", "#%s_%s_matrices"
-                         % (armature.name, object_.name))
-        jnts.appendChild(is2)
-        skin_node.appendChild(jnts)
+        input = utils.write_input(id, None, "joints", "JOINT")
+        joints.appendChild(input)
+        input = utils.write_input(id, None, "matrices", "INV_BIND_MATRIX")
+        joints.appendChild(input)
+        skin_node.appendChild(joints)
 
-        vertw = self.__doc.createElement("vertex_weights")
-        vertw.setAttribute("count", "%s" % len(object_.data.vertices))
+        vertex_weights = self.__doc.createElement("vertex_weights")
+        vertex_weights.setAttribute("count", str(len(mesh.vertices)))
 
-        is3 = self.__doc.createElement("input")
-        is3.setAttribute("semantic", "JOINT")
-        is3.setAttribute("offset", "0")
-        is3.setAttribute("source", "#%s_%s_joints"
-                         % (armature.name, object_.name))
-        vertw.appendChild(is3)
+        input = utils.write_input(id, 0, "joints", "JOINT")
+        vertex_weights.appendChild(input)
+        input = utils.write_input(id, 1, "weights", "WEIGHT")
+        vertex_weights.appendChild(input)
 
-        is4 = self.__doc.createElement("input")
-        is4.setAttribute("semantic", "WEIGHT")
-        is4.setAttribute("offset", "1")
-        is4.setAttribute("source", "#%s_%s_weights"
-                         % (armature.name, object_.name))
-        vertw.appendChild(is4)
+        vcount = self.__doc.createElement("vcount")
+        vcount_text = self.__doc.createTextNode(vertex_groups_lengths)
+        vcount.appendChild(vcount_text)
+        vertex_weights.appendChild(vcount)
 
-        vcnt = self.__doc.createElement("vcount")
-        vcnt1 = self.__doc.createTextNode(vertex_groups_lengths)
-        vcnt.appendChild(vcnt1)
-        vertw.appendChild(vcnt)
-
-        vlst = self.__doc.createElement("v")
-        vlst1 = self.__doc.createTextNode(vw)
-        vlst.appendChild(vlst1)
-        vertw.appendChild(vlst)
-        skin_node.appendChild(vertw)
+        v = self.__doc.createElement("v")
+        v_text = self.__doc.createTextNode(vw)
+        v.appendChild(v_text)
+        vertex_weights.appendChild(v)
+        skin_node.appendChild(vertex_weights)
 
     def __process_bones_joints(self,
                                object_name,

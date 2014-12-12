@@ -113,10 +113,9 @@ def veckey3d21(v):
 
 
 def veckey3d3(vn, fn):
-    facenorm = fn
-    return (round((facenorm.x * vn.x) / 2),
-            round((facenorm.y * vn.y) / 2),
-            round((facenorm.z * vn.z) / 2))
+    return (round((fn.x * vn.x) / 2),
+            round((fn.y * vn.y) / 2),
+            round((fn.z * vn.z) / 2))
 
 
 def matrix_to_string(matrix):
@@ -631,7 +630,8 @@ def write_source(id, type, array, params, doc):
     return source
 
 
-def write_input(name, type, semantic, offset, doc):
+def write_input(name, offset, type, semantic):
+    doc = Document()
     id = "{!s}-{!s}".format(name, type)
     input = doc.createElement("input")
 
@@ -645,7 +645,10 @@ def write_input(name, type, semantic, offset, doc):
     return input
 
 
-def join(*strings):
+def join(*items):
+    strings = []
+    for item in items:
+        strings.append(str(item))
     return "".join(strings)
 
 
