@@ -307,10 +307,9 @@ def get_objects_in_export_nodes():
             for object_ in group.objects:
                 if object_.name[:6] != "_joint":
                     if object_.type == "MESH":
-                        if not search(object_, objects):
-                            objects.append(object_)
+                        objects.append(object_)
 
-    return objects
+    return set(objects)
 
 
 def get_materials_in_export_nodes():
@@ -650,15 +649,6 @@ def join(*items):
     for item in items:
         strings.append(str(item))
     return "".join(strings)
-
-
-def search(search_object, objects):
-    found = False
-    for object_ in objects:
-        if search_object.name == object_.name:
-            found = True
-
-    return found
 
 
 # this is needed if you want to access more than the first def
