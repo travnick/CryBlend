@@ -659,7 +659,7 @@ class CrytekDaeExporter:
     def __process_bones(self, parent_node, object_, armatures):
         mesh = object_.data
         armature = armatures[0].object
-        id = "{!s}_{!s}".format(armature.name, object.name)
+        id = "{!s}-{!s}".format(armature.name, object_.name)
 
         controller_node = self.__doc.createElement("controller")
         parent_node.appendChild(controller_node)
@@ -736,14 +736,15 @@ class CrytekDaeExporter:
                                  skin_node,
                                  armature_name,
                                  armature_bones):
+        
         source_matrices_node = self.__doc.createElement("source")
-        source_matrices_node.setAttribute("id", "%s_%s_matrices"
+        source_matrices_node.setAttribute("id", "%s-%s-matrices"
                                           % (armature_name, object_name))
 
         skin_node.appendChild(source_matrices_node)
 
         float_array_node = self.__doc.createElement("float_array")
-        float_array_node.setAttribute("id", "%s_%s_matrices_array"
+        float_array_node.setAttribute("id", "%s-%s-matrices-array"
                                       % (armature_name, object_name))
         float_array_node.setAttribute("count", "%s"
                                       % (len(armature_bones) * 16))
@@ -752,7 +753,7 @@ class CrytekDaeExporter:
 
         technique_node = self.__doc.createElement("technique_common")
         accessor_node = self.__doc.createElement("accessor")
-        accessor_node.setAttribute("source", "#%s_%s_matrices_array"
+        accessor_node.setAttribute("source", "#%s-%s-matrices-array"
                                    % (armature_name, object_name))
         accessor_node.setAttribute("count", "%s" % (len(armature_bones)))
         accessor_node.setAttribute("stride", "16")
@@ -768,13 +769,13 @@ class CrytekDaeExporter:
                                 armature_name,
                                 armature_bones):
         source_node = self.__doc.createElement("source")
-        source_node.setAttribute("id", "%s_%s_weights"
+        source_node.setAttribute("id", "%s-%s-weights"
                                          % (armature_name, object_.name))
 
         skin_node.appendChild(source_node)
 
         float_array = self.__doc.createElement("float_array")
-        float_array.setAttribute("id", "%s_%s_weights_array"
+        float_array.setAttribute("id", "%s-%s-weights-array"
                                  % (armature_name, object_.name))
 
         group_weights = []
@@ -806,7 +807,7 @@ class CrytekDaeExporter:
         technique_node = self.__doc.createElement("technique_common")
 
         accessor_node = self.__doc.createElement("accessor")
-        accessor_node.setAttribute("source", "#%s_%s_weights_array"
+        accessor_node.setAttribute("source", "#%s-%s-weights-array"
                                       % (armature_name, object_.name))
         accessor_node.setAttribute("count", "%s" % vertex_count)
         accessor_node.setAttribute("stride", "1")
@@ -1077,7 +1078,7 @@ class CrytekDaeExporter:
             type = self.__doc.createTextNode("fileType=cgf")
             props.appendChild(type)
         elif node_type == "cga":
-            type = self.__doc.createTextNode("fileType=anm")
+            type = self.__doc.createTextNode("fileType=cga")
             props.appendChild(type)
         elif node_type == "chr":
             type = self.__doc.createTextNode("fileType=chrcaf")
@@ -1127,8 +1128,12 @@ class CrytekDaeExporter:
     def __create_translation_node(self, object_):
         trans = self.__doc.createElement("translate")
         trans.setAttribute("sid", "trans")
-        translation_text_node = self.__doc.createTextNode("{:f} {:f} {:f}".format(
-                                        *object_.location))
+        try:
+            translation_text_node = self.__doc.createTextNode("{:f} {:f} {:f}".format(
+                                            * object_.location))
+        except:
+            translation_text_node = self.__doc.createTextNode("{:f} {:f} {:f}".format(
+                                            * object_.head))
         trans.appendChild(translation_text_node)
 
         return trans
@@ -1136,23 +1141,33 @@ class CrytekDaeExporter:
     def __create_rotation_node(self, object_):
         rotx = self.__doc.createElement("rotate")
         rotx.setAttribute("sid", "rotation_X")
-        rotx_text_node = self.__doc.createTextNode("1 0 0 {:f}".format(
-                                    object_.rotation_euler[0]
-                                        * utils.toDegrees))
-        rotx.appendChild(rotx_text_node)
+        try:
+            rotx_text_node = self.__doc.createTextNode("1 0 0 {:f}".format(
+                                        object_.rotation_euler[0]
+                                            * utils.toDegrees))
+        except:
+            rotx_text_node = self.__doc.createTextNode("1 0 0 0")
 
         roty = self.__doc.createElement("rotate")
         roty.setAttribute("sid", "rotation_Y")
-        roty_text_node = self.__doc.createTextNode("0 1 0 {:f}".format(
-                                    object_.rotation_euler[1]
-                                        * utils.toDegrees))
-        roty.appendChild(roty_text_node)
+        try:
+            roty_text_node = self.__doc.createTextNode("0 1 0 {:f}".format(
+                                        object_.rotation_euler[1]
+                                            * utils.toDegrees))
+        except:
+            roty_text_node = self.__doc.createTextNode("0 1 0 0")
 
         rotz = self.__doc.createElement("rotate")
         rotz.setAttribute("sid", "rotation_Z")
-        rotz_text_node = self.__doc.createTextNode("0 0 1 {:f}".format(
-                                    object_.rotation_euler[2]
-                                        * utils.toDegrees))
+        try:
+            rotz_text_node = self.__doc.createTextNode("0 0 1 {:f}".format(
+                                        object_.rotation_euler[2]
+                                            * utils.toDegrees))
+        except:
+            rotz_text_node = self.__doc.createTextNode("0 0 1 0")
+
+        rotx.appendChild(rotx_text_node)
+        roty.appendChild(roty_text_node)
         rotz.appendChild(rotz_text_node)
 
         return rotx, roty, rotz
@@ -1160,8 +1175,12 @@ class CrytekDaeExporter:
     def __create_scale_node(self, object_):
         scale = self.__doc.createElement("scale")
         scale.setAttribute("sid", "scale")
-        scale_text_node = self.__doc.createTextNode(
-                    utils.floats_to_string(object_.scale, " ", "%s"))
+        try:
+            scale_text_node = self.__doc.createTextNode(
+                        utils.floats_to_string(object_.scale, " ", "%s"))
+        except:
+            scale_text_node = self.__doc.createTextNode(
+                        utils.floats_to_string((1, 1, 1), " ", "%s")) 
         scale.appendChild(scale_text_node)
 
         return scale
@@ -1172,7 +1191,7 @@ class CrytekDaeExporter:
         if armature_list:
             instance = self.__doc.createElement("instance_controller")
             # This binds the mesh object to the armature in control of it
-            instance.setAttribute("url", "#{!s}_{!s}".format(
+            instance.setAttribute("url", "#{!s}-{!s}".format(
                             armature_list[0].object.name,
                                 object_.name))
         elif object_.name[:6] != "_joint" and object_.type == "MESH":
@@ -1252,6 +1271,8 @@ class CrytekDaeExporter:
             bonelist = utils.get_bones(object_)
             self.__write_bone_list(bonelist, object_, root)
 
+        if utils.is_fakebone(object_):
+            return
         if object_.parent:
             if object_.parent.type != 'ARMATURE':
                 nodeparent = self.__doc.getElementById(object_.parent.name)
@@ -1280,7 +1301,6 @@ class CrytekDaeExporter:
                 root.appendChild(node)
 
     def __write_bone_list(self, bones, object_, root):
-        cbPrint("{!s} bones".format(len(bones)))
         scene = bpy.context.scene
         boneExtendedNames = []
         for bone in bones:
@@ -1292,33 +1312,29 @@ class CrytekDaeExporter:
 
             props = self.__create_ik_properties(bone, object_)
 
-            name = "{0}{1}".format(bone.name, props)
+            name = join(bone.name, props)
             node.setAttribute("id", name)
             node.setAttribute("name", name)
             boneExtendedNames.append(name)
             node.setIdAttribute("id")
 
-            for object_ in scene.objects:
-                if (object_.name == bone.name
-                    or (object_.name == bone.name[:-5]
-                        and "_Phys" == bone.name[-5:])
-                    ):
-                    cbPrint("FakeBone found for {!s}".format(bone.name))
-                    object_.select = True
-                    self.__write_transforms(object_, node)
+            fakebone = utils.find_fakebone(bone.name)
+            if fakebone is not None:
+                self.__write_transforms(fakebone, node)
 
-                    # Find the boneGeometry object
-                    for object_ in scene.objects:
-                        if object_.name == "{!s}{!s}".format(bone.name, "_boneGeometry"):
-                            instance = self.__create_instance(object_)
-                            node.appendChild(instance)
+            # Find the boneGeometry object
+            for object_ in scene.objects:
+                if object_.name == "{!s}{!s}".format(bone.name, "_boneGeometry"):
+                    instance = self.__create_instance(object_)
+                    node.appendChild(instance)
 
             if bone.parent:
                 for name in boneExtendedNames:
-                    if name[:len(bone.parent.name)] == bone.parent.name:
+                    if name == bone.parent.name:
                         nodeparent = self.__doc.getElementById(name)
+                        if (nodeparent is not None):
+                            nodeparent.appendChild(node)
                         cbPrint(bone.parent.name)
-                        nodeparent.appendChild(node)
             else:
                 root.appendChild(node)
 
@@ -1384,25 +1400,17 @@ def write_to_file(config, doc, file_name, exe):
 
         if rc_process is not None:
             rc_process.wait()
-            extension = None
+            components = dae_file_for_rc.split("\\")
+            name = components[len(components)-1]
+            cbPrint(name)
+            output_path = dae_file_for_rc[:-len(name)]
             for group in bpy.data.groups:
                 if utils.is_export_node(group.name):
                     node_type = utils.get_node_type(group.name)
-                    if node_type == 'cgf':
-                        extension = "cgf"
-                    elif node_type == 'cga':
-                        extension = "anm"
-                    elif node_type == 'chr':
-                        extension = "chr"
-                    elif node_type == 'skin':
-                        extension = "skin"
-                    else:
-                        cbPrint("File does not exist.")
-
-                    if extension is not None:
-                        out_file = "{0}.{1}".format(dae_file_for_rc[:-4], extension)
-                        args = [exe, "/refresh", out_file]
-                        rc_second_pass = subprocess.Popen(args)
+                    out_file = "{0}{1}".format(output_path,
+                                                group.name[14:])
+                    args = [exe, "/refresh", out_file]
+                    rc_second_pass = subprocess.Popen(args)
 
         if config.do_materials:
             mtl_fix_thread = threading.Thread(
