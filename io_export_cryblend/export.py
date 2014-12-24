@@ -673,39 +673,22 @@ class CrytekDaeExporter:
         utils.write_matrix(Matrix(), bind_shape_matrix)
         skin_node.appendChild(bind_shape_matrix)
 
-        armature_bones = utils.get_bones(armature)
-
-        self.__process_bones_joints(object_.name,
-                                    skin_node,
-                                    armature.name,
-                                    armature_bones)
-
-        self.__process_bones_matrices(object_.name,
-                                      skin_node,
-                                      armature.name,
-                                      armature_bones)
-
-        self.__process_bones_weights(object_,
-                                     skin_node,
-                                     armature.name,
-                                     armature_bones)
+        self.__process_bone_joints(object_, armature, skin_node)
+        self.__process_bone_matrices(object_, armature, skin_node)
+        self.__process_bone_weights(object_, armature, skin_node)
 
         joints = self.__doc.createElement("joints")
-
         input = utils.write_input(id, None, "joints", "JOINT")
         joints.appendChild(input)
         input = utils.write_input(id, None, "matrices", "INV_BIND_MATRIX")
         joints.appendChild(input)
         skin_node.appendChild(joints)
 
-    def __process_bones_joints(self,
-                               object_name,
-                               skin_node,
-                               armature_name,
-                               armature_bones):
+    def __process_bone_joints(self, object_, armature, skin_node):
 
-        id = "{!s}-{!s}-joints".format(armature_name, object_name)
-        bone_names = [bone.name for bone in armature_bones]
+        bones = utils.get_bones(armature)
+        id = "{!s}-{!s}-joints".format(armature.name, object_.name)
+        bone_names = [bone.name for bone in bones]
         source = utils.write_source(id,
                                     "IDREF",
                                     bone_names,
@@ -713,14 +696,11 @@ class CrytekDaeExporter:
                                     self.__doc)
         skin_node.appendChild(source)
 
-    def __process_bones_matrices(self,
-                                 object_name,
-                                 skin_node,
-                                 armature_name,
-                                 armature_bones):
+    def __process_bone_matrices(self, object_, armature, skin_node):
         
+        bones = utils.get_bones(armature)
         bone_matrices = []
-        for bone in armature_bones:
+        for bone in bones:
             fakebone = utils.find_fakebone(bone.name)
             if fakebone is None:
                 return
@@ -728,7 +708,7 @@ class CrytekDaeExporter:
             utils.negate_z_axis_of_matrix(matrix_local)
             bone_matrices.extend(utils.matrix_to_array(matrix_local))
 
-        id = "{!s}-{!s}-matrices".format(armature_name, object_name)
+        id = "{!s}-{!s}-matrices".format(armature.name, object_.name)
         source = utils.write_source(id,
                                     "float",
                                     bone_matrices,
@@ -736,12 +716,9 @@ class CrytekDaeExporter:
                                     self.__doc)
         skin_node.appendChild(source)
 
-    def __process_bones_weights(self,
-                                object_,
-                                skin_node,
-                                armature_name,
-                                armature_bones):
+    def __process_bone_weights(self, object_, armature, skin_node):
 
+        bones = utils.get_bones(armature)
         group_weights = []
         vw = ""
         vertex_groups_lengths = ""
@@ -752,7 +729,7 @@ class CrytekDaeExporter:
                 group_weights.append(group.weight)
                 for vertex_group in object_.vertex_groups:
                     if vertex_group.index == group.group:
-                        for bone_id, bone in enumerate(armature_bones):
+                        for bone_id, bone in enumerate(bones):
                             if bone.name == vertex_group.name:
                                 vw += "%s " % bone_id
 
@@ -761,7 +738,7 @@ class CrytekDaeExporter:
 
             vertex_groups_lengths += "%s " % len(vertex.groups)
 
-        id = "{!s}-{!s}-weights".format(armature_name, object_.name)
+        id = "{!s}-{!s}-weights".format(armature.name, object_.name)
         source = utils.write_source(id,
                                     "float",
                                     group_weights,
