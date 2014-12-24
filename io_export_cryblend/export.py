@@ -685,10 +685,10 @@ class CrytekDaeExporter:
                                       armature.name,
                                       armature_bones)
 
-        vertex_groups_lengths, vw = self.__process_bones_weights(object_,
-                                                 skin_node,
-                                                 armature.name,
-                                                 armature_bones)
+        self.__process_bones_weights(object_,
+                                     skin_node,
+                                     armature.name,
+                                     armature_bones)
 
         joints = self.__doc.createElement("joints")
 
@@ -698,30 +698,12 @@ class CrytekDaeExporter:
         joints.appendChild(input)
         skin_node.appendChild(joints)
 
-        vertex_weights = self.__doc.createElement("vertex_weights")
-        vertex_weights.setAttribute("count", str(len(mesh.vertices)))
-
-        input = utils.write_input(id, 0, "joints", "JOINT")
-        vertex_weights.appendChild(input)
-        input = utils.write_input(id, 1, "weights", "WEIGHT")
-        vertex_weights.appendChild(input)
-
-        vcount = self.__doc.createElement("vcount")
-        vcount_text = self.__doc.createTextNode(vertex_groups_lengths)
-        vcount.appendChild(vcount_text)
-        vertex_weights.appendChild(vcount)
-
-        v = self.__doc.createElement("v")
-        v_text = self.__doc.createTextNode(vw)
-        v.appendChild(v_text)
-        vertex_weights.appendChild(v)
-        skin_node.appendChild(vertex_weights)
-
     def __process_bones_joints(self,
                                object_name,
                                skin_node,
                                armature_name,
                                armature_bones):
+
         id = "{!s}-{!s}-joints".format(armature_name, object_name)
         bone_names = [bone.name for bone in armature_bones]
         source = utils.write_source(id,
@@ -737,53 +719,34 @@ class CrytekDaeExporter:
                                  armature_name,
                                  armature_bones):
         
-        source_matrices_node = self.__doc.createElement("source")
-        source_matrices_node.setAttribute("id", "%s-%s-matrices"
-                                          % (armature_name, object_name))
+        bone_matrices = []
+        for bone in armature_bones:
+            fakebone = utils.find_fakebone(bone.name)
+            if fakebone is None:
+                return
+            matrix_local = copy.deepcopy(fakebone.matrix_local)
+            utils.negate_z_axis_of_matrix(matrix_local)
+            bone_matrices.extend(utils.matrix_to_array(matrix_local))
 
-        skin_node.appendChild(source_matrices_node)
-
-        float_array_node = self.__doc.createElement("float_array")
-        float_array_node.setAttribute("id", "%s-%s-matrices-array"
-                                      % (armature_name, object_name))
-        float_array_node.setAttribute("count", "%s"
-                                      % (len(armature_bones) * 16))
-        self.__export_float_array(armature_bones, float_array_node)
-        source_matrices_node.appendChild(float_array_node)
-
-        technique_node = self.__doc.createElement("technique_common")
-        accessor_node = self.__doc.createElement("accessor")
-        accessor_node.setAttribute("source", "#%s-%s-matrices-array"
-                                   % (armature_name, object_name))
-        accessor_node.setAttribute("count", "%s" % (len(armature_bones)))
-        accessor_node.setAttribute("stride", "16")
-        param_node = self.__doc.createElement("param")
-        param_node.setAttribute("type", "float4x4")
-        accessor_node.appendChild(param_node)
-        technique_node.appendChild(accessor_node)
-        source_matrices_node.appendChild(technique_node)
+        id = "{!s}-{!s}-matrices".format(armature_name, object_name)
+        source = utils.write_source(id,
+                                    "float",
+                                    bone_matrices,
+                                    ["float4x4"],
+                                    self.__doc)
+        skin_node.appendChild(source)
 
     def __process_bones_weights(self,
                                 object_,
                                 skin_node,
                                 armature_name,
                                 armature_bones):
-        source_node = self.__doc.createElement("source")
-        source_node.setAttribute("id", "%s-%s-weights"
-                                         % (armature_name, object_.name))
-
-        skin_node.appendChild(source_node)
-
-        float_array = self.__doc.createElement("float_array")
-        float_array.setAttribute("id", "%s-%s-weights-array"
-                                 % (armature_name, object_.name))
 
         group_weights = []
         vw = ""
-        vertex_groups_lengths = []
+        vertex_groups_lengths = ""
         vertex_count = 0
 
-        # TODO: review that loop to find bugs and useless code
         for vertex in object_.data.vertices:
             for group in vertex.groups:
                 group_weights.append(group.weight)
@@ -796,41 +759,35 @@ class CrytekDaeExporter:
                 vw += "%s " % vertex_count
                 vertex_count += 1
 
-            vertex_groups_lengths.append("%s" % len(vertex.groups))
+            vertex_groups_lengths += "%s " % len(vertex.groups)
 
-        float_array.setAttribute("count", "%s" % vertex_count)
-        lfarwa = self.__doc.createTextNode(
-                        utils.floats_to_string(group_weights, " ", "%.6f"))
+        id = "{!s}-{!s}-weights".format(armature_name, object_.name)
+        source = utils.write_source(id,
+                                    "float",
+                                    group_weights,
+                                    ["float"],
+                                    self.__doc)
+        skin_node.appendChild(source)
 
-        float_array.appendChild(lfarwa)
+        vertex_weights = self.__doc.createElement("vertex_weights")
+        vertex_weights.setAttribute("count", str(len(object_.data.vertices)))
 
-        technique_node = self.__doc.createElement("technique_common")
+        input = utils.write_input(id, 0, "joints", "JOINT")
+        vertex_weights.appendChild(input)
+        input = utils.write_input(id, 1, "weights", "WEIGHT")
+        vertex_weights.appendChild(input)
 
-        accessor_node = self.__doc.createElement("accessor")
-        accessor_node.setAttribute("source", "#%s-%s-weights-array"
-                                      % (armature_name, object_.name))
-        accessor_node.setAttribute("count", "%s" % vertex_count)
-        accessor_node.setAttribute("stride", "1")
+        vcount = self.__doc.createElement("vcount")
+        vcount_text = self.__doc.createTextNode(vertex_groups_lengths)
+        vcount.appendChild(vcount_text)
+        vertex_weights.appendChild(vcount)
 
-        param_node = self.__doc.createElement("param")
-        param_node.setAttribute("type", "float")
-        accessor_node.appendChild(param_node)
-        technique_node.appendChild(accessor_node)
-        source_node.appendChild(float_array)
-        source_node.appendChild(technique_node)
+        v = self.__doc.createElement("v")
+        v_text = self.__doc.createTextNode(vw)
+        v.appendChild(v_text)
+        vertex_weights.appendChild(v)
 
-        return " ".join(vertex_groups_lengths), vw
-
-    def __export_float_array(self, armature_bones, float_array):
-        for bone in armature_bones:
-            fakebone = utils.find_fakebone(bone.name)
-            if fakebone is None:
-                return
-
-            matrix_local = copy.deepcopy(fakebone.matrix_local)
-            utils.negate_z_axis_of_matrix(matrix_local)
-
-            utils.write_matrix(matrix_local, float_array)
+        skin_node.appendChild(vertex_weights)
 
     def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
@@ -1074,20 +1031,15 @@ class CrytekDaeExporter:
         technique.setAttribute("profile", "CryEngine")
         node_type = utils.get_node_type(ename)
         props = self.__doc.createElement("properties")
-        if node_type == "cgf":
-            type = self.__doc.createTextNode("fileType=cgf")
-            props.appendChild(type)
-        elif node_type == "cga":
-            type = self.__doc.createTextNode("fileType=cga")
-            props.appendChild(type)
-        elif node_type == "chr":
-            type = self.__doc.createTextNode("fileType=chrcaf")
-            props.appendChild(type)
-        elif node_type == "skin":
-            type = self.__doc.createTextNode("fileType=skin")
+
+        extensions = { "cgf": "cgf", "cga": "cga", "chr": "chrcaf", "skin": "skin" }
+        if node_type in extensions:
+            type = self.__doc.createTextNode("fileType={}".format(
+                                                extensions[node_type]))
             props.appendChild(type)
         else:
             cbPrint("Unable to recognize node type.")
+
         if self.__config.donot_merge:
             do_not_merge = self.__doc.createTextNode("DoNotMerge")
             props.appendChild(do_not_merge)
@@ -1139,38 +1091,19 @@ class CrytekDaeExporter:
         return trans
 
     def __create_rotation_node(self, object_):
-        rotx = self.__doc.createElement("rotate")
-        rotx.setAttribute("sid", "rotation_X")
-        try:
-            rotx_text_node = self.__doc.createTextNode("1 0 0 {:f}".format(
-                                        object_.rotation_euler[0]
-                                            * utils.toDegrees))
-        except:
-            rotx_text_node = self.__doc.createTextNode("1 0 0 0")
-
-        roty = self.__doc.createElement("rotate")
-        roty.setAttribute("sid", "rotation_Y")
-        try:
-            roty_text_node = self.__doc.createTextNode("0 1 0 {:f}".format(
-                                        object_.rotation_euler[1]
-                                            * utils.toDegrees))
-        except:
-            roty_text_node = self.__doc.createTextNode("0 1 0 0")
-
-        rotz = self.__doc.createElement("rotate")
-        rotz.setAttribute("sid", "rotation_Z")
-        try:
-            rotz_text_node = self.__doc.createTextNode("0 0 1 {:f}".format(
-                                        object_.rotation_euler[2]
-                                            * utils.toDegrees))
-        except:
-            rotz_text_node = self.__doc.createTextNode("0 0 1 0")
-
-        rotx.appendChild(rotx_text_node)
-        roty.appendChild(roty_text_node)
-        rotz.appendChild(rotz_text_node)
+        rotx = self.__write_rotation("X", "1 0 0 {:f}", object_.rotation_euler[0])
+        roty = self.__write_rotation("Y", "0 1 0 {:f}", object_.rotation_euler[1])
+        rotz = self.__write_rotation("Z", "0 0 1 {:f}", object_.rotation_euler[2])
 
         return rotx, roty, rotz
+
+    def __write_rotation(self, axis, textFormat, rotation):
+        rotation_node = self.__doc.createElement("rotate")
+        rotation_node.setAttribute("sid", "rotation_{}".format(axis))
+        rotation_text = self.__doc.createTextNode(textFormat.format(rotation * utils.toDegrees))
+        rotation_node.appendChild(rotation_text)
+
+        return rotation_node
 
     def __create_scale_node(self, object_):
         scale = self.__doc.createElement("scale")

@@ -134,6 +134,13 @@ def strings_to_string(strings, separator=" "):
     return separator.join(string for string in strings)
 
 
+def matrix_to_array(matrix):
+    array = []
+    for row in matrix:
+        array.extend(row)
+
+    return array
+
 def write_matrix(matrix, node):
     doc = Document()
     for row in matrix:
@@ -595,7 +602,10 @@ def negate_z_axis_of_matrix(matrix_local):
 
 def write_source(id, type, array, params, doc):
     length = len(array)
-    stride = len(params)
+    if "float4x4" in params:
+        stride = 16
+    else:
+        stride = len(params)
     count = int(length / stride)
 
     source = doc.createElement("source")
@@ -605,12 +615,9 @@ def write_source(id, type, array, params, doc):
     source_data.setAttribute("id", "{!s}-array".format(id))
     source_data.setAttribute("count", str(length))
     try:
-        write_matrix(array, source_data)
+        source_data.appendChild(doc.createTextNode(floats_to_string(array)))
     except TypeError:
-        try:
-            source_data.appendChild(doc.createTextNode(floats_to_string(array)))
-        except TypeError:
-            source_data.appendChild(doc.createTextNode(strings_to_string(array)))
+        source_data.appendChild(doc.createTextNode(strings_to_string(array)))
     technique_common = doc.createElement("technique_common")
     accessor = doc.createElement("accessor")
     accessor.setAttribute("source", "#{!s}-array".format(id))
