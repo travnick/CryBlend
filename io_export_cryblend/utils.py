@@ -602,8 +602,10 @@ def negate_z_axis_of_matrix(matrix_local):
 
 def write_source(id, type, array, params, doc):
     length = len(array)
-    if "float4x4" in params:
+    if type == "float4x4":
         stride = 16
+    elif len(params) == 0:
+        stride = 1
     else:
         stride = len(params)
     count = int(length / stride)
@@ -611,7 +613,10 @@ def write_source(id, type, array, params, doc):
     source = doc.createElement("source")
     source.setAttribute("id", id)
 
-    source_data = doc.createElement("{!s}_array".format(type))
+    if type == "float4x4":
+        source_data = doc.createElement("float_array")
+    else:
+        source_data = doc.createElement("{!s}_array".format(type))
     source_data.setAttribute("id", "{!s}-array".format(id))
     source_data.setAttribute("count", str(length))
     try:
@@ -626,7 +631,11 @@ def write_source(id, type, array, params, doc):
     for param in params:
         param_node = doc.createElement("param")
         param_node.setAttribute("name", param)
-        param_node.setAttribute("type", "float")
+        param_node.setAttribute("type", type)
+        accessor.appendChild(param_node)
+    if len(params) == 0:
+        param_node = doc.createElement("param")
+        param_node.setAttribute("type", type)
         accessor.appendChild(param_node)
     technique_common.appendChild(accessor)
 

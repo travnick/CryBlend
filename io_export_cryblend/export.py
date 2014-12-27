@@ -692,7 +692,7 @@ class CrytekDaeExporter:
         source = utils.write_source(id,
                                     "IDREF",
                                     bone_names,
-                                    ["IDREF"],
+                                    [],
                                     self.__doc)
         skin_node.appendChild(source)
 
@@ -710,9 +710,9 @@ class CrytekDaeExporter:
 
         id = "{!s}-{!s}-matrices".format(armature.name, object_.name)
         source = utils.write_source(id,
-                                    "float",
+                                    "float4x4",
                                     bone_matrices,
-                                    ["float4x4"],
+                                    [],
                                     self.__doc)
         skin_node.appendChild(source)
 
@@ -742,13 +742,14 @@ class CrytekDaeExporter:
         source = utils.write_source(id,
                                     "float",
                                     group_weights,
-                                    ["float"],
+                                    [],
                                     self.__doc)
         skin_node.appendChild(source)
 
         vertex_weights = self.__doc.createElement("vertex_weights")
         vertex_weights.setAttribute("count", str(len(object_.data.vertices)))
 
+        id = "{!s}-{!s}".format(armature.name, object_.name)
         input = utils.write_input(id, 0, "joints", "JOINT")
         vertex_weights.appendChild(input)
         input = utils.write_input(id, 1, "weights", "WEIGHT")
@@ -780,7 +781,7 @@ class CrytekDaeExporter:
                     node_name = group.name[14:]
                     animation_clip = self.__doc.createElement("animation_clip")
                     animation_clip.setAttribute("id",
-                                                "%s-%s" % (scene.name, node_name))
+                                                "%s-%s" % (scene.name, utils.get_node_name(node_name)))
                     animation_clip.setAttribute("start",
                                                 "%s" % (utils.convert_time(scene.frame_start)))
                     animation_clip.setAttribute("end",
@@ -807,25 +808,24 @@ class CrytekDaeExporter:
                     if is_animation:
                         libanmcl.appendChild(animation_clip)
 
-    def __export__animation_clip(self, object_, ename, act_name,
-                                 start_frame, end_frame):
-        animation_clip = self.__doc.createElement("animation_clip")
-        animation_clip.setAttribute("id", "{!s}-{!s}".format(act_name, ename[14:]))
-        # RC does not seem to like doubles and truncates them to integers
-        animation_clip.setAttribute("start",
-                                    "{:f}".format(utils.convert_time(start_frame)))
-        animation_clip.setAttribute("end",
-                                    "{:f}".format(utils.convert_time(end_frame)))
-        self.__merged_clip_start = start_frame
-        self.__merged_clip_end = end_frame
-        self.__export_instance_animation_parameters(object_, animation_clip)
-
-        return animation_clip
-
     def __export_instance_animation_parameters(self, object_, animation_clip):
-        self.__export_instance_parameter(object_, animation_clip, "location")
-        self.__export_instance_parameter(object_, animation_clip,
-                                         "rotation_euler")
+        anim_exists = False
+        for curve in object_.animation_data.action.fcurves:
+            for axis in iter(AXES):
+                if (curve.data_path == "location" and curve.array_index == AXES[axis]):
+                    anim_exists = True
+                    break
+        if anim_exists:
+            self.__export_instance_parameter(object_, animation_clip, "location")
+        anim_exists = False
+        for curve in object_.animation_data.action.fcurves:
+            for axis in iter(AXES):
+                if (curve.data_path == "rotation_euler" and curve.array_index == AXES[axis]):
+                    anim_exists = True
+                    break
+        if anim_exists:
+            self.__export_instance_parameter(object_, animation_clip,
+                                                "rotation_euler")
 
     def __export_instance_parameter(self, object_, animation_clip, parameter):
         for axis in iter(AXES):
@@ -874,11 +874,11 @@ class CrytekDaeExporter:
             if (curve.data_path == attribute_type and curve.array_index == AXES[axis]):
                 keyframe_points = curve.keyframe_points
                 sources = {
-                    "input": "",
-                    "output": "",
-                    "interpolation": "",
-                    "intangent": "",
-                    "outangent": ""
+                    "input": [],
+                    "output": [],
+                    "interpolation": [],
+                    "intangent": [],
+                    "outangent": []
                 }
                 for keyframe_point in keyframe_points:
                     khlx = keyframe_point.handle_left[0]
@@ -887,11 +887,11 @@ class CrytekDaeExporter:
                     khry = keyframe_point.handle_right[1]
                     frame, value = keyframe_point.co
 
-                    sources["input"] = join(sources["input"], "{:f} ".format(utils.convert_time(frame)))
-                    sources["output"] = join(sources["output"], "{:f} ".format(value * multiplier))
-                    sources["interpolation"] = join(sources["interpolation"], "{:f} ".format(keyframe_point.interpolation))
-                    sources["intangent"] = join(sources["intangent"], "{:f}{:f} ".format(utils.convert_time(khlx), khly))
-                    sources["outangent"] = join(sources["outangent"], "{:f}{:f} ".format(utils.convert_time(khrx), khry))
+                    sources["input"].append(utils.convert_time(frame))
+                    sources["output"].append(value * multiplier)
+                    sources["interpolation"].append(keyframe_point.interpolation)
+                    sources["intangent"].extend( [utils.convert_time(khlx), khly] )
+                    sources["outangent"].extend( [utils.convert_time(khrx), khry] )
 
                 animation_element = self.__doc.createElement("animation")
                 animation_element.setAttribute("id", id_prefix)
@@ -912,43 +912,35 @@ class CrytekDaeExporter:
 
     def __create_animation_node(self,
                                 type,
-                                item,
+                                data,
                                 num_keyframes,
                                 id_prefix,
                                 source_prefix):
-        if type == "intang" or type == "outang":
-            axes = 2
+        id = "{!s}-{!s}".format(id_prefix, type)
+        if type == "intangent" or type == "outangent":
+            source = utils.write_source(id,
+                                        "float",
+                                        data,
+                                        "XY",
+                                        self.__doc)
+        elif type == "input":
+            source = utils.write_source(id,
+                                        "float",
+                                        data,
+                                        ["TIME"],
+                                        self.__doc)
+        elif type == "output":
+            source = utils.write_source(id,
+                                        "float",
+                                        data,
+                                        ["VALUE"],
+                                        self.__doc)
         else:
-            axes = 1
-        source = self.__doc.createElement("source")
-        source.setAttribute("id", "{!s}-{!s}".format(id_prefix, type))
-        float_array = self.__doc.createElement("float_array")
-        float_array.setAttribute("id", "{!s}-{!s}-array".format(id_prefix, type))
-        float_array.setAttribute("count", "{!r}".format(num_keyframes * axes))
-        source_text_node = self.__doc.createTextNode("{0}".format(item))
-        float_array.appendChild(source_text_node)
-        technique_common = self.__doc.createElement("technique_common")
-        accessor = self.__doc.createElement("accessor")
-        accessor.setAttribute("source", "{!s}-{!s}-array".format(source_prefix, type))
-        accessor.setAttribute("count", "{!r}".format(num_keyframes))
-        accessor.setAttribute("stride", "1")
-        if axes == 2:
-            param_x = self.__doc.createElement("param")
-            param_x.setAttribute("name", "X")
-            param_x.setAttribute("type", "float")
-            param_y = self.__doc.createElement("param")
-            param_y.setAttribute("name", "Y")
-            param_y.setAttribute("type", "float")
-            accessor.appendChild(param_x)
-            accessor.appendChild(param_y)
-        else:
-            param = self.__doc.createElement("param")
-            param.setAttribute("name", "TIME")
-            param.setAttribute("type", "float")
-            accessor.appendChild(param)
-        technique_common.appendChild(accessor)
-        source.appendChild(float_array)
-        source.appendChild(technique_common)
+            source = utils.write_source(id,
+                                        "name",
+                                        data,
+                                        ["INTERPOLATION"],
+                                        self.__doc)
 
         return source
 
@@ -970,7 +962,7 @@ class CrytekDaeExporter:
         intangent.setAttribute("source", "{!s}-intangent".format(source_prefix))
         outangent = self.__doc.createElement("input")
         outangent.setAttribute("semantic", "OUT_TANGENT")
-        outangent.setAttribute("source", "{!s}-outtangent".format(source_prefix))
+        outangent.setAttribute("source", "{!s}-outangent".format(source_prefix))
 
         sampler.appendChild(input)
         sampler.appendChild(output)
@@ -1319,7 +1311,7 @@ def write_to_file(config, doc, file_name, exe):
                     node_type = utils.get_node_type(group.name)
                     out_file = "{0}{1}".format(output_path,
                                                 group.name[14:])
-                    args = [exe, "/refresh", out_file]
+                    args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
                     rc_second_pass = subprocess.Popen(args)
 
         if config.do_materials:
