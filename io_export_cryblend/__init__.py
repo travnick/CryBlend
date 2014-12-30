@@ -188,11 +188,12 @@ class SaveCryBlendConfiguration(bpy.types.Operator):
 
 class AddCryExportNode(bpy.types.Operator):
     '''Add selected objects to an existing or new CryExportNode'''
-    bl_label = "Add ExportNode"
+    bl_label = "Add Export Node"
     bl_idname = "object.add_cry_export_node"
     bl_options = {"REGISTER", "UNDO"}
-    node_name = StringProperty(name="Name")
-    node_type = EnumProperty(
+
+    bpy.types.Scene.node_name = StringProperty(name="Name")
+    bpy.types.Scene.node_type = EnumProperty(
             name="Type",
             items=(
                 ("cgf", "CGF",
@@ -208,29 +209,52 @@ class AddCryExportNode(bpy.types.Operator):
     )
 
     def execute(self, context):
-        node = "{}.{}".format(self.node_name, self.node_type)
-        # Add to existing ExportNode.
-        for group in bpy.data.groups:
-            if utils.is_export_node(group.name):
-                if group.name.endswith(node):
-                    selected = bpy.context.selected_objects
-                    for object in selected:
-                        if not object.name in group.objects:
-                            group.objects.link(object)
-                            message = "Added {} to {}".format(object.name, group.name)
-                            self.report({'INFO'}, message)
-                            cbPrint(message)
-                    return {'FINISHED'}
+        scene = bpy.context.scene
+        nodename = "{}.{}".format(getattr(scene, "node_name"),
+                                    getattr(scene, "node_type"))
 
-        # Create new ExportNode.
-        bpy.ops.group.create(name="CryExportNode_{}".format(node))
-        message = "Created CryExportNode_{}".format(node)
-        self.report({'INFO'}, message)
-        cbPrint(message)
+        group = bpy.data.groups.get(nodename)
+        if group is None:
+            bpy.ops.group.create(name=nodename)
+        else:
+            for object in bpy.context.selected_objects:
+                if object.name not in group.objects:
+                    group.objects.link(object)
+
+        message = "Adding Export Node"
+        self.report({"INFO"}, message)
         return {"FINISHED"}
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        scene = bpy.context.scene
+        layout = self.layout
+        col = layout.column()
+        row = col.row()
+        row.prop(scene, "node_type", expand=True)
+        col.separator()
+        col.prop(scene, "node_name")
+
+
+class SelectedToCryExportNodes(bpy.types.Operator):
+    '''Add selected objects to individual CryExportNodes.'''
+    bl_label = "Export Nodes from Objects"
+    bl_idname = "object.selected_to_cry_export_nodes"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        bpy.ops.object.select_all(action="DESELECT")
+        for object_ in bpy.context.selected_objects:
+            object_.select = True
+            if (len(object_.users_group) == 0):
+                bpy.ops.group.create(name="CryExportNode_%s" % (object_.name))
+            object_.select = False
+
+        message = "Adding Selected Objects to Export Nodes"
+        self.report({"INFO"}, message)
+        return {"FINISHED"}
 
 
 class AddProxy(bpy.types.Operator):
@@ -238,7 +262,7 @@ class AddProxy(bpy.types.Operator):
 be converted to the selected shape in CryEngine.'''
     bl_label = "Add Proxy"
     bl_idname = "object.add_proxy"
-    type = StringProperty()
+    type_ = StringProperty()
 
     def execute(self, context):
         active = bpy.context.active_object
@@ -246,26 +270,26 @@ be converted to the selected shape in CryEngine.'''
         if (active.type == "MESH"):
             already_exists = False
             for object_ in bpy.data.objects:
-                if (object_.name == "{0}_{1}-proxy".format(active.name, getattr(self, "type")) or
+                if (object_.name == "{0}_{1}-proxy".format(active.name, getattr(self, "type_")) or
                         object_.name.endswith("-proxy")):
                     already_exists = True
                     break
             if (not already_exists):
-                self.add_proxy(active, type)
+                self.add_proxy(active, type_)
 
-        message = "Adding %s proxy to active object" % getattr(self, "type")
+        message = "Adding %s proxy to active object" % getattr(self, "type_")
         self.report({'INFO'}, message)
         return {'FINISHED'}
 
 
-    def add_proxy(self, object_, type):
+    def add_proxy(self, object_, type_):
         old_origin = object_.location.copy()
         old_cursor = bpy.context.scene.cursor_location.copy()
         bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
         bpy.ops.object.select_all(action="DESELECT")
         bpy.ops.mesh.primitive_cube_add()
         bound_box = bpy.context.active_object
-        bound_box.name = "{0}_{1}-proxy".format(object_.name, getattr(self, "type"))
+        bound_box.name = "{0}_{1}-proxy".format(object_.name, getattr(self, "type_"))
         bound_box.draw_type = "WIRE"
         bound_box.dimensions = object_.dimensions
         bound_box.location = object_.location
@@ -274,14 +298,14 @@ be converted to the selected shape in CryEngine.'''
         for group in object_.users_group:
             bpy.ops.object.group_link(group=group.name)
 
-        proxy_material = bpy.data.materials.new("{0}_{1}-proxy__physProxyNone".format(object_.name, getattr(self, "type")))
+        proxy_material = bpy.data.materials.new("{0}_{1}-proxy__physProxyNone".format(object_.name, getattr(self, "type_")))
         bound_box.data.materials.append(proxy_material)
 
-        if (getattr(self, "type") == "box"):
+        if (getattr(self, "type_") == "box"):
             bpy.ops.object.add_box_proxy_property()
-        elif (getattr(self, "type") == "capsule"):
+        elif (getattr(self, "type_") == "capsule"):
             bpy.ops.object.add_capsule_proxy_property()
-        elif (getattr(self, "type") == "cylinder"):
+        elif (getattr(self, "type_") == "cylinder"):
             bpy.ops.object.add_cylinder_proxy_property()
         else: # sphere proxy
             bpy.ops.object.add_sphere_proxy_property()
@@ -295,26 +319,6 @@ be converted to the selected shape in CryEngine.'''
         bpy.context.scene.objects.active = bound_box
         bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
         bpy.context.scene.cursor_location = old_cursor
-
-
-class SelectedToCryExportNodes(bpy.types.Operator):
-    '''Add selected objects to individual CryExportNodes.'''
-    bl_label = "ExportNodes from Objects"
-    bl_idname = "object.selected_to_cry_export_nodes"
-    bl_options = {"REGISTER", "UNDO"}
-
-    def execute(self, context):
-        selected = bpy.context.selected_objects
-        bpy.ops.object.select_all(action="DESELECT")
-        for object_ in selected:
-            object_.select = True
-            if (len(object_.users_group) == 0):
-                bpy.ops.group.create(name="CryExportNode_%s" % (object_.name))
-            object_.select = False
-
-        message = "Adding Selected to CryExportNodes"
-        self.report({"INFO"}, message)
-        return {"FINISHED"}
 
 
 class SetMaterialNames(bpy.types.Operator):
@@ -1242,218 +1246,9 @@ class AddUVTexture(bpy.types.Operator):
 
 
 #------------------------------------------------------------------------------
-# Regarding Fakebones
-# And BoneGeometry:
+# Regarding Bone
+# Physics
 #------------------------------------------------------------------------------
-
-
-# verts and faces
-# find bone heads and add at that location
-class AddFakeBone(bpy.types.Operator):
-    '''Add helpers to track bone transforms.'''
-    bl_label = "Add FakeBone"
-    bl_idname = "armature.add_fake_bone"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    width = FloatProperty(
-            name="Width",
-            description="Box Width",
-            min=0.01, max=100.0,
-            default=1.0,
-            )
-    height = FloatProperty(
-            name="Height",
-            description="Box Height",
-            min=0.01, max=100.0,
-            default=1.0,
-            )
-    depth = FloatProperty(
-            name="Depth",
-            description="Box Depth",
-            min=0.01, max=100.0,
-            default=1.0,
-            )
-
-    # generic transform props
-    view_align = BoolProperty(
-            name="Align to View",
-            default=False,
-            )
-    location = FloatVectorProperty(
-            name="Location",
-            subtype='TRANSLATION',
-            )
-    rotation = FloatVectorProperty(
-            name="Rotation",
-            subtype='EULER',
-            )
-
-    def execute(self, context):
-        verts_loc, faces = add_fake_bone(1, 1, 1,)
-        for om in bpy.data.meshes:
-            if om.users == 0:
-                bpy.data.meshes.remove(om)
-
-        scene_objects = bpy.context.scene.objects
-        for arm in scene_objects:
-            if arm.type == 'ARMATURE':
-
-                for pbone in arm.pose.bones:
-                    mesh = bpy.data.meshes.new("%s" % pbone.name)
-                    bm = bmesh.new()
-
-                    for v_co in verts_loc:
-                        bm.verts.new(v_co)
-
-                    for f_idx in faces:
-                        bm.faces.new([bm.verts[i] for i in f_idx])
-
-                    bm.to_mesh(mesh)
-                    mesh.update()
-                    bmatrix = pbone.bone.head_local
-                    # loc, rotation, scale = bmatrix.decompose()
-                    self.location[0] = bmatrix[0]
-                    self.location[1] = bmatrix[1]
-                    self.location[2] = bmatrix[2]
-                    # add the mesh as an object into the scene
-                    # with this utility module
-                    from bpy_extras import object_utils
-                    object_utils.object_data_add(context, mesh, operator=self)
-                    bpy.ops.mesh.uv_texture_add()
-                    for fb in scene_objects:
-                        if fb.name == pbone.name:
-                            fb["fakebone"] = "fakebone"
-                    bpy.context.scene.objects.active = arm
-                    arm.data.bones.active = pbone.bone
-                    bpy.ops.object.parent_set(type='BONE')
-
-        return {'FINISHED'}
-
-
-def add_fake_bone(width, height, depth):
-    """
-    This function takes inputs and returns vertex and face arrays.
-    No actual mesh data creation is done here.
-    """
-
-    verts = [(-0.02029, -0.02029, -0.02029),
-             (-0.02029, 0.02029, -0.02029),
-             (0.02029, 0.02029, -0.02029),
-             (0.02029, -0.02029, -0.02029),
-             (-0.02029, -0.02029, 0.02029),
-             (-0.02029, 0.02029, 0.02029),
-             (0.02029, 0.02029, 0.02029),
-             (0.02029, -0.02029, 0.02029),
-             ]
-
-    faces = [(0, 1, 2, 3),
-             (4, 7, 6, 5),
-             (0, 4, 5, 1),
-             (1, 5, 6, 2),
-             (2, 6, 7, 3),
-             (4, 0, 3, 7),
-            ]
-
-    # apply size
-    for i, v in enumerate(verts):
-        verts[i] = v[0] * width, v[1] * depth, v[2] * height
-
-    return verts, faces
-
-
-class RemoveFakeBones(bpy.types.Operator):
-        '''Select to remove all fakebones from the scene.'''
-        bl_label = "Remove All FakeBones"
-        bl_idname = "scene.remove_fake_bones"
-        bl_options = {'REGISTER', 'UNDO'}
-
-        def execute(self, context):
-            for obj in bpy.data.objects:
-                obj.select = False
-
-            for obj in bpy.context.selectable_objects:
-                isFakeBone = False
-                try:
-                    throwaway = obj['fakebone']
-                    isFakeBone = True
-                except:
-                    pass
-                if (obj.name == obj.parent_bone
-                    and isFakeBone
-                    and obj.type == 'MESH'):
-                    obj.select = True
-                    bpy.ops.object.delete(use_global=False)
-                    # {'active_object':obj, 'object':obj},
-            return {'FINISHED'}
-
-
-class KeyframeFakebones(bpy.types.Operator):
-    '''Adds a key frame list for the fakebones.'''
-    bl_label = "Make Fakebone Keyframes List"
-    bl_idname = "armature.keyframe_fakebones"
-
-    def execute(self, context):
-        return keyframe_fakebones()
-
-
-def keyframe_fakebones():
-    scene = bpy.context.scene
-    location_list = []
-    rotation_list = []
-    keyframe_list = []
-    armature = None
-    for object_ in scene.objects:
-        if (object_.type == "ARMATURE"):
-            armature = object_
-
-    if (armature is None):
-        return {"FINISHED"}
-
-    # Stage 1: Find unique keyframes
-    animation_data = armature.animation_data
-    if (animation_data is None):
-        return {"FINISHED"}
-    action = animation_data.action
-    for fcurve in action.fcurves:
-        for keyframe in fcurve.keyframe_points:
-            keyframe_entry = int(keyframe.co.x)
-            if (keyframe_entry not in keyframe_list):
-                keyframe_list.append(keyframe_entry)
-
-    # Stage 2: Calculate fakebone transformation data
-    for frame in keyframe_list:
-        scene.frame_set(frame)
-        for bone in armature.pose.bones:
-            fakebone = scene.objects.get(bone.name)
-            if (fakebone is None):
-                return {"FINISHED"}
-            bonecm = fakebone.matrix_local
-            if (bone.parent and bone.parent.parent):
-                bonepm = scene.objects.get(bone.parent.name).matrix_local
-                # Relative to parent = inverse parent bone matrix * bone matrix
-                animatrix = bonepm.inverted() * bonecm
-            else:
-                # Root bone or bones connected directly to root
-                animatrix = bonecm
-            lm, rm, sm = animatrix.decompose()
-            location_list.append(lm)
-            rotation_list.append(rm.to_euler())
-
-    # Stage 3: Keyframe fakebones
-    i = 0
-    for frame in keyframe_list:
-        scene.frame_set(frame)
-        for bone in armature.pose.bones:
-            fakebone = scene.objects.get(bone.name)
-            fakebone.location = location_list[i]
-            fakebone.rotation_euler = rotation_list[i]
-            fakebone.keyframe_insert(data_path="location")
-            fakebone.keyframe_insert(data_path="rotation_euler")
-            i += 1
-            
-    scene.frame_set(scene.frame_start)
-
-    return {'FINISHED'}
 
 
 class AddBoneGeometry(bpy.types.Operator):
@@ -1634,11 +1429,6 @@ class Export(bpy.types.Operator, ExportHelper):
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
-    merge_anm = BoolProperty(
-            name="Merge Animations",
-            description="For animated models - merge animations into 1.",
-            default=False,
-            )
     donot_merge = BoolProperty(
             name="Do Not Merge Nodes",
             description="Generally a good idea.",
@@ -1655,7 +1445,7 @@ class Export(bpy.types.Operator, ExportHelper):
             default=True,
             )
     do_materials = BoolProperty(
-            name="Run RC and Do Materials",
+            name="Do Materials",
             description="Generally a good idea.",
             default=False,
             )
@@ -1699,7 +1489,6 @@ class Export(bpy.types.Operator, ExportHelper):
         def __init__(self, config):
             attributes = (
                 'filepath',
-                'merge_anm',
                 'donot_merge',
                 'avg_pface',
                 'run_rc',
@@ -1762,7 +1551,6 @@ class Export(bpy.types.Operator, ExportHelper):
 
         box = col.box()
         box.label("Animation")
-        box.prop(self, "merge_anm")
         box.prop(self, "include_ik")
 
         box = col.box()
@@ -1840,38 +1628,38 @@ class GenerateScript(bpy.types.Operator, PathSelectTemplate):
     filename_ext = ""
     filter_glob = StringProperty(options={'HIDDEN'})
 
-    type = StringProperty(options={'HIDDEN'})
+    type_ = StringProperty(options={'HIDDEN'})
     entries = IntProperty(name="Entries", min=1, default=1)
 
     def process(self, filepath):
-        if (getattr(self, "type") == "CHRPARAMS"):
+        if (getattr(self, "type_") == "CHRPARAMS"):
             self.generate_chrparams(filepath, self.entries)
-        elif (getattr(self, "type") == "CDF"):
+        elif (getattr(self, "type_") == "CDF"):
             self.generate_cdf(filepath, self.entries)
-        elif (getattr(self, "type") == "ENT"):
+        elif (getattr(self, "type_") == "ENT"):
             self.generate_ent(filepath)
-        elif (getattr(self, "type") == "LUA"):
+        elif (getattr(self, "type_") == "LUA"):
             self.generate_lua(filepath)
 
     def invoke(self, context, event):
-        if (getattr(self, "type") == "CHRPARAMS"):
+        if (getattr(self, "type_") == "CHRPARAMS"):
             self.filename_ext = ".chrparams"
             self.filter_glob = "*.chrparams"
-        elif (getattr(self, "type") == "CDF"):
+        elif (getattr(self, "type_") == "CDF"):
             self.filename_ext = ".cdf"
             self.filter_glob = "*.cdf"
-        elif (getattr(self, "type") == "ENT"):
+        elif (getattr(self, "type_") == "ENT"):
             self.filename_ext = ".ent"
             self.filter_glob = "*.ent"
-        elif (getattr(self, "type") == "LUA"):
+        elif (getattr(self, "type_") == "LUA"):
             self.filename_ext = ".lua"
             self.filter_glob = "*.lua"
         return ExportHelper.invoke(self, context, event)
 
     def draw(self, context):
         layout = self.layout
-        if (getattr(self, "type") == "CHRPARAMS" or
-                getattr(self, "type") == "CDF"):
+        if (getattr(self, "type_") == "CHRPARAMS" or
+                getattr(self, "type_") == "CDF"):
             layout.prop(self, "entries")
 
     def generate_chrparams(self, filepath, entries):
@@ -2031,11 +1819,6 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         col.separator()
         col.operator("object.add_cry_export_node", text="Add ExportNode")
         col.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
-        col.separator()
-
-        col.label("Animation:", icon="POSE_HLT")
-        col.separator()
-        col.operator("object.add_anim_node")
 
 
 class CryUtilitiesPanel(View3DPanel, Panel):
@@ -2055,15 +1838,15 @@ class CryUtilitiesPanel(View3DPanel, Panel):
         col.separator()
         row = col.row(align=True)
         add_box_proxy = row.operator("object.add_proxy", text="Box")
-        add_box_proxy.type = "box"
+        add_box_proxy.type_ = "box"
         add_capsule_proxy = row.operator("object.add_proxy", text="Capsule")
-        add_capsule_proxy.type = "capsule"
+        add_capsule_proxy.type_ = "capsule"
 
         row = col.row(align=True)
         add_cylinder_proxy = row.operator("object.add_proxy", text="Cylinder")
-        add_cylinder_proxy.type = "cylinder"
+        add_cylinder_proxy.type_ = "cylinder"
         add_sphere_proxy = row.operator("object.add_proxy", text="Sphere")
-        add_sphere_proxy.type = "sphere"
+        add_sphere_proxy.type_ = "sphere"
         col.separator()
 
         col.label("Breakables:", icon="PARTICLES")
@@ -2152,9 +1935,6 @@ class CryBlendMainMenu(bpy.types.Menu):
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator("object.add_cry_export_node", text="Add ExportNode", icon='GROUP')
         layout.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
-        layout.separator()
-
-        layout.operator("object.add_anim_node", icon='POSE_HLT')
         layout.separator()
 
         layout.operator("material.set_material_names", text="Update Material Names", icon="MATERIAL")
@@ -2361,7 +2141,6 @@ def get_classes_to_register():
         SelectedToCryExportNodes,
         SetMaterialNames,
         RemoveCryBlendProperties,
-        AddAnimNode,
         AddProxy,
         AddBreakableJoint,
         AddBranch,
@@ -2418,9 +2197,6 @@ def get_classes_to_register():
         FindNoUVs,
         AddUVTexture,
 
-        AddFakeBone,
-        RemoveFakeBones,
-        KeyframeFakebones,
         RenamePhysBones,
         AddBoneGeometry,
         RemoveBoneGeometry,

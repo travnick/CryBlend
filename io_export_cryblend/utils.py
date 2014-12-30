@@ -307,40 +307,68 @@ def replace_invalid_rc_characters(string):
     return string
 
 
-def get_objects_in_export_nodes():
-    objects = []
+def get_type(type_):
+    items = []
+    if type_ == "nodes":
+        for group in get_export_nodes():
+            items.extend(group.objects[:])
+    elif type_ == "geometry":
+        for object_ in get_type("nodes"):
+            allowed = {'MESH'}
+            if object_.type in allowed:
+                if not is_fakebone(object_):
+                    items.append(object_)
+    elif type_ == "controllers":
+        for object_ in get_type("nodes"):
+            if not ("_boneGeometry" in object_.name or
+                    is_fakebone(object_)):
+                armatures = get_armature_modifiers(object_)
+                if armatures:
+                    armature_object = armatures[0].object
+                    items.append(armature_object)
+    elif type_ == "skins":
+        for object in get_type("nodes"):
+            allowed = {'MESH'}
+            if object_.type in allowed:
+                if not ("_boneGeometry" in object_.name or
+                        is_fakebone(object_)):
+                    parent = object.parent
+                    if parent.type == "ARMATURE":
+                        items.append(object_)
+    elif type_ == "fakebones":
+        for object_ in bpy.data.objects:
+            allowed = {'MESH'}
+            if is_fakebone(object_):
+                items.append(object_)
+    elif type_ == "bone_geometry":
+        for object_ in get_type("nodes"):
+            allowed = {'MESH'}
+            if (object_.type in allowed and
+                    "_boneGeometry" in object_.name):
+                items.append(object_)
+    elif type_ == "materials":
+        for object_ in get_type("nodes"):
+            allowed = {"MESH"}
+            if object_.type in allowed:
+                for material_slot in object_.material_slots:
+                    items.append(material_slot.material)
+    elif type_ == "texture_slots":
+        for material in get_type("materials"):
+            items.extend(get_texture_slots_for_material(material))
+    elif type_ == "textures":
+        texture_slots = get_type("texture_slots")
+        items.append(texture_slot.texture for texture_slot in texture_slots)
+
+    return set(items)
+
+
+def get_export_nodes():
+    export_nodes = []
     for group in bpy.data.groups:
-        if group.name.startswith("CryExportNode_"):
-            for object_ in group.objects:
-                if object_.name[:6] != "_joint":
-                    if object_.type == "MESH":
-                        objects.append(object_)
+        if is_export_node(group.name):
+            export_nodes.append(group)
 
-    return set(objects)
-
-
-def get_materials_in_export_nodes():
-    materials = []
-    for object_ in get_objects_in_export_nodes():
-        for material_slot in object_.material_slots:
-            materials.append(material_slot.material)
-
-    return materials
-
-
-def get_textures_in_export_nodes():
-    texture_slots = get_texture_slots_in_export_nodes()
-    return [texture_slot.texture for texture_slot in texture_slots]
-
-
-def get_texture_slots_in_export_nodes():
-    all_texture_slots = []
-    materials = get_materials_in_export_nodes()
-    for material in materials:
-        texture_slots = get_texture_slots_for_material(material)
-        all_texture_slots.extend(texture_slots)
-
-    return all_texture_slots
+    return export_nodes
 
 
 def get_texture_slots_for_material(material):
@@ -394,16 +422,16 @@ def is_valid_image(image):
     return image.has_data and image.filepath
 
 
-def get_material_color(material, type):
-    if type == "emission":
+def get_material_color(material, type_):
+    if type_ == "emission":
         r = b = g = material.emit
-    elif type == "ambient":
+    elif type_ == "ambient":
         r = b = g = material.ambient
-    elif type == "diffuse":
+    elif type_ == "diffuse":
         r = material.diffuse_color.r
         g = material.diffuse_color.g
         b = material.diffuse_color.b
-    elif type == "specular":
+    elif type_ == "specular":
         r = material.specular_color.r
         g = material.specular_color.g
         b = material.specular_color.b
@@ -411,10 +439,10 @@ def get_material_color(material, type):
     col = color_to_string(r, g, b, 1.0)
     return col
 
-def get_material_attribute(material, type):
-    if type == "shininess":
+def get_material_attribute(material, type_):
+    if type_ == "shininess":
         float = material.specular_hardness
-    elif type == "index_refraction":
+    elif type_ == "index_refraction":
         float = material.alpha
 
     return str(float)
@@ -428,8 +456,20 @@ def get_bounding_box(object_):
     return vmin[0], vmin[1], vmin[2], vmax[0], vmax[1], vmax[2]
 
 
-def is_export_node(groupname):
-    return groupname.startswith("CryExportNode_")
+def parent(children, parent):
+    for object_ in children:
+        object_.parent = parent
+
+    return
+
+
+def is_export_node(nodename):
+    extensions = [".cgf", ".cga", ".chr", ".skin"]
+    for extension in extensions:
+        if nodename.endswith(extension):
+            return True
+
+    return False
 
 
 def get_node_type(groupname):
@@ -443,11 +483,8 @@ def get_node_name(groupname):
 
 
 def get_armature():
-    for group in bpy.data.groups:
-        if group.name.startswith("CryExportNode_"):
-            for object_ in group.objects:
-                if object_.type == "ARMATURE":
-                    return object_
+    for object_ in get_type("controllers"):
+        return object_
 
 
 def get_armature_modifiers(object_):
@@ -493,6 +530,11 @@ def find_fakebone(bonename):
             return object_
 
 
+def find_bone_geometry(bonename):
+    for object_ in bpy.context.scene.objects:
+        if object_.name == "{!s}_boneGeometry".format(bonename):
+            return object_
+
 def add_fakebones():
     '''Add helpers to track bone transforms.'''
     scene = bpy.context.scene
@@ -507,7 +549,6 @@ def add_fakebones():
         bmatrix = pose_bone.bone.head_local
         bpy.ops.mesh.primitive_cube_add(radius=.1, location=bmatrix)
         fakebone = bpy.context.active_object
-        armature.users_group[0].objects.link(fakebone)
         fakebone.name = pose_bone.name
         fakebone["fakebone"] = "fakebone"
         scene.objects.active = armature
@@ -590,9 +631,15 @@ def calculate_fakebone_transforms(armature, keyframes):
             rotations.append(rm.to_euler())
     return locations, rotations
 
-def get_object_children(Parent):
-    return [Object for Object in Parent.children
-            if Object.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+def get_object_children(parent):
+    return [object_ for object_ in parent.children
+            if object_.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+
+
+def get_root_bone(armature_object):
+    for bone in get_bones(armature_object):
+        if bone.parent is None:
+            return bone
 
 
 def negate_z_axis_of_matrix(matrix_local):
@@ -600,9 +647,9 @@ def negate_z_axis_of_matrix(matrix_local):
         matrix_local[i][3] = -matrix_local[i][3]
 
 
-def write_source(id, type, array, params, doc):
+def write_source(id_, type_, array, params, doc):
     length = len(array)
-    if type == "float4x4":
+    if type_ == "float4x4":
         stride = 16
     elif len(params) == 0:
         stride = 1
@@ -611,13 +658,13 @@ def write_source(id, type, array, params, doc):
     count = int(length / stride)
 
     source = doc.createElement("source")
-    source.setAttribute("id", id)
+    source.setAttribute("id", id_)
 
-    if type == "float4x4":
+    if type_ == "float4x4":
         source_data = doc.createElement("float_array")
     else:
-        source_data = doc.createElement("{!s}_array".format(type))
-    source_data.setAttribute("id", "{!s}-array".format(id))
+        source_data = doc.createElement("{!s}_array".format(type_))
+    source_data.setAttribute("id", "{!s}-array".format(id_))
     source_data.setAttribute("count", str(length))
     try:
         source_data.appendChild(doc.createTextNode(floats_to_string(array)))
@@ -625,17 +672,17 @@ def write_source(id, type, array, params, doc):
         source_data.appendChild(doc.createTextNode(strings_to_string(array)))
     technique_common = doc.createElement("technique_common")
     accessor = doc.createElement("accessor")
-    accessor.setAttribute("source", "#{!s}-array".format(id))
+    accessor.setAttribute("source", "#{!s}-array".format(id_))
     accessor.setAttribute("count", str(count))
     accessor.setAttribute("stride", str(stride))
     for param in params:
         param_node = doc.createElement("param")
         param_node.setAttribute("name", param)
-        param_node.setAttribute("type", type)
+        param_node.setAttribute("type", type_)
         accessor.appendChild(param_node)
     if len(params) == 0:
         param_node = doc.createElement("param")
-        param_node.setAttribute("type", type)
+        param_node.setAttribute("type", type_)
         accessor.appendChild(param_node)
     technique_common.appendChild(accessor)
 
@@ -645,9 +692,9 @@ def write_source(id, type, array, params, doc):
     return source
 
 
-def write_input(name, offset, type, semantic):
+def write_input(name, offset, type_, semantic):
     doc = Document()
-    id = "{!s}-{!s}".format(name, type)
+    id_ = "{!s}-{!s}".format(name, type_)
     input = doc.createElement("input")
 
     if offset is not None:
@@ -655,7 +702,7 @@ def write_input(name, offset, type, semantic):
     input.setAttribute("semantic", semantic)
     if semantic == "TEXCOORD":
         input.setAttribute("set", "0")
-    input.setAttribute("source", "#{!s}".format(id))
+    input.setAttribute("source", "#{!s}".format(id_))
 
     return input
 
