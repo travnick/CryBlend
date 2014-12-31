@@ -308,58 +308,102 @@ def replace_invalid_rc_characters(string):
 
 
 def get_type(type_):
+    dispatch = {
+        "nodes": get_nodes,
+        "geometry": get_geometry,
+        "controllers": get_controllers,
+        "skins": get_skins,
+        "fakebones": get_fakebones,
+        "bone_geometry": get_bone_geometry,
+        "materials": get_materials,
+        "texture_slots": get_texture_slots,
+        "textures": get_textures
+    }
+    return set(dispatch[type_]())
+
+def get_nodes():
     items = []
-    if type_ == "nodes":
-        for group in get_export_nodes():
-            items.extend(group.objects[:])
-    elif type_ == "geometry":
-        for object_ in get_type("nodes"):
-            allowed = {'MESH'}
-            if object_.type in allowed:
-                if not is_fakebone(object_):
-                    items.append(object_)
-    elif type_ == "controllers":
-        for object_ in get_type("nodes"):
+    for group in get_export_nodes():
+        items.extend(group.objects[:])
+
+    return items
+
+def get_geometry():
+    items = []
+    for object_ in get_type("nodes"):
+        allowed = {'MESH'}
+        if object_.type in allowed and not is_fakebone(object_):
+           items.append(object_)
+
+    return items
+
+def get_controllers():
+    items = []
+    for object_ in get_type("nodes"):
+        if not ("_boneGeometry" in object_.name or
+                is_fakebone(object_)):
+            armatures = get_armature_modifiers(object_)
+            if armatures:
+                armature_object = armatures[0].object
+                items.append(armature_object)
+
+    return items
+
+def get_skins():
+    items = []
+    for object in get_type("nodes"):
+        allowed = {'MESH'}
+        if object_.type in allowed:
             if not ("_boneGeometry" in object_.name or
                     is_fakebone(object_)):
-                armatures = get_armature_modifiers(object_)
-                if armatures:
-                    armature_object = armatures[0].object
-                    items.append(armature_object)
-    elif type_ == "skins":
-        for object in get_type("nodes"):
-            allowed = {'MESH'}
-            if object_.type in allowed:
-                if not ("_boneGeometry" in object_.name or
-                        is_fakebone(object_)):
-                    parent = object.parent
-                    if parent.type == "ARMATURE":
-                        items.append(object_)
-    elif type_ == "fakebones":
-        for object_ in bpy.data.objects:
-            allowed = {'MESH'}
-            if is_fakebone(object_):
-                items.append(object_)
-    elif type_ == "bone_geometry":
-        for object_ in get_type("nodes"):
-            allowed = {'MESH'}
-            if (object_.type in allowed and
-                    "_boneGeometry" in object_.name):
-                items.append(object_)
-    elif type_ == "materials":
-        for object_ in get_type("nodes"):
-            allowed = {"MESH"}
-            if object_.type in allowed:
-                for material_slot in object_.material_slots:
-                    items.append(material_slot.material)
-    elif type_ == "texture_slots":
-        for material in get_type("materials"):
-            items.extend(get_texture_slots_for_material(material))
-    elif type_ == "textures":
-        texture_slots = get_type("texture_slots")
-        items.append(texture_slot.texture for texture_slot in texture_slots)
+                parent = object.parent
+                if parent.type == "ARMATURE":
+                    items.append(object_)
 
-    return set(items)
+    return items
+
+def get_fakebones():
+    items = []
+    for object_ in bpy.data.objects:
+        allowed = {'MESH'}
+        if is_fakebone(object_):
+            items.append(object_)
+
+    return items
+
+def get_bone_geometry():
+    items = []
+    for object_ in get_type("nodes"):
+        allowed = {'MESH'}
+        if (object_.type in allowed and
+                "_boneGeometry" in object_.name):
+            items.append(object_)
+
+    return items
+
+def get_materials():
+    items = []
+    for object_ in get_type("nodes"):
+        allowed = {"MESH"}
+        if object_.type in allowed:
+            for material_slot in object_.material_slots:
+                items.append(material_slot.material)
+
+    return items
+
+def get_texture_slots():
+    items = []
+    for material in get_type("materials"):
+        items.extend(get_texture_slots_for_material(material))
+
+    return items
+
+def get_textures():
+    items = []
+    texture_slots = get_type("texture_slots")
+    items.append(texture_slot.texture for texture_slot in texture_slots)
+
+    return items
 
 
 def get_export_nodes():
