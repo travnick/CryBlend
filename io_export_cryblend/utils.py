@@ -508,7 +508,7 @@ def parent(children, parent):
 
 
 def is_export_node(nodename):
-    extensions = [".cgf", ".cga", ".chr", ".skin"]
+    extensions = [".cgf", ".cga", ".chr", ".skin", ".anm", ".caf"]
     for extension in extensions:
         if nodename.endswith(extension):
             return True

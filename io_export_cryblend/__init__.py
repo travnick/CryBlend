@@ -192,14 +192,13 @@ class AddCryExportNode(bpy.types.Operator):
     bl_idname = "object.add_cry_export_node"
     bl_options = {"REGISTER", "UNDO"}
 
+    geometry = BoolProperty(default=False)
     bpy.types.Scene.node_name = StringProperty(name="Name")
-    bpy.types.Scene.node_type = EnumProperty(
+    bpy.types.Scene.geometry_type = EnumProperty(
             name="Type",
             items=(
                 ("cgf", "CGF",
                  "Static Geometry"),
-                ("cga", "CGA",
-                 "Geometry Animation"),
                 ("chr", "CHR",
                  "Character"),
                 ("skin", "SKIN",
@@ -207,21 +206,38 @@ class AddCryExportNode(bpy.types.Operator):
             ),
             default="cgf",
     )
+    bpy.types.Scene.animation_type = EnumProperty(
+            name="Type",
+            items=(
+                ("cga", "CGA",
+                 "Animated Geometry"),
+                ("anm", "ANM",
+                 "Geometry Animation"),
+                ("caf", "CAF",
+                 "Character Animation"),
+            ),
+            default="cga",
+    )
 
     def execute(self, context):
-        scene = bpy.context.scene
-        nodename = "{}.{}".format(getattr(scene, "node_name"),
-                                    getattr(scene, "node_type"))
+        if bpy.context.selected_objects:
+            scene = bpy.context.scene
+            node_type = ("geometry_type" if getattr(self, "geometry") else "animation_type")
+            nodename = "{}.{}".format(getattr(scene, "node_name"),
+                                        getattr(scene, node_type))
 
-        group = bpy.data.groups.get(nodename)
-        if group is None:
-            bpy.ops.group.create(name=nodename)
+            group = bpy.data.groups.get(nodename)
+            if group is None:
+                bpy.ops.group.create(name=nodename)
+            else:
+                for object in bpy.context.selected_objects:
+                    if object.name not in group.objects:
+                        group.objects.link(object)
+
+            message = "Adding Export Node"
         else:
-            for object in bpy.context.selected_objects:
-                if object.name not in group.objects:
-                    group.objects.link(object)
+            message = "No Objects Selected"
 
-        message = "Adding Export Node"
         self.report({"INFO"}, message)
         return {"FINISHED"}
 
@@ -233,7 +249,8 @@ class AddCryExportNode(bpy.types.Operator):
         layout = self.layout
         col = layout.column()
         row = col.row()
-        row.prop(scene, "node_type", expand=True)
+        node_type = ("geometry_type" if getattr(self, "geometry") else "animation_type")
+        row.prop(scene, node_type, expand=True)
         col.separator()
         col.prop(scene, "node_name")
 
@@ -245,12 +262,16 @@ class SelectedToCryExportNodes(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
+        selected = bpy.context.selected_objects[:]
         bpy.ops.object.select_all(action="DESELECT")
-        for object_ in bpy.context.selected_objects:
+        for object_ in selected:
             object_.select = True
             if (len(object_.users_group) == 0):
-                bpy.ops.group.create(name="CryExportNode_%s" % (object_.name))
+                bpy.ops.group.create(name="{}.cgf".format(object_.name))
             object_.select = False
+
+        for object_ in selected:
+            object_.select = True
 
         message = "Adding Selected Objects to Export Nodes"
         self.report({"INFO"}, message)
@@ -262,6 +283,7 @@ class AddProxy(bpy.types.Operator):
 be converted to the selected shape in CryEngine.'''
     bl_label = "Add Proxy"
     bl_idname = "object.add_proxy"
+
     type_ = StringProperty()
 
     def execute(self, context):
@@ -275,14 +297,14 @@ be converted to the selected shape in CryEngine.'''
                     already_exists = True
                     break
             if (not already_exists):
-                self.add_proxy(active, type_)
+                self.add_proxy(active)
 
         message = "Adding %s proxy to active object" % getattr(self, "type_")
         self.report({'INFO'}, message)
         return {'FINISHED'}
 
 
-    def add_proxy(self, object_, type_):
+    def add_proxy(self, object_):
         old_origin = object_.location.copy()
         old_cursor = bpy.context.scene.cursor_location.copy()
         bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
@@ -1815,10 +1837,13 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
 
         col = layout.column(align=True)
-        col.label("Nodes:", icon="GROUP")
+        col.label("Add Export Node:", icon="GROUP")
         col.separator()
-        col.operator("object.add_cry_export_node", text="Add ExportNode")
-        col.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
+        row = col.row(align=True)
+        add_node = row.operator("object.add_cry_export_node", text="Geometry")
+        add_node.geometry = True
+        row.operator("object.add_cry_export_node", text="Animation")
+        col.operator("object.selected_to_cry_export_nodes", text="Nodes from Object Names")
 
 
 class CryUtilitiesPanel(View3DPanel, Panel):

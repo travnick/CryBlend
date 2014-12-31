@@ -725,11 +725,13 @@ class CrytekDaeExporter:
         scene = bpy.context.scene
         for group in bpy.data.groups:
             if utils.is_export_node(group.name):
-                type_ = utils.get_node_type(group.name)
-                if type_ == "cga" or type_ == "chr":
+                node_type = utils.get_node_type(group.name)
+                allowed = ["cga", "anm", "caf"]
+                if node_type in allowed:
                     animation_clip = self.__doc.createElement("animation_clip")
+                    node_name = utils.get_node_name(group.name)
                     animation_clip.setAttribute("id",
-                                                "{!s}-{!s}".format(scene.name, utils.get_node_name(group.name)))
+                                                "{!s}-{!s}".format(node_name, node_name))
                     animation_clip.setAttribute("start",
                                                 "{:f}".format(utils.convert_time(scene.frame_start)))
                     animation_clip.setAttribute("end",
@@ -1087,11 +1089,10 @@ class CrytekDaeExporter:
         properties = self.__doc.createElement("properties")
         if utils.is_export_node(node.name):
             node_type = utils.get_node_type(node.name)
-            extensions = { "cgf": "cgf", "cga": "cgaanm", "chr": "chrcaf", "skin": "skin" }
-            if node_type in extensions:
-                type_ = self.__doc.createTextNode("fileType={}".format(
-                                                    extensions[node_type]))
-            properties.appendChild(type_)
+            allowed = {"cgf", "cga", "chr", "skin", "anm", "caf"}
+            if node_type in allowed:
+                type_ = self.__doc.createTextNode("fileType={}".format(node_type))
+                properties.appendChild(type_)
         else:
             if not node.rna_type.id_data.items():
                 return
@@ -1191,10 +1192,13 @@ def write_to_file(config, doc, file_name, exe):
             output_path = dae_path[:-len(name)]
             for group in utils.get_export_nodes():
                 node_type = utils.get_node_type(group.name)
-                out_file = "{0}{1}".format(output_path,
-                                            group.name)
-                args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
-                rc_second_pass = subprocess.Popen(args)
+                allowed = {"cgf", "cga", "chr", "skin"}
+                if node_type in allowed:
+                    out_file = "{0}{1}".format(output_path,
+                                                group.name)
+                    args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
+                    rc_second_pass = subprocess.Popen(args)
+
 
         if config.do_materials:
             mtl_fix_thread = threading.Thread(
