@@ -760,11 +760,12 @@ class CrytekDaeExporter:
         location_exists = rotation_exists = False
         for curve in object_.animation_data.action.fcurves:
             for axis in iter(AXES):
-                if curve.data_path == "location" and curve.array_index == AXES[axis]:
-                    location_exists = True
-                    break
-                if curve.data_path == "rotation_euler" and curve.array_index == AXES[axis]:
-                    rotation_exists = True
+                if curve.array_index == AXES[axis]:
+                    if curve.data_path == "location":
+                        location_exists = True
+                    if curve.data_path == "rotation_euler":
+                        rotation_exists = True
+                if location_exists and rotation_exists:
                     break
 
         if location_exists:
@@ -842,7 +843,7 @@ class CrytekDaeExporter:
                 animation_element.setAttribute("id", id_prefix)
 
                 for type_, data in sources.items():
-                    anim_node = self.__create_anim_node(type_, data, id_prefix)
+                    anim_node = self.__create_animation_node(type_, data, id_prefix)
                     animation_element.appendChild(anim_node)
 
                 sampler = self.__create_sampler(id_prefix, source_prefix)
@@ -855,7 +856,7 @@ class CrytekDaeExporter:
 
                 return animation_element
 
-    def __create_anim_node(self, type_, data, id_prefix):
+    def __create_animation_node(self, type_, data, id_prefix):
         id_ = "{!s}-{!s}".format(id_prefix, type_)
         type_map = {
             "input":            ["float", ["TIME"]],
@@ -989,8 +990,7 @@ class CrytekDaeExporter:
             nodeparent.appendChild(node)
 
             if object_.children:
-                bone_children = bone.children
-                self.__write_bone_list(bone_children, object_, node, root)
+                self.__write_bone_list(bone.children, object_, node, root)
 
     def __write_transforms(self, object_, node):
         trans = self.__create_translation_node(object_)
@@ -1176,9 +1176,7 @@ def write_to_file(config, doc, file_name, exe):
     file.close()
 
     dae_path = utils.get_absolute_path_for_rc(file_name)
-    rc_params = ["/verbose", "/threads=processors"]
-    if config.refresh_rc:
-        rc_params.append("/refresh")
+    rc_params = ["/verbose", "/threads=processors", "/refresh"]
 
     if config.run_rc or config.do_materials:
         if config.do_materials:
