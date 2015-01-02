@@ -2115,13 +2115,13 @@ class GenerateScriptMenu(bpy.types.Menu):
         layout.label(text="Generate")
         layout.separator()
         chrparams_generator = layout.operator("wm.generate_script", text="CHRPARAMS", icon="SPACE2")
-        chrparams_generator.type = "CHRPARAMS"
+        chrparams_generator.type_ = "CHRPARAMS"
         cdf_generator = layout.operator("wm.generate_script", text="CDF", icon="SPACE2")
-        cdf_generator.type = "CDF"
+        cdf_generator.type_ = "CDF"
         ent_generator = layout.operator("wm.generate_script", text="ENT", icon="SPACE2")
-        ent_generator.type = "ENT"
+        ent_generator.type_ = "ENT"
         lua_generator = layout.operator("wm.generate_script", text="LUA", icon="SPACE2")
-        lua_generator.type = "LUA"
+        lua_generator.type_ = "LUA"
         layout.separator()
         layout.operator("file.select_script_editor", icon="TEXT")
 
