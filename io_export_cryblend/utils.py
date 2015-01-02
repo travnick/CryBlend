@@ -620,6 +620,8 @@ def add_fakebones():
         bmatrix = pose_bone.bone.head_local
         bpy.ops.mesh.primitive_cube_add(radius=.1, location=bmatrix)
         fakebone = bpy.context.active_object
+        for group in armature.users_group:
+            group.objects.link(fakebone)
         fakebone.name = pose_bone.name
         fakebone["fakebone"] = "fakebone"
         scene.objects.active = armature

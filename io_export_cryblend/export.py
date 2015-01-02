@@ -106,10 +106,14 @@ class CrytekDaeExporter:
         self.__export_library_geometries(root_element)
 
         utils.add_fakebones()
-        self.__export_library_controllers(root_element)
-        self.__export_library_animation_clips_and_animations(root_element)
-        self.__export_library_visual_scenes(root_element)
-        utils.remove_fakebones()
+        try:
+            self.__export_library_controllers(root_element)
+            self.__export_library_animation_clips_and_animations(root_element)
+            self.__export_library_visual_scenes(root_element)
+        except RuntimeError:
+            pass
+        finally:
+            utils.remove_fakebones()
 
         self.__export_scene(root_element)
 
@@ -360,7 +364,6 @@ class CrytekDaeExporter:
         for material in materials:
             material_element = self.__doc.createElement("material")
             material_element.setAttribute("id", "%s" % (material.name))
-            material_element.setAttribute("name", "%s" % (material.name))
             instance_effect = self.__doc.createElement("instance_effect")
             instance_effect.setAttribute("url", "#%s_fx" % (material.name))
             material_element.appendChild(instance_effect)
@@ -724,40 +727,39 @@ class CrytekDaeExporter:
         parent_element.appendChild(libanm)
 
         scene = bpy.context.scene
-        for group in bpy.data.groups:
-            if utils.is_export_node(group.name):
-                node_type = utils.get_node_type(group.name)
-                allowed = ["cga", "anm", "caf"]
-                if node_type in allowed:
-                    animation_clip = self.__doc.createElement("animation_clip")
-                    node_name = utils.get_node_name(group.name)
-                    animation_clip.setAttribute("id",
-                                                "{!s}-{!s}".format(node_name, node_name))
-                    animation_clip.setAttribute("start",
-                                                "{:f}".format(utils.convert_time(scene.frame_start)))
-                    animation_clip.setAttribute("end",
-                                                "{:f}".format(utils.convert_time(scene.frame_end)))
-                    is_animation = False
-                    for object_ in group.objects:
-                        if (object_.type != 'ARMATURE' and object_.animation_data and
-                                object_.animation_data.action):
+        for group in utils.get_export_nodes():
+            node_type = utils.get_node_type(group.name)
+            allowed = ["cga", "anm", "caf"]
+            if node_type in allowed:
+                animation_clip = self.__doc.createElement("animation_clip")
+                node_name = utils.get_node_name(group.name)
+                animation_clip.setAttribute("id",
+                                            "{!s}-{!s}".format(node_name, node_name))
+                animation_clip.setAttribute("start",
+                                            "{:f}".format(utils.convert_time(scene.frame_start)))
+                animation_clip.setAttribute("end",
+                                            "{:f}".format(utils.convert_time(scene.frame_end)))
+                is_animation = False
+                for object_ in group.objects:
+                    if (object_.type != 'ARMATURE' and object_.animation_data and
+                            object_.animation_data.action):
 
-                            is_animation = True
-                            for axis in iter(AXES):
-                                animation = self.__get_animation_location(object_, axis)
-                                if animation is not None:
-                                    libanm.appendChild(animation)
+                        is_animation = True
+                        for axis in iter(AXES):
+                            animation = self.__get_animation_location(object_, axis)
+                            if animation is not None:
+                                libanm.appendChild(animation)
 
-                            for axis in iter(AXES):
-                                animation = self.__get_animation_rotation(object_, axis)
-                                if animation is not None:
-                                    libanm.appendChild(animation)
+                        for axis in iter(AXES):
+                            animation = self.__get_animation_rotation(object_, axis)
+                            if animation is not None:
+                                libanm.appendChild(animation)
 
-                            self.__export_instance_animation_parameters(object_,
-                                                                animation_clip)
+                        self.__export_instance_animation_parameters(object_,
+                                                            animation_clip)
 
-                    if is_animation:
-                        libanmcl.appendChild(animation_clip)
+                if is_animation:
+                    libanmcl.appendChild(animation_clip)
 
     def __export_instance_animation_parameters(self, object_, animation_clip):
         location_exists = rotation_exists = False
