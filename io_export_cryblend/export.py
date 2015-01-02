@@ -91,8 +91,9 @@ class CrytekDaeExporter:
                                "http://www.collada.org/2005/11/COLLADASchema")
         root_element.setAttribute("version", "1.4.1")
         self.__doc.appendChild(root_element)
-
         self.__create_file_header(root_element)
+
+        utils.clean_file()
 
         # Just here for future use:
         self.__export_library_cameras(root_element)
@@ -608,7 +609,7 @@ class CrytekDaeExporter:
     def __process_bones(self, parent_node, object_, armatures):
         mesh = object_.data
         armature = armatures[0].object
-        id_ = "{!s}-{!s}".format(armature.name, object_.name)
+        id_ = "{!s}_{!s}".format(armature.name, object_.name)
 
         controller_node = self.__doc.createElement("controller")
         parent_node.appendChild(controller_node)
@@ -636,7 +637,7 @@ class CrytekDaeExporter:
     def __process_bone_joints(self, object_, armature, skin_node):
 
         bones = utils.get_bones(armature)
-        id_ = "{!s}-{!s}-joints".format(armature.name, object_.name)
+        id_ = "{!s}_{!s}-joints".format(armature.name, object_.name)
         bone_names = [bone.name for bone in bones]
         source = utils.write_source(id_,
                                     "IDREF",
@@ -657,7 +658,7 @@ class CrytekDaeExporter:
             utils.negate_z_axis_of_matrix(matrix_local)
             bone_matrices.extend(utils.matrix_to_array(matrix_local))
 
-        id_ = "{!s}-{!s}-matrices".format(armature.name, object_.name)
+        id_ = "{!s}_{!s}-matrices".format(armature.name, object_.name)
         source = utils.write_source(id_,
                                     "float4x4",
                                     bone_matrices,
@@ -687,7 +688,7 @@ class CrytekDaeExporter:
 
             vertex_groups_lengths += "%s " % len(vertex.groups)
 
-        id_ = "{!s}-{!s}-weights".format(armature.name, object_.name)
+        id_ = "{!s}_{!s}-weights".format(armature.name, object_.name)
         source = utils.write_source(id_,
                                     "float",
                                     group_weights,
@@ -698,7 +699,7 @@ class CrytekDaeExporter:
         vertex_weights = self.__doc.createElement("vertex_weights")
         vertex_weights.setAttribute("count", str(len(object_.data.vertices)))
 
-        id_ = "{!s}-{!s}".format(armature.name, object_.name)
+        id_ = "{!s}_{!s}".format(armature.name, object_.name)
         input = utils.write_input(id_, 0, "joints", "JOINT")
         vertex_weights.appendChild(input)
         input = utils.write_input(id_, 1, "weights", "WEIGHT")
@@ -1045,7 +1046,7 @@ class CrytekDaeExporter:
         if armature_list:
             instance = self.__doc.createElement("instance_controller")
             # This binds the mesh object to the armature in control of it
-            instance.setAttribute("url", "#{!s}-{!s}".format(
+            instance.setAttribute("url", "#{!s}_{!s}".format(
                                         armature_list[0].object.name,
                                         object_.name))
         elif object_.name[:6] != "_joint" and object_.type == "MESH":
@@ -1130,7 +1131,7 @@ class CrytekDaeExporter:
 
     def __create_ik_properties(self, bone, object_, export_node):
         props = ""
-        if (self.__config.include_ik and bone.name[-5:] == "_Phys"):
+        if self.__config.include_ik and bone.name.endswith("_Phys"):
             nodename = root.getAttribute('id')[14:]
             props_name = bone.name.replace("_", "*")
 

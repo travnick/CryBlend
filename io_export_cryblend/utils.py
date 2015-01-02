@@ -278,7 +278,34 @@ def is_cryblend_material(materialname):
         return False
 
 
+def clean_file():
+    for texture in get_type("textures"):
+        try:
+            texture.image.name = replace_invalid_rc_characters(texture.image.name)
+        except AttributeError:
+            pass
+    for material in get_type("materials"):
+        material.name = replace_invalid_rc_characters(material.name)
+    for node in get_type("nodes"):
+        node.name = replace_invalid_rc_characters(node.name)
+        node.data.name = replace_invalid_rc_characters(node.data.name)
+        if node.type == "ARMATURE":
+            for bone in node.data.bones:
+                bone.name = replace_invalid_rc_characters(bone.name)
+    for node in get_export_nodes():
+        nodename = get_node_name(node.name)
+        nodetype = get_node_type(node.name)
+        nodename = replace_invalid_rc_characters(nodename)
+        node.name = "{}.{}".format(nodename, nodetype)
+
+
 def replace_invalid_rc_characters(string):
+    # Remove leading and trailing spaces.
+    string.strip()
+
+    # Replace remaining white spaces with underscores.
+    string = "_".join(string.split())
+
     character_map = {
         "a":  "àáâå",
         "c":  "ç",
@@ -301,8 +328,8 @@ def replace_invalid_rc_characters(string):
             string = string.replace(char, good)
             string = string.replace(char.upper(), good.upper())
 
-    # Remove all remaining non alphanumeric characters.
-    string = re.sub("[^0-9A-Za-z]", "", string)
+    # Remove all remaining non alphanumeric characters except underscores.
+    string = re.sub("[^_0-9A-Za-z]", "", string)
 
     return string
 
@@ -319,7 +346,7 @@ def get_type(type_):
         "texture_slots": get_texture_slots,
         "textures": get_textures
     }
-    return set(dispatch[type_]())
+    return list(set(dispatch[type_]()))
 
 def get_nodes():
     items = []
