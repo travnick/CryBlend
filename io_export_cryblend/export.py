@@ -1208,13 +1208,6 @@ def write_to_file(config, doc, file_name, exe):
             )
             mtl_fix_thread.start()
 
-        if False:
-            rcdone_path = "{}.rcdone".format(dae_path)
-            if os.path.exists(dae_path):
-                os.remove(dae_path)
-            if os.path.exists(rcdone_path):
-                os.remove(rcdone_path)
-
     if config.make_layer:
         layer = make_layer(file_name)
         lyr_file_name = os.path.splitext(file_name)[0] + ".lyr"
