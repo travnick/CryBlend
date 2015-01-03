@@ -221,7 +221,6 @@ class CrytekDaeExporter:
     def __export_library_effects(self, parent_element):
         current_element = self.__doc.createElement("library_effects")
         parent_element.appendChild(current_element)
-
         for material in utils.get_type("materials"):
             self.__export_library_effects_material(material, current_element)
 
@@ -374,7 +373,6 @@ class CrytekDaeExporter:
     def __export_library_geometries(self, parent_element):
         libgeo = self.__doc.createElement("library_geometries")
         parent_element.appendChild(libgeo)
-
         for object_ in utils.get_type("geometry"):
             bpy.context.scene.objects.active = object_
             if object_.mode != 'OBJECT':
@@ -600,18 +598,16 @@ class CrytekDaeExporter:
 
         for object_ in utils.get_type("geometry"):
             if not "_boneGeometry" in object_.name:
-                armatures = utils.get_armature_modifiers(object_)
-
-                if armatures:
+                armature = utils.get_armature_for_object(object_)
+                if armature is not None:
                     self.__process_bones(library_node,
                                          object_,
-                                         armatures)
+                                         armature)
 
         parent_element.appendChild(library_node)
 
-    def __process_bones(self, parent_node, object_, armatures):
+    def __process_bones(self, parent_node, object_, armature):
         mesh = object_.data
-        armature = armatures[0].object
         id_ = "{!s}_{!s}".format(armature.name, object_.name)
 
         controller_node = self.__doc.createElement("controller")
@@ -1043,13 +1039,13 @@ class CrytekDaeExporter:
         return scale
 
     def __create_instance(self, object_):
-        armature_list = utils.get_armature_modifiers(object_)
+        armature = utils.get_armature_for_object(object_)
         instance = None
-        if armature_list:
+        if armature is not None:
             instance = self.__doc.createElement("instance_controller")
             # This binds the mesh object to the armature in control of it
             instance.setAttribute("url", "#{!s}_{!s}".format(
-                                        armature_list[0].object.name,
+                                        armature.name,
                                         object_.name))
         elif object_.name[:6] != "_joint" and object_.type == "MESH":
             instance = self.__doc.createElement("instance_geometry")
@@ -1238,7 +1234,7 @@ def make_layer(fname):
     # Layer Objects
     layerObjects = layerDoc.createElement("LayerObjects")
     # Actual Objects
-    for group in bpy.context.blend_data.groups:
+    for group in utils.get_export_nodes():
         if len(group.objects) > 1:
             origin = 0, 0, 0
             rotation = 1, 0, 0, 0

@@ -278,6 +278,57 @@ class SelectedToCryExportNodes(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class AddRootBone(bpy.types.Operator):
+    '''Click to add a root bone to the active armature.'''
+    bl_label = "Add Root Bone"
+    bl_idname = "armature.add_root_bone"
+
+    def execute(self, context):
+        active = bpy.context.active_object
+        if active is not None:
+            if active.type == "ARMATURE":
+                if utils.count_root_bones(active) == 1:
+                    root_bone = utils.get_root_bone(active)
+                    loc = root_bone.head
+                    if loc.x == 0 and loc.y == 0 and loc.z == 0:
+                        message = "Root bone already exists."
+                        self.report({'INFO'}, message)
+                        return {'FINISHED'}
+                message = "Adding root bone to armature."
+                old_mode = bpy.context.object.mode
+                bpy.ops.object.mode_set(mode="EDIT")
+                edit_bones = active.data.edit_bones
+                bpy.ops.armature.bone_primitive_add(name="root")
+                root_bone = edit_bones["root"]
+                bpy.ops.armature.select_all(action="DESELECT")
+                for edit_bone in edit_bones:
+                    if edit_bone.parent is None:
+                        edit_bone.parent = root_bone
+                bpy.ops.object.mode_set(mode="OBJECT")
+            else:
+                message = "Object is not an armature."
+        else:
+            message = "No Object Selected."
+        self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
+class ApplyTransforms(bpy.types.Operator):
+    '''Click to apply transforms on selected objects.'''
+    bl_label = "Apply Transforms"
+    bl_idname = "object.apply_transforms"
+
+    def execute(self, context):
+        selected = bpy.context.selected_objects
+        if selected:
+            message = "Applying object transforms."
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        else:
+            message = "No Object Selected."
+        self.report({'INFO'}, message)
+        return {'FINISHED'}
+
+
 class AddProxy(bpy.types.Operator):
     '''Click to add proxy to selected mesh. The proxy will always display as a box but will \
 be converted to the selected shape in CryEngine.'''
@@ -1225,7 +1276,7 @@ class RemoveAllWeight(bpy.types.Operator):
 
 
 class FindNoUVs(bpy.types.Operator):
-        '''Use this with no objects selected in object mode
+        '''Use this with no objects selected in object mode \
 to find all items without UVs.'''
         bl_label = "Find All Objects with No UV's"
         bl_idname = "scene.find_no_uvs"
@@ -1844,6 +1895,9 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         add_node.geometry = True
         row.operator("object.add_cry_export_node", text="Animation")
         col.operator("object.selected_to_cry_export_nodes", text="Nodes from Object Names")
+        col.separator()
+        col.operator("armature.add_root_bone", text="Add Root Bone")
+        col.operator("object.apply_transforms", text="Apply All Transforms")
 
 
 class CryUtilitiesPanel(View3DPanel, Panel):
@@ -2166,6 +2220,8 @@ def get_classes_to_register():
         SelectedToCryExportNodes,
         SetMaterialNames,
         RemoveCryBlendProperties,
+        AddRootBone,
+        ApplyTransforms,
         AddProxy,
         AddBreakableJoint,
         AddBranch,

@@ -369,10 +369,9 @@ def get_controllers():
     for object_ in get_type("nodes"):
         if not ("_boneGeometry" in object_.name or
                 is_fakebone(object_)):
-            armatures = get_armature_modifiers(object_)
-            if armatures:
-                armature_object = armatures[0].object
-                items.append(armature_object)
+            if object_.parent is not None:
+                if object_.parent.type == "ARMATURE":
+                    items.append(object_.parent)
 
     return items
 
@@ -435,8 +434,8 @@ def get_textures():
 
 def get_export_nodes():
     export_nodes = []
-    for group in bpy.data.groups:
-        if is_export_node(group.name):
+    for group in bpy.context.blend_data.groups:
+        if is_export_node(group.name) and len(group.objects) > 0:
             export_nodes.append(group)
 
     return export_nodes
@@ -553,15 +552,15 @@ def get_node_name(groupname):
     return groupname[:-(len(node_type)+1)]
 
 
+def get_armature_for_object(object_):
+    if object_.parent is not None:
+        if object_.parent.type == "ARMATURE":
+            return object_.parent
+
+
 def get_armature():
     for object_ in get_type("controllers"):
         return object_
-
-
-def get_armature_modifiers(object_):
-    return [modifier
-            for modifier in object_.modifiers
-            if modifier.type == "ARMATURE"]
 
 
 def get_bones(armature):
@@ -714,6 +713,14 @@ def get_root_bone(armature_object):
         if bone.parent is None:
             return bone
 
+
+def count_root_bones(armature_object):
+    count = 0
+    for bone in get_bones(armature_object):
+        if bone.parent is None:
+            count += 1
+
+    return count
 
 def negate_z_axis_of_matrix(matrix_local):
     for i in range(0, 3):
