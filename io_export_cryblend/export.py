@@ -37,21 +37,22 @@ else:
     import bpy
     from io_export_cryblend import utils, exceptions
 
+from io_export_cryblend.dds_converter import DdsConverterRunner
+from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.utils import join
 
 from bpy_extras.io_utils import ExportHelper
 from datetime import datetime
-from io_export_cryblend.dds_converter import DdsConverterRunner
-from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector
 from time import clock
 from xml.dom.minidom import Document
+import bmesh
 import copy
 import os
 import threading
+import subprocess
 import time
 import xml.dom.minidom
-import bmesh
-import subprocess
 
 
 AXES = {
@@ -81,23 +82,18 @@ class CrytekDaeExporter:
                                             self.__textures_parent_directory),
                 'debug')
 
-    def __get_bones(self, armature):
-        return [bone for bone in armature.data.bones]
-
     def export(self):
         # Ensure the correct extension for chosen path
         filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
-
-        if self.__config.correct_weight:
-            self.__correct_weights()
 
         root_element = self.__doc.createElement('collada')
         root_element.setAttribute("xmlns",
                                "http://www.collada.org/2005/11/COLLADASchema")
         root_element.setAttribute("version", "1.4.1")
         self.__doc.appendChild(root_element)
+        self.__create_file_header(root_element)
 
-        self.__export_asset(root_element)
+        utils.clean_file()
 
         # Just here for future use:
         self.__export_library_cameras(root_element)
@@ -110,602 +106,22 @@ class CrytekDaeExporter:
         self.__export_library_geometries(root_element)
 
         utils.add_fakebones()
-        self.__export_library_controllers(root_element)
-        self.__export_library_animation_clips_and_animations(root_element)
-        utils.remove_fakebones()
-        self.__export_library_visual_scenes(root_element)
+        try:
+            self.__export_library_controllers(root_element)
+            self.__export_library_animation_clips_and_animations(root_element)
+            self.__export_library_visual_scenes(root_element)
+        except RuntimeError:
+            pass
+        finally:
+            utils.remove_fakebones()
+
         self.__export_scene(root_element)
 
         write_to_file(self.__config,
                       self.__doc, filepath,
                       self.__config.rc_path)
 
-    def __correct_weights(self):
-        if self.__config.export_type == 'CHR & CAF':
-            for group in bpy.context.blend_data.groups:
-                for object_ in group.objects:
-                    if object_.type == 'MESH':
-                        override = {'weight_paint_object': object_}
-                        try:
-                            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
-                        except:
-                            raise exceptions.CryBlendException("Please fix weightless vertices first.")
-        cbPrint("Weights Corrected.")
-
-    def __get_objects_in_export_nodes(self):
-        objects = []
-        for group in bpy.context.blend_data.groups:
-            if (group.name.startswith("CryExportNode_")):
-                for object_ in group.objects:
-                    if (object_.name[:6] != "_joint"):
-                        if (object_.type == "MESH"):
-                            objects.append(object_)
-
-        return objects
-
-    def __write_bone_list(self, pname, bones, obj, node1):
-        cbPrint("{!r} bones".format(len(bones)))
-        boneExtendedNames = []
-        for bone in bones:
-            bprnt = bone.parent
-            if bprnt:
-                cbPrint("Bone {!r} has parent {!r}".format(bone.name,
-                                                           bone.parent.name))
-            bname = bone.name
-            nodename = self.__doc.createElement("node")
-
-            pExtension = ''
-
-            # Name Extension
-            if (self.__config.include_ik and "_Phys" == bone.name[-5:]):
-                exportNodeName = node1.getAttribute('id')[14:]
-                starredBoneName = bone.name.replace("_", "*")
-                pExtension += '%' + exportNodeName + '%'
-                pExtension += '--PRprops_name=' + starredBoneName + '_'
-
-            # IK
-            if ("_Phys" == bone.name[-5:] and self.__config.include_ik):
-                poseBone = (bpy.data.objects[obj.name[:-5]]
-                    ).pose.bones[bone.name[:-5]]
-
-                # Start IK props
-                pExtension += 'xmax={!s}_'.format(poseBone.ik_max_x)
-                pExtension += 'xmin={!s}_'.format(poseBone.ik_min_x)
-                pExtension += 'xdamping={!s}_'.format(
-                                                poseBone.ik_stiffness_x)
-                pExtension += 'xspringangle={!s}_'.format(0.0)
-                pExtension += 'xspringtension={!s}_'.format(1.0)
-
-                pExtension += 'ymax={!s}_'.format(poseBone.ik_max_y)
-                pExtension += 'ymin={!s}_'.format(poseBone.ik_min_y)
-                pExtension += 'ydamping={!s}_'.format(
-                                                poseBone.ik_stiffness_y)
-                pExtension += 'yspringangle={!s}_'.format(0.0)
-                pExtension += 'yspringtension={!s}_'.format(1.0)
-
-                pExtension += 'zmax={!s}_'.format(poseBone.ik_max_z)
-                pExtension += 'zmin={!s}_'.format(poseBone.ik_min_z)
-                pExtension += 'zdamping={!s}_'.format(
-                                                poseBone.ik_stiffness_z)
-                pExtension += 'zspringangle={!s}_'.format(0.0)
-                pExtension += 'zspringtension={!s}_'.format(1.0)
-                # End IK props
-
-            nodename.setAttribute("id", "%s" % (bname + pExtension))
-            nodename.setAttribute("name", "%s" % (bname + pExtension))
-            boneExtendedNames.append(bname + pExtension)
-            nodename.setIdAttribute('id')
-
-            for object_ in bpy.context.selectable_objects:
-                if (object_.name == bone.name
-                    or (object_.name == bone.name[:-5]
-                        and "_Phys" == bone.name[-5:])
-                    ):
-                    bpy.data.objects[object_.name].select = True
-                    cbPrint("FakeBone found for " + bone.name)
-                    # <translate sid="translation">
-                    trans = self.__doc.createElement("translate")
-                    trans.setAttribute("sid", "translation")
-                    transnum = self.__doc.createTextNode("%.4f %.4f %.4f"
-                                                  % object_.location[:])
-                    trans.appendChild(transnum)
-                    # <rotate sid="rotation_Z">
-                    rotz = self.__doc.createElement("rotate")
-                    rotz.setAttribute("sid", "rotation_Z")
-                    rotzn = self.__doc.createTextNode("0 0 1 %.4f"
-                                               % (object_.rotation_euler[2]
-                                                  * utils.toDegrees))
-                    rotz.appendChild(rotzn)
-                    # <rotate sid="rotation_Y">
-                    roty = self.__doc.createElement("rotate")
-                    roty.setAttribute("sid", "rotation_Y")
-                    rotyn = self.__doc.createTextNode("0 1 0 %.4f"
-                                               % (object_.rotation_euler[1]
-                                                  * utils.toDegrees))
-                    roty.appendChild(rotyn)
-                    # <rotate sid="rotation_X">
-                    rotx = self.__doc.createElement("rotate")
-                    rotx.setAttribute("sid", "rotation_X")
-                    rotxn = self.__doc.createTextNode("1 0 0 %.4f"
-                                               % (object_.rotation_euler[0]
-                                                  * utils.toDegrees))
-                    rotx.appendChild(rotxn)
-                    # <scale sid="scale">
-                    sc = self.__doc.createElement("scale")
-                    sc.setAttribute("sid", "scale")
-                    scn = self.__doc.createTextNode(
-                            utils.floats_to_string(object_.scale, " ", "%s"))
-                    sc.appendChild(scn)
-                    nodename.appendChild(trans)
-                    nodename.appendChild(rotz)
-                    nodename.appendChild(roty)
-                    nodename.appendChild(rotx)
-                    nodename.appendChild(sc)
-                    # Find the boneGeometry object
-                    for object_ in bpy.context.selectable_objects:
-                        if object_.name == bone.name + "_boneGeometry":
-                            ig = self.__doc.createElement("instance_geometry")
-                            ig.setAttribute("url", "#%s"
-                                            % (bone.name
-                                               + "_boneGeometry"))
-                            bm = self.__doc.createElement("bind_material")
-                            tc = self.__doc.createElement("technique_common")
-                            # mat = mesh.materials[:]
-                            for mat in object_.material_slots:
-                                # yes lets go through them 1 at a time
-                                im = self.__doc.createElement(
-                                                "instance_material")
-                                im.setAttribute("symbol", "%s"
-                                                % (mat.name))
-                                im.setAttribute("target", "#%s"
-                                                % (mat.name))
-                                bvi = self.__doc.createElement(
-                                                "bind_vertex_input")
-                                bvi.setAttribute("semantic", "UVMap")
-                                bvi.setAttribute("input_semantic",
-                                                 "TEXCOORD")
-                                bvi.setAttribute("input_set", "0")
-                                im.appendChild(bvi)
-                                tc.appendChild(im)
-                            bm.appendChild(tc)
-                            ig.appendChild(bm)
-                            nodename.appendChild(ig)
-
-            if bprnt:
-                for name in boneExtendedNames:
-                    if name[:len(bprnt.name)] == bprnt.name:
-                        nodeparent = self.__doc.getElementById(name)
-                        cbPrint(bprnt.name)
-                        nodeparent.appendChild(nodename)
-            else:
-                node1.appendChild(nodename)
-
-    def __write_visual_scene(self, objects, node1):
-        for object_ in objects:
-            fby = 0
-            for ai in object_.rna_type.id_data.items():
-                if ai:
-                    if ai[1] == "fakebone":
-                        fby = 1
-                        break
-            if fby == 1:  # object_.parent_bone:
-                pass
-            else:
-                cname = object_.name
-
-                nodename = self.__doc.createElement("node")
-                nodename.setAttribute("id", "%s" % (cname))
-                nodename.setIdAttribute('id')
-                # <translate sid="translation">
-                trans = self.__doc.createElement("translate")
-                trans.setAttribute("sid", "translation")
-                transnum = self.__doc.createTextNode("%.4f %.4f %.4f"
-                                              % object_.location[:])
-                trans.appendChild(transnum)
-                # <rotate sid="rotation_Z">
-                rotz = self.__doc.createElement("rotate")
-                rotz.setAttribute("sid", "rotation_Z")
-                rotzn = self.__doc.createTextNode("0 0 1 %s"
-                                           % (object_.rotation_euler[2]
-                                              * utils.toDegrees))
-                rotz.appendChild(rotzn)
-                # <rotate sid="rotation_Y">
-                roty = self.__doc.createElement("rotate")
-                roty.setAttribute("sid", "rotation_Y")
-                rotyn = self.__doc.createTextNode("0 1 0 %s"
-                                           % (object_.rotation_euler[1]
-                                              * utils.toDegrees))
-                roty.appendChild(rotyn)
-                # <rotate sid="rotation_X">
-                rotx = self.__doc.createElement("rotate")
-                rotx.setAttribute("sid", "rotation_X")
-                rotxn = self.__doc.createTextNode("1 0 0 %s"
-                                           % (object_.rotation_euler[0]
-                                              * utils.toDegrees))
-                rotx.appendChild(rotxn)
-                # <scale sid="scale">
-                sc = self.__doc.createElement("scale")
-                sc.setAttribute("sid", "scale")
-                scn = self.__doc.createTextNode(
-                            utils.floats_to_string(object_.scale, " ", "%s"))
-                sc.appendChild(scn)
-                nodename.appendChild(trans)
-                nodename.appendChild(rotz)
-                nodename.appendChild(roty)
-                nodename.appendChild(rotx)
-                nodename.appendChild(sc)
-
-                # List of all the armature deformation modifiers
-                ArmatureList = [Modifier
-                                for Modifier in object_.modifiers
-                                if Modifier.type == "ARMATURE"]
-                if ArmatureList:
-                    ic = self.__doc.createElement("instance_controller")
-                    # This binds the meshObject to the armature
-                    # in control of it
-                    ic.setAttribute("url", "#%s_%s"
-                                    % (ArmatureList[0].object.name,
-                                       object_.name))
-
-                name = str(object_.name)
-                if (name[:6] != "_joint"):
-                    if (object_.type == "MESH"):
-                        ig = self.__doc.createElement("instance_geometry")
-                        ig.setAttribute("url", "#%s" % (cname))
-                        bm = self.__doc.createElement("bind_material")
-                        tc = self.__doc.createElement("technique_common")
-
-                        for mat in object_.material_slots:
-                            im = self.__doc.createElement("instance_material")
-                            im.setAttribute("symbol", "%s"
-                                            % (mat.name))
-                            im.setAttribute("target", "#%s"
-                                            % (mat.name))
-                            bvi = self.__doc.createElement(
-                                                "bind_vertex_input")
-                            bvi.setAttribute("semantic", "UVMap")
-                            bvi.setAttribute("input_semantic",
-                                             "TEXCOORD")
-                            bvi.setAttribute("input_set", "0")
-                            im.appendChild(bvi)
-                            tc.appendChild(im)
-                        bm.appendChild(tc)
-                        if ArmatureList:
-                            ic.appendChild(bm)
-                            nodename.appendChild(ic)
-                        else:
-                            ig.appendChild(bm)
-                            nodename.appendChild(ig)
-
-                ex = self.__doc.createElement("extra")
-                techcry = self.__doc.createElement("technique")
-                techcry.setAttribute("profile", "CryEngine")
-                prop2 = self.__doc.createElement("properties")
-                # tagging properties onto the end of the item
-                for ai in object_.rna_type.id_data.items():
-                    if ai:
-                        cryprops = self.__doc.createTextNode("%s" % ai[1])
-                        prop2.appendChild(cryprops)
-                techcry.appendChild(prop2)
-                if (name[:6] == "_joint"):
-                    b = object_.bound_box
-                    vmin = Vector([b[0][0], b[0][1], b[0][2]])
-                    vmax = Vector([b[6][0], b[6][1], b[6][2]])
-                    ht = self.__doc.createElement("helper")
-                    ht.setAttribute("type", "dummy")
-                    bbmn = self.__doc.createElement("bound_box_min")
-                    vmin0 = str(vmin[0])
-                    vmin1 = str(vmin[1])
-                    vmin2 = str(vmin[2])
-                    bbmnval = self.__doc.createTextNode("%s %s %s"
-                                                        % (vmin0[:6],
-                                                           vmin1[:6],
-                                                           vmin2[:6]))
-                    bbmn.appendChild(bbmnval)
-                    bbmx = self.__doc.createElement("bound_box_max")
-                    vmax0 = str(vmax[0])
-                    vmax1 = str(vmax[1])
-                    vmax2 = str(vmax[2])
-                    bbmxval = self.__doc.createTextNode("%s %s %s"
-                                                        % (vmax0[:6],
-                                                           vmax1[:6],
-                                                           vmax2[:6]))
-                    bbmx.appendChild(bbmxval)
-                    ht.appendChild(bbmn)
-                    ht.appendChild(bbmx)
-                    techcry.appendChild(ht)
-                ex.appendChild(techcry)
-                nodename.appendChild(ex)
-                if object_.type == 'ARMATURE':
-                    cbPrint("Armature appended.")
-                    bonelist = self.__get_bones(object_)
-                    self.__write_bone_list(cname, bonelist, object_, node1)
-
-                if object_.children:
-                    if object_.parent:
-                        if object_.parent.type != 'ARMATURE':
-                            nodeparent = self.__doc.getElementById("%s"
-                                                    % object_.parent.name)
-                            cbPrint(nodeparent)
-                            if nodeparent:
-                                cbPrint("Appending object_ to parent.")
-                                cbPrint(nodename)
-                                chk = self.__doc.getElementById("%s"
-                                                         % object_.name)
-                                if chk:
-                                    cbPrint(
-                                    "Object already appended to parent.")
-                                else:
-                                    nodeparent.appendChild(nodename)
-                            ChildList = utils.get_object_children(object_)
-                            self.__write_visual_scene(ChildList, node1)
-                    else:
-                        if object_.type != 'ARMATURE':
-                            node1.appendChild(nodename)
-                            ChildList = utils.get_object_children(object_)
-                            self.__write_visual_scene(ChildList, node1)
-
-                else:
-                    if object_.parent:
-                        if object_.parent.type != 'ARMATURE':
-                            nodeparent = self.__doc.getElementById("%s"
-                                                    % object_.parent.name)
-                            cbPrint(nodeparent)
-                            if nodeparent:
-                                cbPrint("Appending object_ to parent.")
-                                cbPrint(nodename)
-                                chk = self.__doc.getElementById("%s"
-                                                         % object_.name)
-                                if chk:
-                                    cbPrint(
-                                    "Object already appended to parent.")
-                                else:
-                                    nodeparent.appendChild(nodename)
-
-                            cbPrint("Armparent.")
-                        else:
-                            node1.appendChild(nodename)
-                    else:
-                        if object_.name == "animnode":
-                            cbPrint("Animnode.")
-                        else:
-                            node1.appendChild(nodename)
-        return node1
-
-    def __get_animation_location(self, object_, axis):
-        attribute_type = "location"
-        multiplier = 1
-        target = "{!s}{!s}{!s}".format(object_.name, "/translation.", axis)
-
-        animation_element = self.__get_animation_attribute(object_,
-                                                           axis,
-                                                           attribute_type,
-                                                           multiplier,
-                                                           target)
-        return animation_element
-
-    def __get_animation_rotation(self, object_, axis):
-        attribute_type = "rotation_euler"
-        multiplier = utils.toDegrees
-        target = "{!s}{!s}{!s}{!s}".format(object_.name,
-                                           "/rotation_",
-                                           axis,
-                                           ".ANGLE")
-
-        animation_element = self.__get_animation_attribute(object_,
-                                                           axis,
-                                                           attribute_type,
-                                                           multiplier,
-                                                           target)
-        return animation_element
-
-    def __get_animation_attribute(self,
-                                  object_,
-                                  axis,
-                                  attribute_type,
-                                  multiplier,
-                                  target):
-        id_prefix = "{!s}_{!s}_{!s}".format(object_.name, attribute_type, axis)
-        source_prefix = "#{!s}".format(id_prefix)
-
-        for curve in object_.animation_data.action.fcurves:
-            if (curve.data_path == attribute_type and
-                curve.array_index == AXES[axis]):
-                animation_element = self.__doc.createElement("animation")
-                animation_element.setAttribute("id", id_prefix)
-                intangx = ""
-                outtangx = ""
-                inpx = ""
-                outpx = ""
-                intx = ""
-                keyframe_points = curve.keyframe_points
-                ii = len(keyframe_points)
-                for keyframe_point in keyframe_points:
-                    khlx = keyframe_point.handle_left[0]
-                    khly = keyframe_point.handle_left[1]
-                    khrx = keyframe_point.handle_right[0]
-                    khry = keyframe_point.handle_right[1]
-                    frame, value = keyframe_point.co
-                    time = utils.convert_time(frame)
-                    intx += "%s " % (keyframe_point.interpolation)
-                    inpx += "%.6f " % (time)
-                    outpx += "%.6f " % (value * multiplier)
-                    intangfirst = utils.convert_time(khlx)
-                    outangfirst = utils.convert_time(khrx)
-                    intangx += "%.6f %.6f " % (intangfirst, khly)
-                    outtangx += "%.6f %.6f " % (outangfirst, khry)
-
-                # input
-                sinpx = self.__doc.createElement("source")
-                sinpx.setAttribute("id", id_prefix + "-input")
-                inpxfa = self.__doc.createElement("float_array")
-                inpxfa.setAttribute("id", id_prefix + "-input-array")
-                inpxfa.setAttribute("count", "%s" % (ii))
-                sinpxdat = self.__doc.createTextNode("%s" % (inpx))
-                inpxfa.appendChild(sinpxdat)
-                tcinpx = self.__doc.createElement("technique_common")
-                accinpx = self.__doc.createElement("accessor")
-                accinpx.setAttribute("source", source_prefix + "-input-array")
-                accinpx.setAttribute("count", "%s" % (ii))
-                accinpx.setAttribute("stride", "1")
-                parinpx = self.__doc.createElement("param")
-                parinpx.setAttribute("name", "TIME")
-                parinpx.setAttribute("type", "float")
-                accinpx.appendChild(parinpx)
-                tcinpx.appendChild(accinpx)
-                sinpx.appendChild(inpxfa)
-                sinpx.appendChild(tcinpx)
-                # output
-                soutpx = self.__doc.createElement("source")
-                soutpx.setAttribute("id", id_prefix + "-output")
-                outpxfa = self.__doc.createElement("float_array")
-                outpxfa.setAttribute("id", id_prefix + "-output-array")
-                outpxfa.setAttribute("count", "%s" % (ii))
-                soutpxdat = self.__doc.createTextNode("%s" % (outpx))
-                outpxfa.appendChild(soutpxdat)
-                tcoutpx = self.__doc.createElement("technique_common")
-                accoutpx = self.__doc.createElement("accessor")
-                accoutpx.setAttribute("source", source_prefix + "-output-array")
-                accoutpx.setAttribute("count", "%s" % (ii))
-                accoutpx.setAttribute("stride", "1")
-                paroutpx = self.__doc.createElement("param")
-                paroutpx.setAttribute("name", "VALUE")
-                paroutpx.setAttribute("type", "float")
-                accoutpx.appendChild(paroutpx)
-                tcoutpx.appendChild(accoutpx)
-                soutpx.appendChild(outpxfa)
-                soutpx.appendChild(tcoutpx)
-                # interpolation
-                sintpx = self.__doc.createElement("source")
-                sintpx.setAttribute("id", id_prefix + "-interpolation")
-                intpxfa = self.__doc.createElement("Name_array")
-                intpxfa.setAttribute("id", id_prefix + "-interpolation-array")
-                intpxfa.setAttribute("count", "%s" % (ii))
-                sintpxdat = self.__doc.createTextNode("%s" % (intx))
-                intpxfa.appendChild(sintpxdat)
-                tcintpx = self.__doc.createElement("technique_common")
-                accintpx = self.__doc.createElement("accessor")
-                accintpx.setAttribute("source", source_prefix + "-interpolation-array")
-                accintpx.setAttribute("count", "%s" % (ii))
-                accintpx.setAttribute("stride", "1")
-                parintpx = self.__doc.createElement("param")
-                parintpx.setAttribute("name", "INTERPOLATION")
-                parintpx.setAttribute("type", "name")
-                accintpx.appendChild(parintpx)
-                tcintpx.appendChild(accintpx)
-                sintpx.appendChild(intpxfa)
-                sintpx.appendChild(tcintpx)
-                # intangent
-                sintangpx = self.__doc.createElement("source")
-                sintangpx.setAttribute("id", id_prefix + "-intangent")
-                intangpxfa = self.__doc.createElement("float_array")
-                intangpxfa.setAttribute("id", id_prefix + "-intangent-array")
-                intangpxfa.setAttribute("count", "%s" % ((ii) * 2))
-                sintangpxdat = self.__doc.createTextNode("%s" % (intangx))
-                intangpxfa.appendChild(sintangpxdat)
-                tcintangpx = self.__doc.createElement("technique_common")
-                accintangpx = self.__doc.createElement("accessor")
-                accintangpx.setAttribute("source", source_prefix + "-intangent-array")
-                accintangpx.setAttribute("count", "%s" % (ii))
-                accintangpx.setAttribute("stride", "2")
-                parintangpx = self.__doc.createElement("param")
-                parintangpx.setAttribute("name", "X")
-                parintangpx.setAttribute("type", "float")
-                parintangpxy = self.__doc.createElement("param")
-                parintangpxy.setAttribute("name", "Y")
-                parintangpxy.setAttribute("type", "float")
-                accintangpx.appendChild(parintangpx)
-                accintangpx.appendChild(parintangpxy)
-                tcintangpx.appendChild(accintangpx)
-                sintangpx.appendChild(intangpxfa)
-                sintangpx.appendChild(tcintangpx)
-                # outtangent
-                soutangpx = self.__doc.createElement("source")
-                soutangpx.setAttribute("id", id_prefix + "-outtangent")
-                outangpxfa = self.__doc.createElement("float_array")
-                outangpxfa.setAttribute("id", id_prefix + "-outtangent-array")
-                outangpxfa.setAttribute("count", "%s" % ((ii) * 2))
-                soutangpxdat = self.__doc.createTextNode("%s" % (outtangx))
-                outangpxfa.appendChild(soutangpxdat)
-                tcoutangpx = self.__doc.createElement("technique_common")
-                accoutangpx = self.__doc.createElement("accessor")
-                accoutangpx.setAttribute("source", source_prefix + "-outtangent-array")
-                accoutangpx.setAttribute("count", "%s" % (ii))
-                accoutangpx.setAttribute("stride", "2")
-                paroutangpx = self.__doc.createElement("param")
-                paroutangpx.setAttribute("name", "X")
-                paroutangpx.setAttribute("type", "float")
-                paroutangpxy = self.__doc.createElement("param")
-                paroutangpxy.setAttribute("name", "Y")
-                paroutangpxy.setAttribute("type", "float")
-                accoutangpx.appendChild(paroutangpx)
-                accoutangpx.appendChild(paroutangpxy)
-                tcoutangpx.appendChild(accoutangpx)
-                soutangpx.appendChild(outangpxfa)
-                soutangpx.appendChild(tcoutangpx)
-                # sampler
-                samx = self.__doc.createElement("sampler")
-                samx.setAttribute("id", id_prefix + "-sampler")
-                semip = self.__doc.createElement("input")
-                semip.setAttribute("semantic", "INPUT")
-                semip.setAttribute("source", source_prefix + "-input")
-                semop = self.__doc.createElement("input")
-                semop.setAttribute("semantic", "OUTPUT")
-                semop.setAttribute("source", source_prefix + "-output")
-                seminter = self.__doc.createElement("input")
-                seminter.setAttribute("semantic", "INTERPOLATION")
-                seminter.setAttribute("source", source_prefix + "-interpolation")
-                semintang = self.__doc.createElement("input")
-                semintang.setAttribute("semantic", "IN_TANGENT")
-                semintang.setAttribute("source", source_prefix + "-intangent")
-                semoutang = self.__doc.createElement("input")
-                semoutang.setAttribute("semantic", "OUT_TANGENT")
-                semoutang.setAttribute("source", source_prefix + "-outtangent")
-                samx.appendChild(semip)
-                samx.appendChild(semop)
-                samx.appendChild(seminter)
-                chanx = self.__doc.createElement("channel")
-                chanx.setAttribute("source", source_prefix + "-sampler")
-                chanx.setAttribute("target", target)
-                animation_element.appendChild(sinpx)
-                animation_element.appendChild(soutpx)
-                animation_element.appendChild(sintpx)
-                animation_element.appendChild(sintangpx)
-                animation_element.appendChild(soutangpx)
-                animation_element.appendChild(samx)
-                animation_element.appendChild(chanx)
-
-                cbPrint("keyframe_points count: {!s}".format(ii))
-                cbPrint(inpx)
-                cbPrint(outpx)
-                cbPrint(intx)
-                cbPrint(intangx)
-                cbPrint(outtangx)
-                cbPrint("done {!s} {!s}".format(attribute_type, axis))
-
-        return animation_element
-
-    def __export_float_array(self, armature_bones, float_array):
-        for bone in armature_bones:
-            matrix_local = 0
-            # TODO: this loop is probably useless
-            for scene_object in bpy.context.scene.objects:
-                if scene_object.name == bone.name:
-                    matrix_local = copy.deepcopy(scene_object.matrix_local)
-                    break
-
-            if matrix_local == 0:
-                return
-
-            utils.negate_z_axis_of_matrix(matrix_local)
-
-            cbPrint("matrix_local:")
-            for row in matrix_local:
-                cbPrint("%s" % row, 'debug')
-                row_string = utils.floats_to_string(row)
-                float_array.appendChild(self.__doc.createTextNode(row_string))
-
-    def __export_asset(self, parent_element):
+    def __create_file_header(self, parent_element):
         # Attributes are x=y values inside a tag
         asset = self.__doc.createElement("asset")
         parent_element.appendChild(asset)
@@ -749,7 +165,7 @@ class CrytekDaeExporter:
 
         images_to_convert = []
 
-        for image in self.__get_texture_images_for_selected_objects():
+        for image in self.__get_image_textures_in_export_nodes():
             image_element = self.__export_library_image(images_to_convert,
                                                         image)
             library_images.appendChild(image_element)
@@ -779,13 +195,13 @@ class CrytekDaeExporter:
 
         return image_element
 
-    def __get_texture_images_for_selected_objects(self):
+    def __get_image_textures_in_export_nodes(self):
         images = []
-        textures = self.__get_textures_for_selected_objects()
+        textures = utils.get_type("textures")
 
         for texture in textures:
             try:
-                if self.is_valid_image(texture.image):
+                if utils.is_valid_image(texture.image):
                     images.append(texture.image)
 
             except AttributeError:
@@ -794,89 +210,6 @@ class CrytekDaeExporter:
 
         # return only unique images
         return list(set(images))
-
-    def __get_textures_for_selected_objects(self):
-        materials = self.__get_materials_in_export_nodes()
-        return self.__get_textures_for_materials(materials)
-
-    def __get_materials_in_export_nodes(self):
-        materials = []
-        for object_ in self.__get_objects_in_export_nodes():
-            for material_slot in object_.material_slots:
-                material = material_slot.material
-                materialName = material.name
-                materialComponents = materialName.split("__")
-                id = materialComponents[1]
-                if (len(id) == 1 and id.isdigit()):
-                    id = id.rjust(2, '0')  # pad single digit ID's
-                material.name = "%s__%s__%s__%s" % (materialComponents[0], id, materialComponents[2], materialComponents[3]) 
-                materials.append(material)
-
-        return materials
-
-    def __get_textures_for_materials(self, materials):
-        texture_slots = self.__get_texture_slots_for_materials(materials)
-        return self.__get_textures_for_texture_slots(texture_slots)
-
-    def __get_texture_slots_for_materials(self, materials):
-        texture_slots = []
-
-        for material in materials:
-            texture_slots.extend(
-                            self.__get_texture_slots_for_material(material))
-
-        return texture_slots
-
-    def __get_texture_slots_for_material(self, material):
-        texture_slots = []
-        for texture_slot in material.texture_slots:
-            # texture_slot is able to be None
-            if texture_slot and texture_slot.texture.type == 'IMAGE':
-                texture_slots.append(texture_slot)
-
-        self.__is_texture_slot_valid(texture_slots)
-
-        return texture_slots
-
-    def __is_texture_slot_valid(self, texture_slots):
-        texture_types = self.__count_texture_types(texture_slots)
-
-        self.__raise_exception_if_textures_have_same_type(texture_types)
-
-    def __count_texture_types(self, texture_slots):
-        texture_types = {
-            'DIFFUSE': 0,
-            'SPECULAR': 0,
-            'NORMAL MAP': 0
-        }
-
-        for texture_slot in texture_slots:
-            if texture_slot.use_map_color_diffuse:
-                texture_types['DIFFUSE'] += 1
-            if texture_slot.use_map_color_spec:
-                texture_types['SPECULAR'] += 1
-            if texture_slot.use_map_normal:
-                texture_types['NORMAL MAP'] += 1
-
-        return texture_types
-
-    def __raise_exception_if_textures_have_same_type(self, texture_types):
-        ERROR_TEMPLATE = "There is more than one texture of type {!r}."
-        error_messages = []
-
-        for type_name, type_count in  texture_types.items():
-            if type_count > 1:
-                error_messages.append(ERROR_TEMPLATE.format(type_name.lower()))
-
-        if error_messages:
-            raise exceptions.CryBlendException("\n".join(error_messages) + "\n"
-                                        + "Please correct that and try again.")
-
-    def __get_textures_for_texture_slots(self, texture_slots):
-        return [texture_slot.texture for texture_slot in texture_slots]
-
-    def is_valid_image(self, image):
-        return image.has_data and image.filepath
 
     def __convert_images_to_dds(self, images_to_convert):
         converter = DdsConverterRunner(
@@ -888,210 +221,148 @@ class CrytekDaeExporter:
     def __export_library_effects(self, parent_element):
         current_element = self.__doc.createElement("library_effects")
         parent_element.appendChild(current_element)
-
-        for material in self.__get_materials_in_export_nodes():
+        for material in utils.get_type("materials"):
             self.__export_library_effects_material(material, current_element)
 
     def __export_library_effects_material(self, material, current_element):
-        diffuse_count = 0
-        specular_count = 0
-        normal_map_count = 0
-        diffuse_image = ""
-        specular_image = ""
-        normal_map_image = ""
-
-        texture_slots = self.__get_texture_slots_for_material(material)
+        images = [[], [], []]
+        texture_slots = utils.get_texture_slots_for_material(material)
         for texture_slot in texture_slots:
             image = texture_slot.texture.image
-
             if not image:
                 raise exceptions.CryBlendException(
                             "One of texture slots has no image assigned.")
 
+            surface, sampler = self.__create_surface_and_sampler(image.name)
             if texture_slot.use_map_color_diffuse:
-                diffuse_count += 1
-                diffuse_image = image.name
-                dnpsurf = self.__doc.createElement("newparam")
-                dnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                surface_node = self.__doc.createElement("surface")
-                surface_node.setAttribute("type", "2D")
-                init_from_node = self.__doc.createElement("init_from")
-                temp_node = self.__doc.createTextNode(image.name)
-                init_from_node.appendChild(temp_node)
-                surface_node.appendChild(init_from_node)
-                dnpsurf.appendChild(surface_node)
-                dnpsamp = self.__doc.createElement("newparam")
-                dnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                sampler_node = self.__doc.createElement("sampler2D")
-                source_node = self.__doc.createElement("source")
-                temp_node = self.__doc.createTextNode(
-                                                "%s-surface" % (image.name))
-                source_node.appendChild(temp_node)
-                sampler_node.appendChild(source_node)
-                dnpsamp.appendChild(sampler_node)
+                images[0] = [image.name, surface, sampler] 
             if texture_slot.use_map_color_spec:
-                specular_count += 1
-                specular_image = image.name
-                snpsurf = self.__doc.createElement("newparam")
-                snpsurf.setAttribute("sid", "%s-surface" % image.name)
-                surface_node = self.__doc.createElement("surface")
-                surface_node.setAttribute("type", "2D")
-                init_from_node = self.__doc.createElement("init_from")
-                temp_node = self.__doc.createTextNode(image.name)
-                init_from_node.appendChild(temp_node)
-                surface_node.appendChild(init_from_node)
-                snpsurf.appendChild(surface_node)
-                snpsamp = self.__doc.createElement("newparam")
-                snpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                sampler_node = self.__doc.createElement("sampler2D")
-                source_node = self.__doc.createElement("source")
-                temp_node = self.__doc.createTextNode(
-                                                "%s-surface" % (image.name))
-                source_node.appendChild(temp_node)
-                sampler_node.appendChild(source_node)
-                snpsamp.appendChild(sampler_node)
+                images[1] = [image.name, surface, sampler]
             if texture_slot.use_map_normal:
-                normal_map_count += 1
-                normal_map_image = image.name
-                nnpsurf = self.__doc.createElement("newparam")
-                nnpsurf.setAttribute("sid", "%s-surface" % image.name)
-                surface_node = self.__doc.createElement("surface")
-                surface_node.setAttribute("type", "2D")
-                init_from_node = self.__doc.createElement("init_from")
-                temp_node = self.__doc.createTextNode(image.name)
-                init_from_node.appendChild(temp_node)
-                surface_node.appendChild(init_from_node)
-                nnpsurf.appendChild(surface_node)
-                nnpsamp = self.__doc.createElement("newparam")
-                nnpsamp.setAttribute("sid", "%s-sampler" % image.name)
-                sampler_node = self.__doc.createElement("sampler2D")
-                source_node = self.__doc.createElement("source")
-                temp_node = self.__doc.createTextNode(
-                                                "%s-surface" % (image.name))
-                source_node.appendChild(temp_node)
-                sampler_node.appendChild(source_node)
-                nnpsamp.appendChild(sampler_node)
+                images[2] = [image.name, surface, sampler]
 
         effect_node = self.__doc.createElement("effect")
-        effect_node.setAttribute("id", "%s_fx" % (material.name))
+        effect_node.setAttribute("id", "%s_fx" % material.name)
         profile_node = self.__doc.createElement("profile_COMMON")
-        if diffuse_count:
-            profile_node.appendChild(dnpsurf)
-            profile_node.appendChild(dnpsamp)
-        if specular_count:
-            profile_node.appendChild(snpsurf)
-            profile_node.appendChild(snpsamp)
-        if normal_map_count:
-            profile_node.appendChild(nnpsurf)
-            profile_node.appendChild(nnpsamp)
-        tech_com = self.__doc.createElement("technique")
-        tech_com.setAttribute("sid", "common")
-        phong = self.__doc.createElement("phong")
-        emis = self.__doc.createElement("emission")
-        color = self.__doc.createElement("color")
-        color.setAttribute("sid", "emission")
-        cot = utils.color_to_string(material.emit,
-                                    material.emit,
-                                    material.emit,
-                                    1.0)
-        emit = self.__doc.createTextNode(cot)
-        color.appendChild(emit)
-        emis.appendChild(color)
-        amb = self.__doc.createElement("ambient")
-        color = self.__doc.createElement("color")
-        color.setAttribute("sid", "ambient")
-        cot = utils.color_to_string(material.ambient,
-                                    material.ambient,
-                                    material.ambient,
-                                    1.0)
-        ambcol = self.__doc.createTextNode(cot)
-        color.appendChild(ambcol)
-        amb.appendChild(color)
-        dif = self.__doc.createElement("diffuse")
-        if diffuse_count:
-            dtexr = self.__doc.createElement("texture")
-            dtexr.setAttribute("texture", "%s-sampler" % diffuse_image)
-            dif.appendChild(dtexr)
-        else:
-            color = self.__doc.createElement("color")
-            color.setAttribute("sid", "diffuse")
-            cot = utils.color_to_string(material.diffuse_color.r,
-                                        material.diffuse_color.g,
-                                        material.diffuse_color.b,
-                                        1.0)
-            difcol = self.__doc.createTextNode(cot)
-            color.appendChild(difcol)
-            dif.appendChild(color)
-        spec = self.__doc.createElement("specular")
-        if specular_count:
-            stexr = self.__doc.createElement("texture")
-            stexr.setAttribute("texture", "%s-sampler" % specular_image)
-            spec.appendChild(stexr)
-        else:
-            color = self.__doc.createElement("color")
-            color.setAttribute("sid", "specular")
-            cot = utils.color_to_string(material.specular_color.r,
-                                        material.specular_color.g,
-                                        material.specular_color.b,
-                                        1.0)
-            speccol = self.__doc.createTextNode(cot)
-            color.appendChild(speccol)
-            spec.appendChild(color)
-        shin = self.__doc.createElement("shininess")
-        flo = self.__doc.createElement("float")
-        flo.setAttribute("sid", "shininess")
-        shinval = self.__doc.createTextNode("%s" % material.specular_hardness)
-        flo.appendChild(shinval)
-        shin.appendChild(flo)
-        ioref = self.__doc.createElement("index_of_refraction")
-        flo = self.__doc.createElement("float")
-        flo.setAttribute("sid", "index_of_refraction")
-        iorval = self.__doc.createTextNode("%s" % material.alpha)
-        flo.appendChild(iorval)
-        ioref.appendChild(flo)
-        phong.appendChild(emis)
-        phong.appendChild(amb)
-        phong.appendChild(dif)
-        phong.appendChild(spec)
-        phong.appendChild(shin)
-        phong.appendChild(ioref)
-        if normal_map_count:
-            bump = self.__doc.createElement("normal")
-            ntexr = self.__doc.createElement("texture")
-            ntexr.setAttribute("texture", "%s-sampler" % normal_map_image)
-            bump.appendChild(ntexr)
-            phong.appendChild(bump)
-        tech_com.appendChild(phong)
-        profile_node.appendChild(tech_com)
-        extra = self.__doc.createElement("extra")
-        techn = self.__doc.createElement("technique")
-        techn.setAttribute("profile", "GOOGLEEARTH")
-        ds = self.__doc.createElement("double_sided")
-        dsval = self.__doc.createTextNode("1")
-        ds.appendChild(dsval)
-        techn.appendChild(ds)
-        extra.appendChild(techn)
+        for image in images:
+            if len(image) != 0:
+                profile_node.appendChild(image[1])
+                profile_node.appendChild(image[2])
+        technique_common = self.__doc.createElement("technique")
+        technique_common.setAttribute("sid", "common")
+
+        phong = self.__create_material_node(material, images)
+        technique_common.appendChild(phong)
+        profile_node.appendChild(technique_common)
+        
+        extra = self.__create_double_sided_extra("GOOGLEEARTH")
         profile_node.appendChild(extra)
         effect_node.appendChild(profile_node)
-        extra = self.__doc.createElement("extra")
-        techn = self.__doc.createElement("technique")
-        techn.setAttribute("profile", "MAX3D")
-        ds = self.__doc.createElement("double_sided")
-        dsval = self.__doc.createTextNode("1")
-        ds.appendChild(dsval)
-        techn.appendChild(ds)
-        extra.appendChild(techn)
+
+        extra = self.__create_double_sided_extra("MAX3D")
         effect_node.appendChild(extra)
         current_element.appendChild(effect_node)
 
+    def __create_surface_and_sampler(self, image_name):
+        surface = self.__doc.createElement("newparam")
+        surface.setAttribute("sid", "%s-surface" % image_name)
+        surface_node = self.__doc.createElement("surface")
+        surface_node.setAttribute("type", "2D")
+        init_from_node = self.__doc.createElement("init_from")
+        temp_node = self.__doc.createTextNode(image_name)
+        init_from_node.appendChild(temp_node)
+        surface_node.appendChild(init_from_node)
+        surface.appendChild(surface_node)
+        sampler = self.__doc.createElement("newparam")
+        sampler.setAttribute("sid", "%s-sampler" % image_name)
+        sampler_node = self.__doc.createElement("sampler2D")
+        source_node = self.__doc.createElement("source")
+        temp_node = self.__doc.createTextNode(
+                                        "%s-surface" % (image_name))
+        source_node.appendChild(temp_node)
+        sampler_node.appendChild(source_node)
+        sampler.appendChild(sampler_node)
+
+        return surface, sampler
+
+    def __create_material_node(self, material, images):
+        phong = self.__doc.createElement("phong")
+
+        emission = self.__create_color_node(material, "emission")
+        ambient = self.__create_color_node(material, "ambient")
+        if len(images[0]) != 0:
+            diffuse = self.__create_texture_node(images[0][0], "diffuse")
+        else:
+            diffuse = self.__create_color_node(material, "diffuse")
+        if len(images[1]) != 0:
+            specular = self.__create_texture_node(images[1][0], "specular")
+        else:
+            specular = self.__create_color_node(material, "specular")
+
+        shininess = self.__create_attribute_node(material, "shininess")
+        index_refraction = self.__create_attribute_node(material, "index_refraction")
+
+        phong.appendChild(emission)
+        phong.appendChild(ambient)
+        phong.appendChild(diffuse)
+        phong.appendChild(specular)
+        phong.appendChild(shininess)
+        phong.appendChild(index_refraction)
+        if len(images[2]) != 0:
+            normal = self.__create_texture_node(images[2][0], "normal")
+            phong.appendChild(normal)
+
+        return phong
+
+    def __create_color_node(self, material, type_):
+        node = self.__doc.createElement(type_)
+        color = self.__doc.createElement("color")
+        color.setAttribute("sid", type_)
+        col = utils.get_material_color(material, type_)
+        color_text = self.__doc.createTextNode(col)
+        color.appendChild(color_text)
+        node.appendChild(color)
+
+        return node
+
+    def __create_texture_node(self, image_name, type_):
+        node = self.__doc.createElement(type_)
+        texture = self.__doc.createElement("texture")
+        texture.setAttribute("texture", "%s-sampler" % image_name)
+        node.appendChild(texture)
+
+        return node
+
+    def __create_attribute_node(self, material, type_):
+        node = self.__doc.createElement(type_)
+        float = self.__doc.createElement("float")
+        float.setAttribute("sid", type_)
+        val = utils.get_material_attribute(material, type_)
+        value = self.__doc.createTextNode(val)
+        float.appendChild(value)
+        node.appendChild(float)
+
+        return node
+
+    def __create_double_sided_extra(self, profile):
+        extra = self.__doc.createElement("extra")
+        technique = self.__doc.createElement("technique")
+        technique.setAttribute("profile", profile)
+        double_sided = self.__doc.createElement("double_sided")
+        double_sided_value = self.__doc.createTextNode("1")
+        double_sided.appendChild(double_sided_value)
+        technique.appendChild(double_sided)
+        extra.appendChild(technique)
+
+        return extra
+
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
-        materials = self.__get_materials_in_export_nodes()
+        materials = utils.get_type("materials")
 
         for material in materials:
             material_element = self.__doc.createElement("material")
             material_element.setAttribute("id", "%s" % (material.name))
-            material_element.setAttribute("name", "%s" % (material.name))
             instance_effect = self.__doc.createElement("instance_effect")
             instance_effect.setAttribute("url", "#%s_fx" % (material.name))
             material_element.appendChild(instance_effect)
@@ -1102,683 +373,348 @@ class CrytekDaeExporter:
     def __export_library_geometries(self, parent_element):
         libgeo = self.__doc.createElement("library_geometries")
         parent_element.appendChild(libgeo)
-
-        start_time = clock()
-        for object_ in self.__get_objects_in_export_nodes():
+        for object_ in utils.get_type("geometry"):
             bpy.context.scene.objects.active = object_
-            if object_.mode == 'EDIT':
+            if object_.mode != 'OBJECT':
                 bpy.ops.object.mode_set(mode='OBJECT')
             object_.data.update(calc_tessface=1)
             mesh = object_.data
-            me_verts = mesh.vertices[:]
-            mname = object_.name
-            geo = self.__doc.createElement("geometry")
-            geo.setAttribute("id", "%s" % (mname))
-            me = self.__doc.createElement("mesh")
-            # positions
-            sourcep = self.__doc.createElement("source")
-            sourcep.setAttribute("id", "%s-positions" % (mname))
+            object_.name = object_.name
+            geometry_node = self.__doc.createElement("geometry")
+            geometry_node.setAttribute("id", "%s" % (object_.name))
+            mesh_node = self.__doc.createElement("mesh")
 
-            float_positions = []
-            for vertice in me_verts:
-                float_positions.append("%.6f %.6g %.6f" % vertice.co[:])
-
-            cbPrint('vert loc took %.4f sec.' % (clock() - start_time))
-            far = self.__doc.createElement("float_array")
-            far.setAttribute("id", "%s-positions-array" % mname)
-            far.setAttribute("count", "%s" % (str(len(mesh.vertices) * 3)))
-            mpos = self.__doc.createTextNode(" ".join(float_positions))
-            far.appendChild(mpos)
-            techcom = self.__doc.createElement("technique_common")
-            acc = self.__doc.createElement("accessor")
-            acc.setAttribute("source", "#%s-positions-array" % (mname))
-            acc.setAttribute("count", "%s" % (str(len(mesh.vertices))))
-            acc.setAttribute("stride", "3")
-            parx = self.__doc.createElement("param")
-            parx.setAttribute("name", "X")
-            parx.setAttribute("type", "float")
-            pary = self.__doc.createElement("param")
-            pary.setAttribute("name", "Y")
-            pary.setAttribute("type", "float")
-            parz = self.__doc.createElement("param")
-            parz.setAttribute("name", "Z")
-            parz.setAttribute("type", "float")
-            acc.appendChild(parx)
-            acc.appendChild(pary)
-            acc.appendChild(parz)
-            techcom.appendChild(acc)
-            sourcep.appendChild(far)
-            sourcep.appendChild(techcom)
-            me.appendChild(sourcep)
-            # positions
-            # normals
-            float_normals = ""
-            float_normals_count = ""
-            iin = 0
-            iin = ""
             start_time = clock()
-            # mesh.sort_faces()
-            # mesh.calc_normals()
-            face_index_pairs = mesh.tessfaces
-            ush = 0
-            has_sharp_edges = 0
-            # for f in mesh.tessfaces:
-            for f in face_index_pairs:
-                if f.use_smooth:
-                    for v_idx in f.vertices:
-                        for e_idx in mesh.edges:
-                            for ev in e_idx.vertices:
-                                if ev == v_idx:
-                                    if e_idx.use_edge_sharp:
-                                        ush = 1
-                                        has_sharp_edges = 1
-                                    else:
-                                        ush = 2
+            self.__write_positions(object_, mesh, mesh_node)
+            cbPrint('Positions took %.4f sec.' % (clock() - start_time))
 
-                        if ush == 1:
-                            v = me_verts[v_idx]
-                            noKey = utils.veckey3d21(f.normal)
-                            float_normals += '%.6f %.6f %.6f ' % noKey
-                            iin += "1"
-                        if ush == 2:
-                            v = me_verts[v_idx]
-                            noKey = utils.veckey3d21(v.normal)
-                            float_normals += '%.6f %.6f %.6f ' % noKey
-                            iin += "1"
-                        ush = 0
-
-                else:
-                    fnc = ""
-                    fns = 0
-                    fnlx = 0
-                    fnly = 0
-                    fnlz = 0
-                    if self.__config.avg_pface:
-                        if fns == 0:
-                            fnlx = f.normal.x
-                            fnly = f.normal.y
-                            fnlz = f.normal.z
-                            fnc += "1"
-                            cbPrint("face%s" % fnlx)
-                        for fn in face_index_pairs:
-                            if (f.normal.angle(fn.normal) <
-                                .052):
-                                if (f.normal.angle(fn.normal) >
-                                    - .052):
-                                    fnlx = fn.normal.x + fnlx
-                                    fnly = fn.normal.x + fnly
-                                    fnlz = fn.normal.x + fnlz
-                                    fnc += "1"
-                                    fns = 1
-
-                        cbPrint("facen2%s" % (fnlx / len(fnc)))
-                        iin += "1"
-                        float_normals += '%.6f %.6f %.6f ' % (fnlx / len(fnc),
-                            fnly / len(fnc),
-                            fnlz / len(fnc))
-                    else:
-                        noKey = utils.veckey3d21(f.normal)
-                        float_normals += '%.6f %.6f %.6f ' % noKey
-                        iin += "1"  # for v_idx in f.vertices:
-
-            # Hard, each vert gets normal
-            # from the face.
-            float_normals_count = len(iin) * 3
-            cbPrint('normals took %.4f sec.' % (clock() - start_time))
-            float_vertsc = len(iin)
-            cbPrint(str(float_vertsc))
-            iin = 0
-            sourcenor = self.__doc.createElement("source")
-            sourcenor.setAttribute("id", "%s-normals" % (mname))
-            farn = self.__doc.createElement("float_array")
-            farn.setAttribute("id", "%s-normals-array" % (mname))
-            farn.setAttribute("count", "%s" % (float_normals_count))
-            fpos = self.__doc.createTextNode("%s" % (float_normals))
-            farn.appendChild(fpos)
-            tcom = self.__doc.createElement("technique_common")
-            acc = self.__doc.createElement("accessor")
-            acc.setAttribute("source", "%s-normals-array" % (mname))
-            acc.setAttribute("count", "%s" % (float_vertsc))
-            acc.setAttribute("stride", "3")
-            parx = self.__doc.createElement("param")
-            parx.setAttribute("name", "X")
-            parx.setAttribute("type", "float")
-            pary = self.__doc.createElement("param")
-            pary.setAttribute("name", "Y")
-            pary.setAttribute("type", "float")
-            parz = self.__doc.createElement("param")
-            parz.setAttribute("name", "Z")
-            parz.setAttribute("type", "float")
-            acc.appendChild(parx)
-            acc.appendChild(pary)
-            acc.appendChild(parz)
-            tcom.appendChild(acc)
-            sourcenor.appendChild(farn)
-            sourcenor.appendChild(tcom)
-            me.appendChild(sourcenor)
-            # end normals
-            # UVs, we will make assumptions here because this is
-            # for a game export so there should always
-            # be a uv set
-            uvs = self.__doc.createElement("source")
-            uvlay = []
-            # lay = object_.data.uv_textures.active
-            # if lay:
             start_time = clock()
-            uvlay = object_.data.tessface_uv_textures
-            if uvlay:
-                cbPrint("Found UV map.")
-            elif (object_.type == "MESH"):
-                win      = bpy.context.window
-                scr      = win.screen
-                areas3d  = [area for area in scr.areas if area.type == 'VIEW_3D']
-                region   = [region for region in areas3d[0].regions if region.type == 'WINDOW']
+            self.__write_normals(object_, mesh, mesh_node)
+            cbPrint('Normals took %.4f sec.' % (clock() - start_time))
 
-                override = {'window': win,
-                            'screen': scr,
-                            'area'  : areas3d[0],
-                            'region': region[0],
-                            'scene' : bpy.context.scene,
-                            'active_object': object_,
-                            }
-                bpy.ops.object.mode_set(override, mode='EDIT')
-                bpy.ops.mesh.select_all(override, action='SELECT')
-                bpy.ops.uv.smart_project(override, angle_limit=66, island_margin=0.03, user_area_weight=0)
-                bpy.ops.object.mode_set(override, mode='OBJECT')
-                object_.data.update(calc_tessface=1)
-                cbPrint("Missing UV map.  Mesh unwrapped using smart UV project", message_type='warning')
-
-            for uvindex, uvlayer in enumerate(uvlay):
-                mapslot = uvindex
-                mapname = str(uvlayer.name)
-                uvid = "%s-%s-%s" % (mname, mapname, mapslot)
-                i_n = -1
-                ii = 0  # Count how many UVs we write
-                test = ""
-                for uf in uvlayer.data:
-                # workaround, since uf.uv iteration
-                # is wrong atm
-                    for uv in uf.uv:
-                        if i_n == -1:
-                            test += '%.6f %.6f ' % uv[:]
-                            i_n = 0
-                        else:
-                            if i_n == 7:
-                        # fw('\n\t\t\t ')
-                                i_n = 0
-                            test += '%.6f %.6f ' % uv[:]
-                        i_n += 1
-                        ii += 1  # One more UV
-
-                uvc1 = str((ii) * 2)
-                uvc2 = str(ii)
-
-            uvs.setAttribute("id", "%s-%s-%s" % (mname, mapname, mapslot))
+            start_time = clock()
+            self.__write_uvs(object_, mesh, mesh_node)
             cbPrint('UVs took %.4f sec.' % (clock() - start_time))
-            fa = self.__doc.createElement("float_array")
-            fa.setAttribute("id", "%s-array" % (uvid))
-            fa.setAttribute("count", "%s" % (uvc1))
-            uvp = self.__doc.createTextNode("%s" % (test))
-            fa.appendChild(uvp)
-            tc2 = self.__doc.createElement("technique_common")
-            acc2 = self.__doc.createElement("accessor")
-            acc2.setAttribute("source", "#%s-array" % (uvid))
-            acc2.setAttribute("count", "%s" % (uvc2))
-            acc2.setAttribute("stride", "2")
-            pars = self.__doc.createElement("param")
-            pars.setAttribute("name", "S")
-            pars.setAttribute("type", "float")
-            part = self.__doc.createElement("param")
-            part.setAttribute("name", "T")
-            part.setAttribute("type", "float")
-            acc2.appendChild(pars)
-            acc2.appendChild(part)
-            tc2.appendChild(acc2)
-            uvs.appendChild(fa)
-            uvs.appendChild(tc2)
-            me.appendChild(uvs)
-            # enduv
-            # vertcol
-            # from fbx exporter
-            vcols = self.__doc.createElement("source")
-            cn = 0
-            # list for vert alpha if found
-            alpha_found = 0
-            alpha_list = []
-            if object_.data.tessface_vertex_colors:
-                collayers = object_.data.tessface_vertex_colors
-                # TODO merge these two for loops
-                for collayer in collayers:
-                    ni = -1
-                    colname = str(collayer.name)
-                    if colname == "alpha":
-                        alpha_found = 1
-                        for fi, cf in enumerate(collayer.data):
-                            cbPrint(str(fi))
-                            if len(mesh.tessfaces[fi].vertices) == 4:
-                                colors = [cf.color1[:],
-                                          cf.color2[:],
-                                          cf.color3[:],
-                                          cf.color4[:]]
-                            else:
-                                colors = [cf.color1[:],
-                                          cf.color2[:],
-                                          cf.color3[:]]
-                            for colr in colors:
-                                tmp = [fi, colr[0]]
 
-                            alpha_list.append(tmp)
-
-                        for vca in alpha_list:
-                            cbPrint(str(vca))
-
-                for collayer in collayers:
-                    ni = -1
-                    ii = 0  # Count how many Colors we write
-                    vcol = ""
-                    colname = str(collayer.name)
-                    if colname == "alpha":
-                        cbPrint("Alpha.")
-                    else:
-                        for fi, cf in enumerate(collayer.data):
-                            colors = [cf.color1[:], cf.color2[:], cf.color3[:]]
-                            if len(mesh.tessfaces[fi].vertices) == 4:
-                                colors.append(cf.color4[:])
-
-                            for colr in colors:
-                                if ni == -1:
-                                    if alpha_found == 1:
-                                        tmp = alpha_list[fi]
-                                        vcol += '%.6f %.6f %.6f ' % colr
-                                        vcol += '%.6f ' % tmp[1]
-                                        cbPrint(colr[0])
-                                    else:
-                                        vcol += '%.6f %.6f %.6f ' % colr
-                                    ni = 0
-                                else:
-                                    if ni == 7:
-                                        ni = 0
-                                    if alpha_found == 1:
-                                        tmp = alpha_list[fi]
-                                        vcol += '%.6f %.6f %.6f ' % colr
-                                        vcol += '%.6f ' % tmp[1]
-                                        cbPrint(colr[0])
-                                    else:
-                                        vcol += '%.6f %.6f %.6f ' % colr
-                                ni += 1
-                                ii += 1  # One more Color
-
-                        if cn == 1:
-                            vcolc1 = str((ii) * 4)
-                        else:
-                            vcolc1 = str((ii) * 3)
-                        # vcolc1=str((ii)*3)
-                        vcolc2 = str(ii)
-
-                vcols.setAttribute("id", "%s-colors" % (mname))
-                fa = self.__doc.createElement("float_array")
-                fa.setAttribute("id", "%s-colors-array" % (mname))
-                fa.setAttribute("count", "%s" % (vcolc1))
-                vcolp = self.__doc.createTextNode("%s" % (vcol))
-                fa.appendChild(vcolp)
-                tc2 = self.__doc.createElement("technique_common")
-                acc3 = self.__doc.createElement("accessor")
-                acc3.setAttribute("source", "#%s-colors-array" % (mname))
-                acc3.setAttribute("count", "%s" % (vcolc2))
-                if alpha_found == 1:
-                    acc3.setAttribute("stride", "4")
-                else:
-                    acc3.setAttribute("stride", "3")
-                parr = self.__doc.createElement("param")
-                parr.setAttribute("name", "R")
-                parr.setAttribute("type", "float")
-                parg = self.__doc.createElement("param")
-                parg.setAttribute("name", "G")
-                parg.setAttribute("type", "float")
-                parb = self.__doc.createElement("param")
-                parb.setAttribute("name", "B")
-                parb.setAttribute("type", "float")
-                para = self.__doc.createElement("param")
-                para.setAttribute("name", "A")
-                para.setAttribute("type", "float")
-                acc3.appendChild(parr)
-                acc3.appendChild(parg)
-                acc3.appendChild(parb)
-                if alpha_found == 1:
-                    acc3.appendChild(para)
-                alpha_found = 0
-                tc2.appendChild(acc3)
-                vcols.appendChild(fa)
-                vcols.appendChild(tc2)
-            me.appendChild(vcols)
-            # endvertcol
-            # vertices
-            vertic = self.__doc.createElement("vertices")
-            vertic.setAttribute("id", "%s-vertices" % (mname))
-            inputsem1 = self.__doc.createElement("input")
-            inputsem1.setAttribute("semantic", "POSITION")
-            inputsem1.setAttribute("source", "#%s-positions" % (mname))
-            vertic.appendChild(inputsem1)
-            me.appendChild(vertic)
-            # end vertices
-            # polylist
-            mat = mesh.materials[:]
             start_time = clock()
-            if mat:
-                for im in enumerate(mat):
-                    polyl = self.__doc.createElement("polylist")
-                    polyl.setAttribute("material", im[1].name)
-                    verts = ""
-                    face_count = ""
-                    face_counter = 0
-                    ni = 0
-                    texindex = 0
-                    nverts = ""
-                    for f in face_index_pairs:
-                        fi = f.vertices[:]
-                        if f.material_index == im[0]:
-                            nverts += str(len(f.vertices)) + " "
-                            face_count += str(
-                                "%s" % (face_counter))
-                            for v in f.vertices:
-                                verts += str(v) + " "
-                                if f.use_smooth:
-                                    if has_sharp_edges == 1:
-                                        verts += str("%s " % (ni))
-                                        ni += 1
-                                    else:
-                                        verts += str(v) + " "
-                                    # verts += str("%s "%(ni))
-                                    # ni += 1
-                                else:
-                                    verts += str("%s " % (ni))
-                                verts += str("%s " % (texindex))
-                                if mesh.vertex_colors:
-                                    verts += str(
-                                        "%s " % (texindex))
-                                texindex += 1
+            self.__write_vertex_colors(object_, mesh, mesh_node)
+            cbPrint('Vertex colors took %.4f sec.' % (clock() - start_time))
 
-                        if f.use_smooth:
-                            if has_sharp_edges != 1:
-                                ni += len(f.vertices)
-                        else:
-                            ni += 1  # #<--naughty naughty
-                        if f.material_index == im[0]:
-                            texindex = texindex
-                        else:
-                            texindex += len(fi)  # 4#3
+            start_time = clock()
+            self.__write_vertices(object_, mesh, mesh_node)
+            cbPrint('Vertices took %.4f sec.' % (clock() - start_time))
 
-                    cbPrint(str(ni))
-                    verts += ""
-                    cbPrint('polylist took %.4f sec.' % (clock() - start_time))
-                    polyl.setAttribute("count", "%s" % (len(face_count)))
-                    inpv = self.__doc.createElement("input")
-                    inpv.setAttribute("semantic", "VERTEX")
-                    inpv.setAttribute("source", "#%s-vertices" % (mname))
-                    inpv.setAttribute("offset", "0")
-                    polyl.appendChild(inpv)
-                    inpn = self.__doc.createElement("input")
-                    inpn.setAttribute("semantic", "NORMAL")
-                    inpn.setAttribute("source", "#%s-normals" % (mname))
-                    inpn.setAttribute("offset", "1")
-                    polyl.appendChild(inpn)
-                    inpuv = self.__doc.createElement("input")
-                    inpuv.setAttribute("semantic", "TEXCOORD")
-                    inpuv.setAttribute("source", "#%s" % (uvid))
-                    # will always be 2, vcolors can be 2 or 3
-                    inpuv.setAttribute("offset", "2")
-                    inpuv.setAttribute("set", "%s" % (mapslot))
-                    polyl.appendChild(inpuv)
-                    if mesh.vertex_colors:
-                        inpvcol = self.__doc.createElement("input")
-                        inpvcol.setAttribute("semantic", "COLOR")
-                        inpvcol.setAttribute("source", "#%s-colors" % (mname))
-                        # vcolors can be 2 or 3
-                        inpvcol.setAttribute("offset", "3")
-                        polyl.appendChild(inpvcol)
-                    vc = self.__doc.createElement("vcount")
-                    vcl = self.__doc.createTextNode("%s" % (nverts))
-                    vc.appendChild(vcl)
-                    pl = self.__doc.createElement("p")
-                    pltn = self.__doc.createTextNode("%s" % (verts))
-                    pl.appendChild(pltn)
-                    polyl.appendChild(vc)
-                    polyl.appendChild(pl)
-                    me.appendChild(polyl)
+            start_time = clock()
+            self.__write_polylist(object_, mesh, mesh_node)
+            cbPrint('Polylist took %.4f sec.' % (clock() - start_time))
 
-                    # endpolylist
-            has_sharp_edges = 0
-            emt = self.__doc.createElement("extra")
-            emtt = self.__doc.createElement("technique")
-            emtt.setAttribute("profile", "MAYA")
-            dsd = self.__doc.createElement("double_sided")
-            dsdtn = self.__doc.createTextNode("1")
-            dsd.appendChild(dsdtn)
-            emtt.appendChild(dsd)
-            emt.appendChild(emtt)
-            me.appendChild(emt)
-            geo.appendChild(me)
-            libgeo.appendChild(geo)
+            extra = self.__create_double_sided_extra("MAYA")
+            mesh_node.appendChild(extra)
+            geometry_node.appendChild(mesh_node)
+            libgeo.appendChild(geometry_node)
 
-            # bpy.data.meshes.remove(mesh)
+    def __write_positions(self, object_, mesh, root):
+        float_positions = []
+        for vertex in mesh.vertices:
+            float_positions.extend(vertex.co)
+
+        id_ = "{!s}-positions".format(object_.name)
+        source = utils.write_source(id_,
+                                    "float",
+                                    float_positions,
+                                    "XYZ",
+                                    self.__doc)
+        root.appendChild(source)
+
+    def __write_normals(self, object_, mesh, root):
+        float_normals = []
+        float_normals_count = ""
+
+        for face in mesh.tessfaces:
+            if face.use_smooth:
+                for vert in face.vertices:
+                    vertex = mesh.vertices[vert]
+                    normal = utils.veckey3d21(vertex.normal)
+                    float_normals.extend(normal)
+
+            else:
+                if self.__config.avg_pface:
+                    count = 1
+                    nx = face.normal.x
+                    ny = face.normal.y
+                    nz = face.normal.z
+
+                    for planar_face in mesh.tessfaces:
+                        angle = face.normal.angle(planar_face.normal)
+                        if (-.052 < angle and angle < .052):
+                            nx += planar_face.normal.x
+                            ny += planar_face.normal.y
+                            nz += planar_face.normal.z
+                            count += 1
+
+                    float_normals.append(nx / count)
+                    float_normals.append(ny / count)
+                    float_normals.append(nz / count)
+                else:
+                    normal = utils.veckey3d21(face.normal)
+                    float_normals.extend(normal)
+
+        id_ = "{!s}-normals".format(object_.name)
+        source = utils.write_source(id_,
+                                    "float",
+                                    float_normals,
+                                    "XYZ",
+                                    self.__doc)
+        root.appendChild(source)
+
+    def __write_uvs(self, object_, mesh, root):
+        uvdata = object_.data.tessface_uv_textures
+        if uvdata is None:
+            cbPrint("Your UV map is missing, adding...")
+            bpy.ops.mesh.uv_texture_add()
+        else:
+            cbPrint("Found UV map.")
+
+        float_uvs = []
+        for uvindex, uvlayer in enumerate(uvdata):
+            mapslot = uvindex
+            mapname = uvlayer.name
+            uvid = "{!s}-{!s}-{!s}".format(object_.name, mapname, mapslot)
+
+            for uf in uvlayer.data:
+                for uv in uf.uv:
+                    float_uvs.extend(uv)
+
+        id_ = "{!s}-UVMap-0".format(object_.name)
+        source = utils.write_source(id_,
+                                    "float",
+                                    float_uvs,
+                                    "ST",
+                                    self.__doc)
+        root.appendChild(source)
+
+    def __write_vertex_colors(self, object_, mesh, root):
+        float_colors = []
+        alpha_found = False
+
+        if object_.data.tessface_vertex_colors:
+            color_layers = object_.data.tessface_vertex_colors
+            for color_layer in color_layers:
+                for fi, face in enumerate(color_layer.data):
+                    colors = [face.color1[:], face.color2[:], face.color3[:]]
+                    if len(mesh.tessfaces[fi].vertices) == 4:
+                        colors.append(face.color4[:])
+
+                    for color in colors:
+                        float_colors.extend(color)
+                        if color_layer.name.lower() == "alpha":
+                            alpha_found = True
+                            red_value = color[0]
+                            float_colors.append(red_value)
+
+        if float_colors:
+            id_ = "{!s}-colors".format(object_.name)
+            params = ("RGBA" if alpha_found else "RGB")
+            source = utils.write_source(id_,
+                                        "float",
+                                        float_colors,
+                                        params,
+                                        self.__doc)
+            root.appendChild(source)
+
+    def __write_vertices(self, object_, mesh, root):
+        vertices = self.__doc.createElement("vertices")
+        vertices.setAttribute("id", "%s-vertices" % (object_.name))
+        input = utils.write_input(object_.name, None,
+                                    "positions", "POSITION")
+        vertices.appendChild(input)
+        root.appendChild(vertices)
+
+    def __write_polylist(self, object_, mesh, root):
+        materials = mesh.materials[:]
+        if materials:
+            for matindex, material in enumerate(materials):
+                vert_data = ""
+                verts_per_poly = ""
+                poly_count = normal = texcoord = 0
+
+                for face in mesh.tessfaces:
+                    if face.material_index == matindex:
+                        verts_per_poly = join(verts_per_poly, len(face.vertices), " ")
+                        poly_count += 1
+                        for vert in face.vertices:
+                            data = self.__write_vertex_data(mesh, face, vert, normal, texcoord)
+                            vert_data = join(vert_data, data)
+                            texcoord += 1
+                    else:
+                        texcoord += len(face.vertices)
+
+                    if face.use_smooth:
+                        normal += len(face.vertices)
+                    else:
+                        normal += 1
+
+                polylist = self.__doc.createElement("polylist")
+                polylist.setAttribute("material", material.name)
+                polylist.setAttribute("count", str(poly_count))
+
+                inputs = []
+                inputs.append(utils.write_input(object_.name, 0,
+                                            "vertices", "VERTEX"))
+                inputs.append(utils.write_input(object_.name, 1,
+                                            "normals", "NORMAL"))
+                inputs.append(utils.write_input(object_.name, 2,
+                                            "UVMap-0", "TEXCOORD"))
+                if mesh.vertex_colors:
+                    inputs.append(utils.write_input(object_.name, 3,
+                                                    "colors", "COLOR"))
+
+                for input in inputs:
+                    polylist.appendChild(input)
+
+                vcount = self.__doc.createElement("vcount")
+                vcount_text = self.__doc.createTextNode(verts_per_poly)
+                vcount.appendChild(vcount_text)
+
+                p = self.__doc.createElement("p")
+                p_text = self.__doc.createTextNode(vert_data)
+                p.appendChild(p_text)
+
+                polylist.appendChild(vcount)
+                polylist.appendChild(p)
+                root.appendChild(polylist)
+
+    def __write_vertex_data(self, mesh, face, vert, normal, texcoord):
+        if face.use_smooth:
+            normal = vert
+
+        if mesh.vertex_colors:
+            return "{:d} {:d} {:d} {:d} ".format(vert, normal, texcoord, texcoord)
+        else:
+            return "{:d} {:d} {:d} ".format(vert, normal, texcoord)
 
     def __export_library_controllers(self, parent_element):
         library_node = self.__doc.createElement("library_controllers")
 
-        for selected_object in self.__get_objects_in_export_nodes():
-            if not "_boneGeometry" in selected_object.name:
-                # "some" code borrowed from dx exporter
-                armatures = self.__get_armatures(selected_object)
-
-                if armatures:
+        for object_ in utils.get_type("geometry"):
+            if not "_boneGeometry" in object_.name:
+                armature = utils.get_armature_for_object(object_)
+                if armature is not None:
                     self.__process_bones(library_node,
-                                         selected_object,
-                                         armatures)
+                                         object_,
+                                         armature)
 
         parent_element.appendChild(library_node)
 
-    def __get_armatures(self, object_):
-        return [modifier for modifier in object_.modifiers
-                if modifier.type == "ARMATURE"]
-
-    def __process_bones(self, parent_node, object_, armatures):
-        armature = armatures[0].object
+    def __process_bones(self, parent_node, object_, armature):
+        mesh = object_.data
+        id_ = "{!s}_{!s}".format(armature.name, object_.name)
 
         controller_node = self.__doc.createElement("controller")
         parent_node.appendChild(controller_node)
 
-        controller_node.setAttribute("id", "%s_%s" % (armature.name,
-                                                      object_.name))
+        controller_node.setAttribute("id", id_)
         skin_node = self.__doc.createElement("skin")
         skin_node.setAttribute("source", "#%s" % object_.name)
         controller_node.appendChild(skin_node)
-        bsm = self.__doc.createElement("bind_shape_matrix")
-        bsmv = self.__doc.createTextNode(utils.matrix_to_string(Matrix()))
-        bsm.appendChild(bsmv)
-        skin_node.appendChild(bsm)
 
-        armature_bones = self.__get_bones(armature)
+        bind_shape_matrix = self.__doc.createElement("bind_shape_matrix")
+        utils.write_matrix(Matrix(), bind_shape_matrix)
+        skin_node.appendChild(bind_shape_matrix)
 
-        self.__process_bones_joints(object_.name,
-                                    skin_node,
-                                    armature.name,
-                                    armature_bones)
+        self.__process_bone_joints(object_, armature, skin_node)
+        self.__process_bone_matrices(object_, armature, skin_node)
+        self.__process_bone_weights(object_, armature, skin_node)
 
-        self.__process_bones_matrices(object_.name,
-                                      skin_node,
-                                      armature.name,
-                                      armature_bones)
+        joints = self.__doc.createElement("joints")
+        input = utils.write_input(id_, None, "joints", "JOINT")
+        joints.appendChild(input)
+        input = utils.write_input(id_, None, "matrices", "INV_BIND_MATRIX")
+        joints.appendChild(input)
+        skin_node.appendChild(joints)
 
-        vertex_groups_lengths, vw = self.__process_bones_weights(object_,
-                                                 skin_node,
-                                                 armature.name,
-                                                 armature_bones)
+    def __process_bone_joints(self, object_, armature, skin_node):
 
-        jnts = self.__doc.createElement("joints")
-        is1 = self.__doc.createElement("input")
-        is1.setAttribute("semantic", "JOINT")
-        is1.setAttribute("source", "#%s_%s_joints"
-                         % (armature.name, object_.name))
-        jnts.appendChild(is1)
+        bones = utils.get_bones(armature)
+        id_ = "{!s}_{!s}-joints".format(armature.name, object_.name)
+        bone_names = [bone.name for bone in bones]
+        source = utils.write_source(id_,
+                                    "IDREF",
+                                    bone_names,
+                                    [],
+                                    self.__doc)
+        skin_node.appendChild(source)
 
-        is2 = self.__doc.createElement("input")
-        is2.setAttribute("semantic", "INV_BIND_MATRIX")
-        is2.setAttribute("source", "#%s_%s_matrices"
-                         % (armature.name, object_.name))
-        jnts.appendChild(is2)
-        skin_node.appendChild(jnts)
+    def __process_bone_matrices(self, object_, armature, skin_node):
+        
+        bones = utils.get_bones(armature)
+        bone_matrices = []
+        for bone in bones:
+            fakebone = utils.find_fakebone(bone.name)
+            if fakebone is None:
+                return
+            matrix_local = copy.deepcopy(fakebone.matrix_local)
+            utils.negate_z_axis_of_matrix(matrix_local)
+            bone_matrices.extend(utils.matrix_to_array(matrix_local))
 
-        vertw = self.__doc.createElement("vertex_weights")
-        vertw.setAttribute("count", "%s" % len(object_.data.vertices))
+        id_ = "{!s}_{!s}-matrices".format(armature.name, object_.name)
+        source = utils.write_source(id_,
+                                    "float4x4",
+                                    bone_matrices,
+                                    [],
+                                    self.__doc)
+        skin_node.appendChild(source)
 
-        is3 = self.__doc.createElement("input")
-        is3.setAttribute("semantic", "JOINT")
-        is3.setAttribute("offset", "0")
-        is3.setAttribute("source", "#%s_%s_joints"
-                         % (armature.name, object_.name))
-        vertw.appendChild(is3)
+    def __process_bone_weights(self, object_, armature, skin_node):
 
-        is4 = self.__doc.createElement("input")
-        is4.setAttribute("semantic", "WEIGHT")
-        is4.setAttribute("offset", "1")
-        is4.setAttribute("source", "#%s_%s_weights"
-                         % (armature.name, object_.name))
-        vertw.appendChild(is4)
-
-        vcnt = self.__doc.createElement("vcount")
-        vcnt1 = self.__doc.createTextNode(vertex_groups_lengths)
-        vcnt.appendChild(vcnt1)
-        vertw.appendChild(vcnt)
-
-        vlst = self.__doc.createElement("v")
-        vlst1 = self.__doc.createTextNode(vw)
-        vlst.appendChild(vlst1)
-        vertw.appendChild(vlst)
-        skin_node.appendChild(vertw)
-
-    def __process_bones_joints(self,
-                               object_name,
-                               skin_node,
-                               armature_name,
-                               armature_bones):
-        source_node = self.__doc.createElement("source")
-        source_node.setAttribute("id", "%s_%s_joints" % (armature_name,
-                                                         object_name))
-
-        skin_node.appendChild(source_node)
-
-        idref_array_node = self.__doc.createElement("IDREF_array")
-        idref_array_node.setAttribute("id", "%s_%s_joints_array"
-                                      % (armature_name, object_name))
-        idref_array_node.setAttribute("count", "%s" % len(armature_bones))
-        bone_names = " ".join(bone.name for bone in armature_bones)
-
-        cbPrint(bone_names)
-
-        idref_array_node.appendChild(self.__doc.createTextNode(bone_names))
-        source_node.appendChild(idref_array_node)
-
-        technique_node = self.__doc.createElement("technique_common")
-        accessor_node = self.__doc.createElement("accessor")
-        accessor_node.setAttribute("source", "#%s_%s_joints_array"
-                                   % (armature_name, object_name))
-        accessor_node.setAttribute("count", "%s" % len(armature_bones))
-        accessor_node.setAttribute("stride", "1")
-
-        param_node = self.__doc.createElement("param")
-        param_node.setAttribute("type", "IDREF")
-        accessor_node.appendChild(param_node)
-        technique_node.appendChild(accessor_node)
-        source_node.appendChild(technique_node)
-
-    def __process_bones_matrices(self,
-                                 object_name,
-                                 skin_node,
-                                 armature_name,
-                                 armature_bones):
-        source_matrices_node = self.__doc.createElement("source")
-        source_matrices_node.setAttribute("id", "%s_%s_matrices"
-                                          % (armature_name, object_name))
-
-        skin_node.appendChild(source_matrices_node)
-
-        float_array_node = self.__doc.createElement("float_array")
-        float_array_node.setAttribute("id", "%s_%s_matrices_array"
-                                      % (armature_name, object_name))
-        float_array_node.setAttribute("count", "%s"
-                                      % (len(armature_bones) * 16))
-        self.__export_float_array(armature_bones, float_array_node)
-        source_matrices_node.appendChild(float_array_node)
-
-        technique_node = self.__doc.createElement("technique_common")
-        accessor_node = self.__doc.createElement("accessor")
-        accessor_node.setAttribute("source", "#%s_%s_matrices_array"
-                                   % (armature_name, object_name))
-        accessor_node.setAttribute("count", "%s" % (len(armature_bones)))
-        accessor_node.setAttribute("stride", "16")
-        param_node = self.__doc.createElement("param")
-        param_node.setAttribute("type", "float4x4")
-        accessor_node.appendChild(param_node)
-        technique_node.appendChild(accessor_node)
-        source_matrices_node.appendChild(technique_node)
-
-    def __process_bones_weights(self,
-                                object_,
-                                skin_node,
-                                armature_name,
-                                armature_bones):
-        source_node = self.__doc.createElement("source")
-        source_node.setAttribute("id", "%s_%s_weights"
-                                         % (armature_name, object_.name))
-
-        skin_node.appendChild(source_node)
-
-        float_array = self.__doc.createElement("float_array")
-        float_array.setAttribute("id", "%s_%s_weights_array"
-                                 % (armature_name, object_.name))
-
+        bones = utils.get_bones(armature)
         group_weights = []
         vw = ""
-        vertex_groups_lengths = []
+        vertex_groups_lengths = ""
         vertex_count = 0
 
-        # TODO: review that loop to find bugs and useless code
         for vertex in object_.data.vertices:
             for group in vertex.groups:
                 group_weights.append(group.weight)
                 for vertex_group in object_.vertex_groups:
                     if vertex_group.index == group.group:
-                        for bone_id, bone in enumerate(armature_bones):
+                        for bone_id, bone in enumerate(bones):
                             if bone.name == vertex_group.name:
                                 vw += "%s " % bone_id
 
                 vw += "%s " % vertex_count
                 vertex_count += 1
 
-            vertex_groups_lengths.append("%s" % len(vertex.groups))
+            vertex_groups_lengths += "%s " % len(vertex.groups)
 
-        float_array.setAttribute("count", "%s" % vertex_count)
-        lfarwa = self.__doc.createTextNode(
-                        utils.floats_to_string(group_weights, " ", "%.6f"))
+        id_ = "{!s}_{!s}-weights".format(armature.name, object_.name)
+        source = utils.write_source(id_,
+                                    "float",
+                                    group_weights,
+                                    [],
+                                    self.__doc)
+        skin_node.appendChild(source)
 
-        float_array.appendChild(lfarwa)
+        vertex_weights = self.__doc.createElement("vertex_weights")
+        vertex_weights.setAttribute("count", str(len(object_.data.vertices)))
 
-        technique_node = self.__doc.createElement("technique_common")
+        id_ = "{!s}_{!s}".format(armature.name, object_.name)
+        input = utils.write_input(id_, 0, "joints", "JOINT")
+        vertex_weights.appendChild(input)
+        input = utils.write_input(id_, 1, "weights", "WEIGHT")
+        vertex_weights.appendChild(input)
 
-        accessor_node = self.__doc.createElement("accessor")
-        accessor_node.setAttribute("source", "#%s_%s_weights_array"
-                                      % (armature_name, object_.name))
-        accessor_node.setAttribute("count", "%s" % vertex_count)
-        accessor_node.setAttribute("stride", "1")
+        vcount = self.__doc.createElement("vcount")
+        vcount_text = self.__doc.createTextNode(vertex_groups_lengths)
+        vcount.appendChild(vcount_text)
+        vertex_weights.appendChild(vcount)
 
-        param_node = self.__doc.createElement("param")
-        param_node.setAttribute("type", "float")
-        accessor_node.appendChild(param_node)
-        technique_node.appendChild(accessor_node)
-        source_node.appendChild(float_array)
-        source_node.appendChild(technique_node)
+        v = self.__doc.createElement("v")
+        v_text = self.__doc.createTextNode(vw)
+        v.appendChild(v_text)
+        vertex_weights.appendChild(v)
 
-        return " ".join(vertex_groups_lengths), vw
+        skin_node.appendChild(vertex_weights)
 
     def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
@@ -1786,244 +722,482 @@ class CrytekDaeExporter:
         parent_element.appendChild(libanmcl)
         parent_element.appendChild(libanm)
 
-        is_merge_inprogress = 0
-        ande = 0
-        ande2 = 0
-        for object_ in bpy.context.selected_objects:
-            lnname = str(object_.name)
-            for item in bpy.context.blend_data.groups:
-                if item:
-                    ename = str(item.id_data.name)
-
-            if lnname[:8] == "animnode":
-                ande2 = 1
-                actname = object_["animname"]
-                sf = object_["startframe"]
-                ef = object_["endframe"]
-                cbPrint(actname)
-                cbPrint(sf)
-                cbPrint(ef)
+        scene = bpy.context.scene
+        for group in utils.get_export_nodes():
+            node_type = utils.get_node_type(group.name)
+            allowed = ["cga", "anm", "caf"]
+            if node_type in allowed:
                 animation_clip = self.__doc.createElement("animation_clip")
+                node_name = utils.get_node_name(group.name)
                 animation_clip.setAttribute("id",
-                                            "%s-%s" % (actname, ename[14:]))
+                                            "{!s}-{!s}".format(node_name, node_name))
                 animation_clip.setAttribute("start",
-                                            "%s" % (utils.convert_time(sf)))
+                                            "{:f}".format(utils.convert_time(scene.frame_start)))
                 animation_clip.setAttribute("end",
-                                            "%s" % (utils.convert_time(ef)))
-                for object_ in bpy.context.selected_objects:
-                    if object_.animation_data:
-                        if object_.type == 'ARMATURE':
-                            cbPrint("Object is armature, cannot process animations.")
-                        elif object_.animation_data.action:
+                                            "{:f}".format(utils.convert_time(scene.frame_end)))
+                is_animation = False
+                for object_ in group.objects:
+                    if (object_.type != 'ARMATURE' and object_.animation_data and
+                            object_.animation_data.action):
 
-                            for axis in iter(AXES):
-                                anm = self.__get_animation_location(object_, axis)
-                                libanm.appendChild(anm)
+                        is_animation = True
+                        for axis in iter(AXES):
+                            animation = self.__get_animation_location(object_, axis)
+                            if animation is not None:
+                                libanm.appendChild(animation)
 
-                            for axis in iter(AXES):
-                                anm = self.__get_animation_rotation(object_, axis)
-                                libanm.appendChild(anm)
+                        for axis in iter(AXES):
+                            animation = self.__get_animation_rotation(object_, axis)
+                            if animation is not None:
+                                libanm.appendChild(animation)
 
-                            self.__export_instance_animation_parameters(object_,
-                                                                animation_clip)
+                        self.__export_instance_animation_parameters(object_,
+                                                            animation_clip)
 
-                libanmcl.appendChild(animation_clip)
-
-        if ande2 == 0:
-            for object_ in bpy.context.selected_objects:
-                if object_.animation_data:
-                    if object_.type == 'ARMATURE':
-                        cbPrint("Object is armature, cannot process animations.")
-                    else:
-                        if object_.animation_data.action:
-                            for item in bpy.context.blend_data.groups:
-                                if item:
-                                    ename = str(item.id_data.name)
-
-                            act = object_.animation_data.action
-                            curves = act.fcurves
-                            frstrt = curves.data.frame_range[0]
-                            frend = curves.data.frame_range[1]
-                            anmlx = self.__get_animation_location(object_, 'X')
-                            anmly = self.__get_animation_location(object_, 'Y')
-                            anmlz = self.__get_animation_location(object_, 'Z')
-                            anmrx = self.__get_animation_rotation(object_, 'X')
-                            anmry = self.__get_animation_rotation(object_, 'Y')
-                            anmrz = self.__get_animation_rotation(object_, 'Z')
-                            # animation clip name and frame range
-                            for ai in object_.children:
-                                aname = str(ai.name)
-                                if aname[:8] == "animnode":
-                                    ande = 1
-                                    cbPrint(ai["animname"])
-                                    cbPrint(ai["startframe"])
-                                    cbPrint(ai["endframe"])
-                                    act_name = ai["animname"]
-                                    start_frame = ai["startframe"]
-                                    end_frame = ai["endframe"]
-
-                                    animation_clip = self.__export__animation_clip(
-                                                                object_,
-                                                                ename,
-                                                                act_name,
-                                                                start_frame,
-                                                                end_frame)
-                                    libanmcl.appendChild(animation_clip)
-
-                            if ande == 0:
-                                if self.__config.merge_anm:
-                                    if is_merge_inprogress == 0:
-                                        animation_clip = self.__export__animation_clip(
-                                                                object_,
-                                                                ename,
-                                                                act.name,
-                                                                frstrt,
-                                                                frend)
-                                        is_merge_inprogress = 1
-                                    else:
-                                        cbPrint("Merging clips.")
-                                        self.__export_merge_animation_clip(
-                                                                object_,
-                                                                animation_clip,
-                                                                frstrt,
-                                                                frend)
-                                else:
-                                    animation_clip = self.__export__animation_clip(
-                                                                object_,
-                                                                ename,
-                                                                act.name,
-                                                                frstrt,
-                                                                frend)
-                        if is_merge_inprogress == 0:
-                            libanmcl.appendChild(animation_clip)
-                        libanm.appendChild(anmlx)
-                        libanm.appendChild(anmly)
-                        libanm.appendChild(anmlz)
-                        libanm.appendChild(anmrx)
-                        libanm.appendChild(anmry)
-                        libanm.appendChild(anmrz)
-
-            if is_merge_inprogress == 1:
-                libanmcl.appendChild(animation_clip)
-
-    def __export_merge_animation_clip(self, object_, animation_clip,
-                                      start_frame, end_frame):
-        if self.__merged_clip_start > start_frame:
-            animation_clip.setAttribute("start",
-                                      "%f" % (utils.convert_time(start_frame)))
-            self.__merged_clip_start = start_frame
-        if self.__merged_clip_end < end_frame:
-            animation_clip.setAttribute("end",
-                                        "%f" % (utils.convert_time(end_frame)))
-            self.__merged_clip_end = end_frame
-        self.__export_instance_animation_parameters(object_, animation_clip)
-
-    def __export__animation_clip(self, object_, ename, act_name,
-                                 start_frame, end_frame):
-        animation_clip = self.__doc.createElement("animation_clip")
-        animation_clip.setAttribute("id", "%s-%s" % (act_name, ename[14:]))
-        # RC does not seem to like doubles and truncates them to integers
-        animation_clip.setAttribute("start",
-                                    "%f" % (utils.convert_time(start_frame)))
-        animation_clip.setAttribute("end",
-                                    "%f" % (utils.convert_time(end_frame)))
-        self.__merged_clip_start = start_frame
-        self.__merged_clip_end = end_frame
-        self.__export_instance_animation_parameters(object_, animation_clip)
-
-        return animation_clip
+                if is_animation:
+                    libanmcl.appendChild(animation_clip)
 
     def __export_instance_animation_parameters(self, object_, animation_clip):
-        self.__export_instance_parameter(object_, animation_clip, "location")
-        self.__export_instance_parameter(object_, animation_clip,
-                                         "rotation_euler")
+        location_exists = rotation_exists = False
+        for curve in object_.animation_data.action.fcurves:
+            for axis in iter(AXES):
+                if curve.array_index == AXES[axis]:
+                    if curve.data_path == "location":
+                        location_exists = True
+                    if curve.data_path == "rotation_euler":
+                        rotation_exists = True
+                    if location_exists and rotation_exists:
+                        break
+
+        if location_exists:
+            self.__export_instance_parameter(object_, animation_clip, "location")
+        if rotation_exists:
+            self.__export_instance_parameter(object_, animation_clip, "rotation_euler")
 
     def __export_instance_parameter(self, object_, animation_clip, parameter):
         for axis in iter(AXES):
             inst = self.__doc.createElement("instance_animation")
             inst.setAttribute("url",
-                              "#%s_%s_%s" % (object_.name, parameter, axis))
+                              "#{!s}_{!s}_{!s}".format(object_.name, parameter, axis))
             animation_clip.appendChild(inst)
+
+    def __get_animation_location(self, object_, axis):
+        attribute_type = "location"
+        multiplier = 1
+        target = "{!s}{!s}{!s}".format(object_.name, "/translation.", axis)
+
+        animation_element = self.__get_animation_attribute(object_,
+                                                           axis,
+                                                           attribute_type,
+                                                           multiplier,
+                                                           target)
+        return animation_element
+
+    def __get_animation_rotation(self, object_, axis):
+        attribute_type = "rotation_euler"
+        multiplier = utils.toDegrees
+        target = "{!s}{!s}{!s}{!s}".format(object_.name,
+                                           "/rotation_",
+                                           axis,
+                                           ".ANGLE")
+
+        animation_element = self.__get_animation_attribute(object_,
+                                                           axis,
+                                                           attribute_type,
+                                                           multiplier,
+                                                           target)
+        return animation_element
+
+    def __get_animation_attribute(self,
+                                  object_,
+                                  axis,
+                                  attribute_type,
+                                  multiplier,
+                                  target):
+        id_prefix = "{!s}_{!s}_{!s}".format(object_.name, attribute_type, axis)
+        source_prefix = "#{!s}".format(id_prefix)
+
+        for curve in object_.animation_data.action.fcurves:
+            if (curve.data_path == attribute_type and curve.array_index == AXES[axis]):
+                keyframe_points = curve.keyframe_points
+                sources = {
+                    "input": [],
+                    "output": [],
+                    "interpolation": [],
+                    "intangent": [],
+                    "outangent": []
+                }
+                for keyframe_point in keyframe_points:
+                    khlx = keyframe_point.handle_left[0]
+                    khly = keyframe_point.handle_left[1]
+                    khrx = keyframe_point.handle_right[0]
+                    khry = keyframe_point.handle_right[1]
+                    frame, value = keyframe_point.co
+
+                    sources["input"].append(utils.convert_time(frame))
+                    sources["output"].append(value * multiplier)
+                    sources["interpolation"].append(keyframe_point.interpolation)
+                    sources["intangent"].extend( [utils.convert_time(khlx), khly] )
+                    sources["outangent"].extend( [utils.convert_time(khrx), khry] )
+
+                animation_element = self.__doc.createElement("animation")
+                animation_element.setAttribute("id", id_prefix)
+
+                for type_, data in sources.items():
+                    anim_node = self.__create_animation_node(type_, data, id_prefix)
+                    animation_element.appendChild(anim_node)
+
+                sampler = self.__create_sampler(id_prefix, source_prefix)
+                channel = self.__doc.createElement("channel")
+                channel.setAttribute("source", "{!s}-sampler".format(source_prefix))
+                channel.setAttribute("target", target)
+
+                animation_element.appendChild(sampler)
+                animation_element.appendChild(channel)
+
+                return animation_element
+
+    def __create_animation_node(self, type_, data, id_prefix):
+        id_ = "{!s}-{!s}".format(id_prefix, type_)
+        type_map = {
+            "input":            ["float", ["TIME"]],
+            "output":           ["float", ["VALUE"]],
+            "intangent":        ["float", "XY"],
+            "outangent":        ["float", "XY"],
+            "interpolation":    ["name",  ["INTERPOLATION"]]
+        }
+
+        source = utils.write_source(id_,
+                                    type_map[type_][0],
+                                    data,
+                                    type_map[type_][1],
+                                    self.__doc)
+
+        return source
+
+    def __create_sampler(self, id_prefix, source_prefix):
+        sampler = self.__doc.createElement("sampler")
+        sampler.setAttribute("id", "{!s}-sampler".format(id_prefix))
+
+        input = self.__doc.createElement("input")
+        input.setAttribute("semantic", "INPUT")
+        input.setAttribute("source", "{!s}-input".format(source_prefix))
+        output = self.__doc.createElement("input")
+        output.setAttribute("semantic", "OUTPUT")
+        output.setAttribute("source", "{!s}-output".format(source_prefix))
+        interpolation = self.__doc.createElement("input")
+        interpolation.setAttribute("semantic", "INTERPOLATION")
+        interpolation.setAttribute("source", "{!s}-interpolation".format(source_prefix))
+        intangent = self.__doc.createElement("input")
+        intangent.setAttribute("semantic", "IN_TANGENT")
+        intangent.setAttribute("source", "{!s}-intangent".format(source_prefix))
+        outangent = self.__doc.createElement("input")
+        outangent.setAttribute("semantic", "OUT_TANGENT")
+        outangent.setAttribute("source", "{!s}-outangent".format(source_prefix))
+
+        sampler.appendChild(input)
+        sampler.appendChild(output)
+        sampler.appendChild(interpolation)
+        sampler.appendChild(intangent)
+        sampler.appendChild(outangent)
+
+        return sampler
 
     def __export_library_visual_scenes(self, parent_element):
         current_element = self.__doc.createElement("library_visual_scenes")
         visual_scene = self.__doc.createElement("visual_scene")
+        visual_scene.setAttribute("id", "scene")
+        visual_scene.setAttribute("name", "scene")
         current_element.appendChild(visual_scene)
         parent_element.appendChild(current_element)
 
-        # doesn't matter what name we have here as long as it is
-        # the same for <scene>
-        visual_scene.setAttribute("id", "scene")
-        visual_scene.setAttribute("name", "scene")
-        for group in bpy.context.blend_data.groups:
-            if group:
-                if (group.name.startswith("CryExportNode_")):
-                    self.__write_visual_scene_node(group, visual_scene)
-                    
+        if utils.get_export_nodes():
+            for group in utils.get_export_nodes():
+                self.__write_export_node(group, visual_scene)
+        else:
+            pass # TODO: Handle No Export Nodes Error
 
-    def __write_visual_scene_node(self, group, visual_scene):
-        ename = str(group.id_data.name)
-        node1 = self.__doc.createElement("node")
-        node1.setAttribute("id", "%s" % (ename))
-        node1.setIdAttribute('id')
-        visual_scene.appendChild(node1)
-        node1 = self.__write_visual_scene(group.objects, node1)
-        # export node settings
-        ext1 = self.__doc.createElement("extra")
-        tc3 = self.__doc.createElement("technique")
-        tc3.setAttribute("profile", "CryEngine")
-        prop1 = self.__doc.createElement("properties")
-        if self.__config.export_type == 'CGF':
-            pcgf = self.__doc.createTextNode("fileType=cgf")
-            prop1.appendChild(pcgf)
-        if self.__config.export_type == 'CGA & ANM':
-            pcga = self.__doc.createTextNode("fileType=cgaanm")
-            prop1.appendChild(pcga)
-        if self.__config.export_type == 'CHR & CAF':
-            pchrcaf = self.__doc.createTextNode("fileType=chrcaf")
-            prop1.appendChild(pchrcaf)
-        if self.__config.donot_merge:
-            pdnm = self.__doc.createTextNode("DoNotMerge")
-            prop1.appendChild(pdnm)
-        tc3.appendChild(prop1)
-        ext1.appendChild(tc3)
-        node1.appendChild(ext1)
+    def __write_export_node(self, group, visual_scene):
+        nodename = "CryExportNode_{}".format(utils.get_node_name(group.name))
+        node = self.__doc.createElement("node")
+        node.setAttribute("id", nodename)
+        node.setIdAttribute("id")
+
+        bpy.ops.mesh.primitive_cube_add(location=(0, 0, 0))
+        self.__write_transforms(bpy.context.active_object, node)
+        bpy.ops.object.delete(use_global=False)
+
+        root_objects = []
+        for object_ in group.objects:
+            if object_.parent is None:
+                root_objects.append(object_)
+        node = self.__write_visual_scene_node(root_objects, node, node)
+
+        extra = self.__create_cryengine_extra(group)
+        node.appendChild(extra)
+        visual_scene.appendChild(node)
+
+    def __write_visual_scene_node(self, objects, nodeparent, root):
+        for object_ in objects:
+            if object_.type == "ARMATURE":
+                self.__write_bone_list([utils.get_root_bone(object_)], object_, root, root)
+                node = root
+            elif not utils.is_fakebone(object_):
+                node = self.__doc.createElement("node")
+                node.setAttribute("id", object_.name)
+                node.setIdAttribute("id")
+
+                self.__write_transforms(object_, node)
+
+                instance = self.__create_instance(object_)
+                if instance is not None:
+                    node.appendChild(instance)
+
+                extra = self.__create_cryengine_extra(object_)
+                if extra is not None:
+                    node.appendChild(extra)
+
+                nodeparent.appendChild(node)
+
+            if object_.children:
+                object_children = utils.get_object_children(object_)
+                self.__write_visual_scene_node(object_children, node, root)
+
+        return root
+
+    def __write_bone_list(self, bones, object_, nodeparent, root):
+        scene = bpy.context.scene
+        bonenames = []
+
+        for bone in bones:
+            props = self.__create_ik_properties(bone, object_, root)
+            nodename = join(bone.name, props)
+            bonenames.append(nodename)
+
+            node = self.__doc.createElement("node")
+            node.setAttribute("id", nodename)
+            node.setAttribute("name", nodename)
+            node.setIdAttribute("id")
+
+            fakebone = utils.find_fakebone(bone.name)
+            if fakebone is not None:
+                self.__write_transforms(fakebone, node)
+
+            bone_geometry = utils.find_bone_geometry(bone.name)
+            if bone_geometry is not None:
+                instance = self.__create_instance(object_)
+                node.appendChild(instance)
+
+            nodeparent.appendChild(node)
+
+            if object_.children:
+                self.__write_bone_list(bone.children, object_, node, root)
+
+    def __write_transforms(self, object_, node):
+        trans = self.__create_translation_node(object_)
+        rotx, roty, rotz = self.__create_rotation_node(object_)
+        scale = self.__create_scale_node(object_)
+
+        node.appendChild(trans)
+        node.appendChild(rotx)
+        node.appendChild(roty)
+        node.appendChild(rotz)
+        node.appendChild(scale)
+
+    def __create_translation_node(self, object_):
+        trans = self.__doc.createElement("translate")
+        trans.setAttribute("sid", "translation")
+        trans_text = self.__doc.createTextNode("{:f} {:f} {:f}".format(
+                                                    * object_.location))
+        trans.appendChild(trans_text)
+
+        return trans
+
+    def __create_rotation_node(self, object_):
+        rotx = self.__write_rotation("X", "1 0 0 {:f}", object_.rotation_euler[0])
+        roty = self.__write_rotation("Y", "0 1 0 {:f}", object_.rotation_euler[1])
+        rotz = self.__write_rotation("Z", "0 0 1 {:f}", object_.rotation_euler[2])
+
+        return rotx, roty, rotz
+
+    def __write_rotation(self, axis, textFormat, rotation):
+        rot = self.__doc.createElement("rotate")
+        rot.setAttribute("sid", "rotation_{}".format(axis))
+        rot_text = self.__doc.createTextNode(textFormat.format(
+                                                rotation * utils.toDegrees))
+        rot.appendChild(rot_text)
+
+        return rot
+
+    def __create_scale_node(self, object_):
+        scale = self.__doc.createElement("scale")
+        scale.setAttribute("sid", "scale")
+        scale_text = self.__doc.createTextNode(
+                    utils.floats_to_string(object_.scale, " ", "%s"))
+        scale.appendChild(scale_text)
+
+        return scale
+
+    def __create_instance(self, object_):
+        armature = utils.get_armature_for_object(object_)
+        instance = None
+        if armature is not None:
+            instance = self.__doc.createElement("instance_controller")
+            # This binds the mesh object to the armature in control of it
+            instance.setAttribute("url", "#{!s}_{!s}".format(
+                                        armature.name,
+                                        object_.name))
+        elif object_.name[:6] != "_joint" and object_.type == "MESH":
+            instance = self.__doc.createElement("instance_geometry")
+            instance.setAttribute("url", "#{!s}".format(object_.name))
+
+        if instance is not None:
+            bind_material = self.__create_bind_material(object_)
+            instance.appendChild(bind_material)
+            return instance
+
+    def __create_bind_material(self, object_):
+        bind_material = self.__doc.createElement("bind_material")
+        technique_common = self.__doc.createElement("technique_common")
+
+        for material in object_.material_slots:
+            instance_material = self.__doc.createElement(
+                                "instance_material")
+            instance_material.setAttribute("symbol", material.name)
+            instance_material.setAttribute("target", "#{!s}".format(
+                                material.name))
+
+            bind_vertex_input = self.__doc.createElement(
+                                "bind_vertex_input")
+            bind_vertex_input.setAttribute("semantic", "UVMap")
+            bind_vertex_input.setAttribute("input_semantic", "TEXCOORD")
+            bind_vertex_input.setAttribute("input_set", "0")
+
+            instance_material.appendChild(bind_vertex_input)
+            technique_common.appendChild(instance_material)
+
+        bind_material.appendChild(technique_common)
+
+        return bind_material
+        
+    def __create_cryengine_extra(self, node):
+        extra = self.__doc.createElement("extra")
+        technique = self.__doc.createElement("technique")
+        technique.setAttribute("profile", "CryEngine")
+        # Tag properties onto the end of the item.
+        properties = self.__doc.createElement("properties")
+        if utils.is_export_node(node.name):
+            node_type = utils.get_node_type(node.name)
+            allowed = {"cgf", "cga", "chr", "skin", "anm", "caf"}
+            if node_type in allowed:
+                type_ = self.__doc.createTextNode("fileType={}".format(node_type))
+                properties.appendChild(type_)
+        else:
+            if not node.rna_type.id_data.items():
+                return
+        for prop in node.rna_type.id_data.items():
+            if prop:
+                user_defined_property = self.__doc.createTextNode("{!s}".format(prop[1]))
+                properties.appendChild(user_defined_property)
+        technique.appendChild(properties)
+
+        if (node.name[:6] == "_joint"):
+            helper = self.__create_helper_joint(node)
+            technique.appendChild(helper)
+
+        extra.appendChild(technique)
+
+        return extra
+
+    def __create_helper_joint(self, object_):
+        x1, y1, z1, x2, y2, z2 = utils.get_bounding_box(object_)
+
+        min = self.__doc.createElement("bound_box_min")
+        min_text = self.__doc.createTextNode("{:f} {:f} {:f}".format(x1, y1, z1))
+        min.appendChild(min_text)
+
+        max = self.__doc.createElement("bound_box_max")
+        max_text = self.__doc.createTextNode("{:f} {:f} {:f}".format(x2, y2, z2))
+        max.appendChild(max_text)
+
+        joint = self.__doc.createElement("helper")
+        joint.setAttribute("type", "dummy")
+        joint.appendChild(min)
+        joint.appendChild(max)
+
+        return joint
+
+    def __create_ik_properties(self, bone, object_, export_node):
+        props = ""
+        if self.__config.include_ik and bone.name.endswith("_Phys"):
+            nodename = root.getAttribute('id')[14:]
+            props_name = bone.name.replace("_", "*")
+
+            armature_object = bpy.data.objects[object_.name[:-5]]
+            pose_bone = armature_object.pose.bones[bone.name[:-5]]
+
+            props = join(
+                        '%{!s}%'.format(nodename),
+                        '--PRprops_name={!s}_'.format(props_name),
+
+                        'xmax={!s}_'.format(pose_bone.ik_max_x),
+                        'xmin={!s}_'.format(pose_bone.ik_min_x),
+                        'xdamping={!s}_'.format(pose_bone.ik_stiffness_x),
+                        'xspringangle={!s}_'.format(0.0),
+                        'xspringtension={!s}_'.format(1.0),
+
+                        'ymax={!s}_'.format(pose_bone.ik_max_y),
+                        'ymin={!s}_'.format(pose_bone.ik_min_y),
+                        'ydamping={!s}_'.format(pose_bone.ik_stiffness_y),
+                        'yspringangle={!s}_'.format(0.0),
+                        'yspringtension={!s}_'.format(1.0),
+
+                        'zmax={!s}_'.format(pose_bone.ik_max_z),
+                        'zmin={!s}_'.format(pose_bone.ik_min_z),
+                        'zdamping={!s}_'.format(pose_bone.ik_stiffness_z),
+                        'zspringangle={!s}_'.format(0.0),
+                        'zspringtension={!s}_'.format(1.0)
+                    )
+
+        return props
 
     def __export_scene(self, parent_element):
-        # <scene> nothing really changes here or rather it doesn't need to.
         scene = self.__doc.createElement("scene")
-        ivs = self.__doc.createElement("instance_visual_scene")
-        ivs.setAttribute("url", "#scene")
-        scene.appendChild(ivs)
+        instance_visual_scene = self.__doc.createElement("instance_visual_scene")
+        instance_visual_scene.setAttribute("url", "#scene")
+        scene.appendChild(instance_visual_scene)
         parent_element.appendChild(scene)
 
 
 def write_to_file(config, doc, file_name, exe):
-    xml_string = doc.toprettyxml(indent="  ")
+    xml_string = doc.toprettyxml(indent="    ")
     file = open(file_name, "w")
     file.write(xml_string)
     file.close()
 
-    dae_file_for_rc = utils.get_absolute_path_for_rc(file_name)
-    rc_params = ["/verbose", "/threads=processors"]
-    rc_params.append("/refresh")
+    dae_path = utils.get_absolute_path_for_rc(file_name)
+    rc_params = ["/verbose", "/threads=processors", "/refresh"]
 
     if config.run_rc or config.do_materials:
         if config.do_materials:
             rc_params.append("/createmtl=1")
 
-        rc_process = utils.run_rc(exe, dae_file_for_rc, rc_params)
+        rc_process = utils.run_rc(exe, dae_path, rc_params)
 
         if rc_process is not None:
             rc_process.wait()
-            extension = "cgf"
-            if config.export_type == 'CGA & ANM':
-                extension = "cga"
-            elif config.export_type == 'CHR & CAF':
-                extension = "chr"
-            out_file = "{0}.{1}".format(dae_file_for_rc[:-4], extension)
-            args = [exe, "/refresh", out_file]
-            rc_second_pass = subprocess.Popen(args)
+            components = dae_path.split("\\")
+            name = components[len(components)-1]
+            output_path = dae_path[:-len(name)]
+            for group in utils.get_export_nodes():
+                node_type = utils.get_node_type(group.name)
+                allowed = {"cgf", "cga", "chr", "skin"}
+                if node_type in allowed:
+                    out_file = "{0}{1}".format(output_path,
+                                                group.name)
+                    args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
+                    rc_second_pass = subprocess.Popen(args)
+
 
         if config.do_materials:
             mtl_fix_thread = threading.Thread(
@@ -2060,7 +1234,7 @@ def make_layer(fname):
     # Layer Objects
     layerObjects = layerDoc.createElement("LayerObjects")
     # Actual Objects
-    for group in bpy.context.blend_data.groups:
+    for group in utils.get_export_nodes():
         if len(group.objects) > 1:
             origin = 0, 0, 0
             rotation = 1, 0, 0, 0
