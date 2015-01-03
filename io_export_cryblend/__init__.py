@@ -262,7 +262,7 @@ class SelectedToCryExportNodes(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
-        selected = bpy.context.selected_objects[:]
+        selected = bpy.context.selected_objects
         bpy.ops.object.select_all(action="DESELECT")
         for object_ in selected:
             object_.select = True

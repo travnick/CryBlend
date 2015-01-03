@@ -766,8 +766,8 @@ class CrytekDaeExporter:
                         location_exists = True
                     if curve.data_path == "rotation_euler":
                         rotation_exists = True
-                if location_exists and rotation_exists:
-                    break
+                    if location_exists and rotation_exists:
+                        break
 
         if location_exists:
             self.__export_instance_parameter(object_, animation_clip, "location")
