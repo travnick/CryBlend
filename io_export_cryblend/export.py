@@ -38,14 +38,14 @@ else:
     from io_export_cryblend import utils, exceptions
 
 from io_export_cryblend.dds_converter import DdsConverterRunner
-from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.outpipe import cbPrint
 from io_export_cryblend.utils import join
 
 from bpy_extras.io_utils import ExportHelper
 from datetime import datetime
 from mathutils import Matrix, Vector
 from time import clock
-from xml.dom.minidom import Document
+from xml.dom.minidom import Document, Element, parse, parseString
 import bmesh
 import copy
 import os
@@ -83,8 +83,7 @@ class CrytekDaeExporter:
                 'debug')
 
     def export(self):
-        # Ensure the correct extension for chosen path
-        filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
+        self.__prepare_for_export()
 
         root_element = self.__doc.createElement('collada')
         root_element.setAttribute("xmlns",
@@ -92,8 +91,6 @@ class CrytekDaeExporter:
         root_element.setAttribute("version", "1.4.1")
         self.__doc.appendChild(root_element)
         self.__create_file_header(root_element)
-
-        utils.clean_file()
 
         # Just here for future use:
         self.__export_library_cameras(root_element)
@@ -117,9 +114,21 @@ class CrytekDaeExporter:
 
         self.__export_scene(root_element)
 
+        filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
         write_to_file(self.__config,
                       self.__doc, filepath,
                       self.__config.rc_path)
+
+        write_scripts(self.__config, filepath)
+
+    def __prepare_for_export(self):
+        utils.clean_file()
+
+        if self.__config.apply_modifiers:
+            utils.apply_modifiers()
+
+        if self.__config.fix_weights:
+            utils.fix_weights()
 
     def __create_file_header(self, parent_element):
         # Attributes are x=y values inside a tag
@@ -215,7 +224,6 @@ class CrytekDaeExporter:
         converter = DdsConverterRunner(
                                 self.__config.rc_for_textures_conversion_path)
         converter.start_conversion(images_to_convert,
-                                   self.__config.refresh_rc,
                                    self.__config.save_tiff_during_conversion)
 
     def __export_library_effects(self, parent_element):
@@ -438,7 +446,7 @@ class CrytekDaeExporter:
                     float_normals.extend(normal)
 
             else:
-                if self.__config.avg_pface:
+                if self.__config.average_planar:
                     count = 1
                     nx = face.normal.x
                     ny = face.normal.y
@@ -506,11 +514,12 @@ class CrytekDaeExporter:
                         colors.append(face.color4[:])
 
                     for color in colors:
-                        float_colors.extend(color)
                         if color_layer.name.lower() == "alpha":
                             alpha_found = True
-                            red_value = color[0]
-                            float_colors.append(red_value)
+                            alpha = (color[0] + color[1] + color[2])/3
+                            float_colors.extend([1, 1, 1, alpha])
+                        else:
+                            float_colors.extend(color)
 
         if float_colors:
             id_ = "{!s}-colors".format(object_.name)
@@ -725,7 +734,7 @@ class CrytekDaeExporter:
         scene = bpy.context.scene
         for group in utils.get_export_nodes():
             node_type = utils.get_node_type(group.name)
-            allowed = ["cga", "anm", "caf"]
+            allowed = ["cga", "anm", "i_caf"]
             if node_type in allowed:
                 animation_clip = self.__doc.createElement("animation_clip")
                 node_name = utils.get_node_name(group.name)
@@ -912,6 +921,10 @@ class CrytekDaeExporter:
         parent_element.appendChild(current_element)
 
         if utils.get_export_nodes():
+            if utils.are_duplicate_nodes():
+                message = "Duplicate Node Names"
+                bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
+
             for group in utils.get_export_nodes():
                 self.__write_export_node(group, visual_scene)
         else:
@@ -1088,10 +1101,13 @@ class CrytekDaeExporter:
         properties = self.__doc.createElement("properties")
         if utils.is_export_node(node.name):
             node_type = utils.get_node_type(node.name)
-            allowed = {"cgf", "cga", "chr", "skin", "anm", "caf"}
+            allowed = {"cgf", "cga", "chr", "skin", "anm", "i_caf"}
             if node_type in allowed:
-                type_ = self.__doc.createTextNode("fileType={}".format(node_type))
-                properties.appendChild(type_)
+                prop = self.__doc.createTextNode("fileType={}".format(node_type))
+                properties.appendChild(prop)
+            if self.__config.donot_merge:
+                prop = self.__doc.createTextNode("DoNotMerge")
+                properties.appendChild(prop)
         else:
             if not node.rna_type.id_data.items():
                 return
@@ -1169,16 +1185,16 @@ class CrytekDaeExporter:
         parent_element.appendChild(scene)
 
 
-def write_to_file(config, doc, file_name, exe):
+def write_to_file(config, doc, filepath, exe):
     xml_string = doc.toprettyxml(indent="    ")
-    file = open(file_name, "w")
+    file = open(filepath, "w")
     file.write(xml_string)
     file.close()
 
-    dae_path = utils.get_absolute_path_for_rc(file_name)
+    dae_path = utils.get_absolute_path_for_rc(filepath)
     rc_params = ["/verbose", "/threads=processors", "/refresh"]
 
-    if config.run_rc or config.do_materials:
+    if not config.disable_rc:
         if config.do_materials:
             rc_params.append("/createmtl=1")
 
@@ -1198,20 +1214,51 @@ def write_to_file(config, doc, file_name, exe):
                     args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
                     rc_second_pass = subprocess.Popen(args)
 
-
         if config.do_materials:
             mtl_fix_thread = threading.Thread(
                 target=fix_normalmap_in_mtls,
-                args=(rc_process, file_name)
+                args=(rc_process, filepath)
             )
             mtl_fix_thread.start()
 
+    if not config.save_dae:
+        rcdone_path = "{}.rcdone".format(dae_path)
+        if os.path.exists(dae_path):
+            os.remove(dae_path)
+        if os.path.exists(rcdone_path):
+            os.remove(rcdone_path)
+
     if config.make_layer:
-        layer = make_layer(file_name)
-        lyr_file_name = os.path.splitext(file_name)[0] + ".lyr"
+        layer = make_layer(filepath)
+        lyr_file_name = os.path.splitext(filepath)[0] + ".lyr"
         file = open(lyr_file_name, 'w')
         file.write(layer)
         file.close()
+
+
+def write_scripts(config, filepath):
+    if not config.make_chrparams and not config.make_cdf:
+        return
+
+    dae_path = utils.get_absolute_path_for_rc(filepath)
+    components = dae_path.split("\\")
+    dae_name = components[len(components)-1]
+    output_path = dae_path[:-len(dae_name)]
+    chr_names = []
+    for group in utils.get_export_nodes():
+        if utils.get_node_type(group.name) == "chr":
+            chr_names.append(utils.get_node_name(group.name))
+
+    for chr_name in chr_names:
+        if config.make_chrparams:
+            script_path = "{}/{}.chrparams".format(output_path, chr_name)
+            contents = utils.generate_file_contents("chrparams")
+        if config.make_cdf:
+            script_path = "{}/{}.cdf".format(output_path, chr_name)
+            contents = utils.generate_file_contents("cdf")
+        script = parseString(contents)
+        contents = script.toprettyxml(indent="    ")
+        utils.generate_file(cdf_path, contents)
 
 
 def make_layer(fname):

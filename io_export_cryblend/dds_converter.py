@@ -19,7 +19,7 @@ else:
     import bpy
     from io_export_cryblend import utils
 
-from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.outpipe import cbPrint
 import os
 import shutil
 import threading
@@ -30,11 +30,11 @@ class DdsConverterRunner:
     def __init__(self, rc_exe):
         self.__rc_exe = rc_exe
 
-    def start_conversion(self, images_to_convert, refresh_rc, save_tiff):
+    def start_conversion(self, images_to_convert, save_tiff):
         converter = _DdsConverter(self.__rc_exe)
 
         conversion_thread = threading.Thread(
-            target=converter, args=(images_to_convert, refresh_rc, save_tiff)
+            target=converter, args=(images_to_convert, save_tiff)
         )
         conversion_thread.start()
 
@@ -47,10 +47,10 @@ class _DdsConverter:
         self.__tmp_images = {}
         self.__tmp_dir = tempfile.mkdtemp("CryBlend")
 
-    def __call__(self, images_to_convert, refresh_rc, save_tiff):
+    def __call__(self, images_to_convert, save_tiff):
 
         for image in images_to_convert:
-            rc_params = self.__get_rc_params(refresh_rc, image.filepath)
+            rc_params = self.__get_rc_params(image.filepath)
             tiff_image_path = self.__get_temp_tiff_image_path(image)
 
             tiff_image_for_rc = utils.get_absolute_path_for_rc(tiff_image_path)
@@ -89,10 +89,8 @@ class _DdsConverter:
             temp_normal_image.save_render(filepath=new_normal_image_path)
             bpy.data.images.remove(temp_normal_image)
 
-    def __get_rc_params(self, refresh_rc, destination_path):
-        rc_params = ["/verbose", "/threads=cores", "/userdialog=1"]
-        if refresh_rc:
-            rc_params.append("/refresh")
+    def __get_rc_params(self, destination_path):
+        rc_params = ["/verbose", "/threads=cores", "/userdialog=1", "/refresh"]
 
         image_directory = os.path.dirname(utils.get_absolute_path_for_rc(
                 destination_path))

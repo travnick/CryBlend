@@ -20,7 +20,7 @@ else:
     from io_export_cryblend import exceptions
 
 
-from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.outpipe import cbPrint
 from mathutils import Matrix, Vector
 from xml.dom.minidom import Document
 import bpy
@@ -288,7 +288,10 @@ def clean_file():
         material.name = replace_invalid_rc_characters(material.name)
     for node in get_type("nodes"):
         node.name = replace_invalid_rc_characters(node.name)
-        node.data.name = replace_invalid_rc_characters(node.data.name)
+        try:
+            node.data.name = replace_invalid_rc_characters(node.data.name)
+        except AttributeError:
+            pass
         if node.type == "ARMATURE":
             for bone in node.data.bones:
                 bone.name = replace_invalid_rc_characters(bone.name)
@@ -378,13 +381,13 @@ def __get_controllers():
 def __get_skins():
     items = []
     allowed = {"MESH"}
-    for object in get_type("nodes"):
+    for object_ in get_type("nodes"):
         if object_.type in allowed:
             if not ("_boneGeometry" in object_.name or
                     is_fakebone(object_)):
-                parent = object.parent
-                if parent.type == "ARMATURE":
-                    items.append(object_)
+                if object_.parent is not None:
+                    if object_.parent.type == "ARMATURE":
+                        items.append(object_)
 
     return items
 
@@ -534,13 +537,21 @@ def parent(children, parent):
 
 
 def is_export_node(nodename):
-    extensions = [".cgf", ".cga", ".chr", ".skin", ".anm", ".caf"]
+    extensions = [".cgf", ".cga", ".chr", ".skin", ".anm", ".i_caf"]
     for extension in extensions:
         if nodename.endswith(extension):
             return True
 
     return False
 
+
+def are_duplicate_nodes():
+    nodenames = []
+    for group in get_export_nodes():
+        nodenames.append(get_node_name(group.name))
+    unique_nodenames = set(nodenames)
+    if len(unique_nodenames) < len(nodenames):
+        return True
 
 def get_node_type(groupname):
     node_components = groupname.split(".")
@@ -550,6 +561,32 @@ def get_node_type(groupname):
 def get_node_name(groupname):
     node_type = get_node_type(groupname)
     return groupname[:-(len(node_type)+1)]
+
+
+def generate_file_contents(type_):
+    if type_ == "chrparams":
+        return """<Params>\
+<AnimationList>\
+<Animation name="???" path="???.caf"/>\
+</AnimationList>\
+</Params>"""
+
+    elif type_ == "cdf":
+        return """<CharacterDefinition>\
+<Model File="???.chr" Material="???"/>\
+<AttachmentList>\
+<Attachment Type="CA_BONE" AName="???" Rotation="1,0,0,0" Position="0,0,0" BoneName="???" Flags="0"/>\
+<Attachment Type="CA_SKIN" AName="???" Binding="???.skin" Flags="0"/>\
+</AttachmentList>\
+<ShapeDeformation COL0="0" COL1="0" COL2="0" COL3="0" COL4="0" COL5="0" COL6="0" COL7="0"/>\
+</CharacterDefinition>"""
+
+
+def generate_file(filepath, contents):
+    if not os.path.exists(filepath):
+        file = open(filepath, "w")
+        file.write(contents)
+        file.close()
 
 
 def get_armature_for_object(object_):
@@ -725,6 +762,48 @@ def count_root_bones(armature_object):
 def negate_z_axis_of_matrix(matrix_local):
     for i in range(0, 3):
         matrix_local[i][3] = -matrix_local[i][3]
+
+
+def fix_weights():
+    for object_ in get_type("skins"):
+        override = get_3d_context(object_)
+        try:
+            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+        except:
+            raise exceptions.CryBlendException("Please fix weightless vertices first.")
+    cbPrint("Weights Corrected.")
+
+
+def get_3d_context(object_):
+    window = bpy.context.window
+    screen = window.screen
+    for area in screen.areas:
+        if area.type == "VIEW_3D":
+            area3d = area
+            break
+    for region in area3d.regions:
+        if region.type == "WINDOW":
+            region3d = region
+            break
+    override = {
+        "window": window,
+        "screen": screen,
+        "area": area3d,
+        "region": region3d,
+        "object": object_
+    }
+
+    return override
+
+
+def apply_modifiers():
+    for object_ in bpy.data.objects:
+        for mod in object_.modifiers:
+            if mod.type != "ARMATURE":
+                try:
+                    bpy.ops.object.modifier_apply(modifier=mod.name)
+                except RuntimeError:
+                    pass
 
 
 def write_source(id_, type_, array, params, doc):
