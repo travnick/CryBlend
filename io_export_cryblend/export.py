@@ -1241,9 +1241,7 @@ def write_scripts(config, filepath):
         return
 
     dae_path = utils.get_absolute_path_for_rc(filepath)
-    components = dae_path.split("\\")
-    dae_name = components[len(components)-1]
-    output_path = dae_path[:-len(dae_name)]
+    output_path =  os.path.dirname(dae_path)
     chr_names = []
     for group in utils.get_export_nodes():
         if utils.get_node_type(group.name) == "chr":
@@ -1251,14 +1249,13 @@ def write_scripts(config, filepath):
 
     for chr_name in chr_names:
         if config.make_chrparams:
-            script_path = "{}/{}.chrparams".format(output_path, chr_name)
+            filepath = r"{}\{}.chrparams".format(output_path, chr_name)
             contents = utils.generate_file_contents("chrparams")
+            utils.generate_xml(filepath, contents)
         if config.make_cdf:
-            script_path = "{}/{}.cdf".format(output_path, chr_name)
+            filepath = r"{}\{}.cdf".format(output_path, chr_name)
             contents = utils.generate_file_contents("cdf")
-        script = parseString(contents)
-        contents = script.toprettyxml(indent="    ")
-        utils.generate_file(cdf_path, contents)
+            utils.generate_xml(filepath, contents)
 
 
 def make_layer(fname):

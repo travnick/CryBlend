@@ -381,8 +381,7 @@ be converted to the selected shape in CryEngine.'''
         if (active.type == "MESH"):
             already_exists = False
             for object_ in bpy.data.objects:
-                if (object_.name == "{0}_{1}-proxy".format(active.name, getattr(self, "type_")) or
-                        object_.name.endswith("-proxy")):
+                if utils.is_proxy(object_.name):
                     already_exists = True
                     break
             if (not already_exists):
@@ -392,6 +391,9 @@ be converted to the selected shape in CryEngine.'''
         self.report({'INFO'}, message)
         return {'FINISHED'}
 
+    def is_proxy(object_name):
+        return (object_name == "{0}_{1}-proxy".format(active.name, getattr(self, "type_"))
+                    or object_.name.endswith("-proxy"))
 
     def add_proxy(self, object_):
         old_origin = object_.location.copy()
@@ -409,7 +411,8 @@ be converted to the selected shape in CryEngine.'''
         for group in object_.users_group:
             bpy.ops.object.group_link(group=group.name)
 
-        proxy_material = bpy.data.materials.new("{0}_{1}-proxy__physProxyNone".format(object_.name, getattr(self, "type_")))
+        name = "{0}_{1}-proxy__physProxyNone".format(object_.name, getattr(self, "type_"))
+        proxy_material = bpy.data.materials.new(name)
         bound_box.data.materials.append(proxy_material)
 
         if (getattr(self, "type_") == "box"):

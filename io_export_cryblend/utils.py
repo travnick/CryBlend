@@ -22,7 +22,7 @@ else:
 
 from io_export_cryblend.outpipe import cbPrint
 from mathutils import Matrix, Vector
-from xml.dom.minidom import Document
+from xml.dom.minidom import Document, parseString
 import bpy
 import fnmatch
 import math
@@ -555,7 +555,7 @@ def are_duplicate_nodes():
 
 def get_node_type(groupname):
     node_components = groupname.split(".")
-    return node_components[len(node_components)-1]
+    return node_components[-1]
 
 
 def get_node_name(groupname):
@@ -587,6 +587,13 @@ def generate_file(filepath, contents):
         file = open(filepath, "w")
         file.write(contents)
         file.close()
+
+
+def generate_xml(filepath, contents):
+    if not os.path.exists(filepath):
+        script = parseString(contents)
+        contents = script.toprettyxml(indent="    ")
+        generate_file(filepath, contents)
 
 
 def get_armature_for_object(object_):
