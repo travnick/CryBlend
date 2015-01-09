@@ -392,8 +392,7 @@ be converted to the selected shape in CryEngine.'''
         return {'FINISHED'}
 
     def __is_proxy(self, object_name):
-        return (object_name.endswith("_{}-proxy".format(getattr(self, "type_")))
-                    or object_name.endswith("-proxy"))
+        return object_name.endswith("-proxy")
 
     def __add_proxy(self, object_):
         old_origin = object_.location.copy()
