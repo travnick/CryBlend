@@ -1249,11 +1249,11 @@ def write_scripts(config, filepath):
 
     for chr_name in chr_names:
         if config.make_chrparams:
-            filepath = r"{}\{}.chrparams".format(output_path, chr_name)
+            filepath = "{}/{}.chrparams".format(output_path, chr_name)
             contents = utils.generate_file_contents("chrparams")
             utils.generate_xml(filepath, contents)
         if config.make_cdf:
-            filepath = r"{}\{}.cdf".format(output_path, chr_name)
+            filepath = "{}/{}.cdf".format(output_path, chr_name)
             contents = utils.generate_file_contents("cdf")
             utils.generate_xml(filepath, contents)
 

@@ -381,28 +381,28 @@ be converted to the selected shape in CryEngine.'''
         if (active.type == "MESH"):
             already_exists = False
             for object_ in bpy.data.objects:
-                if utils.is_proxy(object_.name):
+                if self.__is_proxy(object_.name):
                     already_exists = True
                     break
             if (not already_exists):
-                self.add_proxy(active)
+                self.__add_proxy(active)
 
         message = "Adding %s proxy to active object" % getattr(self, "type_")
         self.report({'INFO'}, message)
         return {'FINISHED'}
 
-    def is_proxy(object_name):
-        return (object_name == "{0}_{1}-proxy".format(active.name, getattr(self, "type_"))
-                    or object_.name.endswith("-proxy"))
+    def __is_proxy(self, object_name):
+        return (object_name.endswith("_{}-proxy".format(getattr(self, "type_")))
+                    or object_name.endswith("-proxy"))
 
-    def add_proxy(self, object_):
+    def __add_proxy(self, object_):
         old_origin = object_.location.copy()
         old_cursor = bpy.context.scene.cursor_location.copy()
         bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
         bpy.ops.object.select_all(action="DESELECT")
         bpy.ops.mesh.primitive_cube_add()
         bound_box = bpy.context.active_object
-        bound_box.name = "{0}_{1}-proxy".format(object_.name, getattr(self, "type_"))
+        bound_box.name = "{}_{}-proxy".format(object_.name, getattr(self, "type_"))
         bound_box.draw_type = "WIRE"
         bound_box.dimensions = object_.dimensions
         bound_box.location = object_.location
@@ -411,7 +411,7 @@ be converted to the selected shape in CryEngine.'''
         for group in object_.users_group:
             bpy.ops.object.group_link(group=group.name)
 
-        name = "{0}_{1}-proxy__physProxyNone".format(object_.name, getattr(self, "type_"))
+        name = "{}__physProxyNone".format(bound_box.name)
         proxy_material = bpy.data.materials.new(name)
         bound_box.data.materials.append(proxy_material)
 
@@ -1748,6 +1748,12 @@ class CryUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
         col = layout.column(align=True)
 
+        col.label("Materials", icon="MATERIAL")
+        col.separator()
+        col.operator("material.set_material_names", text="Do Material Convention")
+        col.operator("material.remove_cry_blend_properties", text="Undo Material Convention")
+        col.separator()
+
         col.label("Add Physics Proxy", icon="ROTATE")
         col.separator()
         row = col.row(align=True)
@@ -1855,8 +1861,11 @@ class CryBlendMainMenu(bpy.types.Menu):
         # version number
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
-        layout.operator("object.add_cry_export_node", text="Add ExportNode", icon='GROUP')
+        layout.operator("object.add_cry_export_node", text="Add ExportNode", icon="GROUP")
         layout.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
+        layout.separator()
+        layout.operator("material.set_material_names", text="Do Material Convention", icon="MATERIAL")
+        layout.operator("material.remove_cry_blend_properties", text="Undo Material Convention")
         layout.separator()
         layout.operator("object.apply_transforms", text="Apply All Transforms", icon="MESH_DATA")
         layout.separator()
