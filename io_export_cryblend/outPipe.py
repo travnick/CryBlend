@@ -38,9 +38,9 @@ class OutPipe():
                                     format(message_type))
 
 
-outpipe = OutPipe()
+op = OutPipe()
 
 
 def cbPrint(msg, message_type='info'):
-    outpipe.pump(msg, message_type)
+    op.pump(msg, message_type)
 

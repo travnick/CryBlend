@@ -38,7 +38,7 @@ else:
     from io_export_cryblend import utils, exceptions
 
 from io_export_cryblend.dds_converter import DdsConverterRunner
-from io_export_cryblend.outpipe import cbPrint
+from io_export_cryblend.outPipe import cbPrint
 from io_export_cryblend.utils import join
 
 from bpy_extras.io_utils import ExportHelper

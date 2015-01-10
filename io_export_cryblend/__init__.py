@@ -63,7 +63,7 @@ from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
 from bpy.types import Menu, Panel
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.configuration import Configuration
-from io_export_cryblend.outpipe import cbPrint
+from io_export_cryblend.outPipe import cbPrint
 from xml.dom.minidom import Document, Element, parse, parseString
 import bmesh
 import bpy.ops

@@ -13,7 +13,7 @@
 
 
 import bpy
-from io_export_cryblend.outpipe import cbPrint
+from io_export_cryblend.outPipe import cbPrint
 import os
 import pickle
 

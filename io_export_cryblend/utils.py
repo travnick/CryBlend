@@ -20,7 +20,7 @@ else:
     from io_export_cryblend import exceptions
 
 
-from io_export_cryblend.outpipe import cbPrint
+from io_export_cryblend.outPipe import cbPrint
 from mathutils import Matrix, Vector
 from xml.dom.minidom import Document, parseString
 import bpy
