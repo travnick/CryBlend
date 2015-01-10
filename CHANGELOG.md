@@ -1,5 +1,47 @@
 # Changelog:
 
+## 5.0
+#### Compatibility:
+* Only compatible with CryEngine 3.5 and up.
+* Only compatible with Blender 2.7 and up.
+* Supports primary assets: CGF, CGA, CHR, SKIN, ANM, I_CAF.
+
+#### UI Changes:
+* Added new CryBlend tab using Blender 2.7 tabs UI.
+* Added new hotkey activated dropdown menu (SHIFT Q).
+* Added properties expandable menu.
+* Material physics UI added to Material Properties Tab.
+* Fakebones removed from UI.
+* AnimNodes removed.
+
+#### New Features:
+* Can now create CGF nodes from object names.
+* Added apply transforms tool.
+* Added automatic material naming tool.
+* Added basic proxy tool.
+* Added touch bending tools for adding and naming branches and branch joints.
+* Added root bone tool for quickly adding a root bone at the origin to any skeleton.
+* New generate scripts tool for generating base CHRPARAMS, CDF, ENT, and LUA files.
+* CryExportNodes now have a type which determines the type of node instead of on export.
+* Added DAE/RCDONE file toggle, apply modifiers, script generation, and fix weights options to export UI.
+
+#### Improvements/Fixes:
+* Export time significantly reduced.
+* Removed naming restrictions.
+* Repaired CHR pipeline.
+* Vertex alpha repaired?
+
+#### Code features:
+* Thorough code clean up, renamed variables, extracted methods, etc.
+* Heavily reworked export.py.
+* Sped up export time significantly by revising export of normals (specifically smooth shading).
+* Reduced what is printed to the console to reduce export time.
+* Reworked major functions, reworked animation export, and moved fakebones from UI to code.
+* Deleted obsolete file hbanim.py and increased usage of utils.py.
+* ExportNodes now use file extension of asset type instead of CryExportNode_ prefix.
+* Animations draw names from ExportNode of animation and frame range from the scene.
+* DAE files are now run once through RC and then CGF, CGA, CHR, and SKIN's are run through a second time (two passes).
+
 ## 4.13
 #### Features:
 * Improved find weightless vertices utility.
