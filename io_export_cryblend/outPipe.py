@@ -37,8 +37,10 @@ class OutPipe():
             raise exceptions.CryBlendException("No such message type {!r}".
                                     format(message_type))
 
-oP = OutPipe()
+
+outpipe = OutPipe()
 
 
 def cbPrint(msg, message_type='info'):
-    oP.pump(msg, message_type)
+    outpipe.pump(msg, message_type)
+

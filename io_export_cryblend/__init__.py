@@ -63,7 +63,7 @@ from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
 from bpy.types import Menu, Panel
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.configuration import Configuration
-from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.outpipe import cbPrint
 from xml.dom.minidom import Document, Element, parse, parseString
 import bmesh
 import bpy.ops
@@ -79,6 +79,9 @@ import subprocess
 # for help
 new = 2  # open in a new tab, if possible
 
+#------------------------------------------------------------------------------
+# Configurations
+#------------------------------------------------------------------------------
 
 class PathSelectTemplate(ExportHelper):
     check_existing = True
@@ -151,26 +154,6 @@ for textures in .mtl file.'''
         return ExportHelper.invoke(self, context, event)
 
 
-class MenuTemplate():
-    class Operator:
-        def __init__(self, name="", icon=''):
-            self.name = name
-            self.icon = icon
-
-    operators = None
-    label = None
-
-    def draw(self, context):
-        col = self.col
-
-        if self.label:
-            col.label(text=self.label)
-            col.separator()
-
-        for operator in self.operators:
-            col.operator(operator.name, icon=operator.icon)
-
-
 class SaveCryBlendConfiguration(bpy.types.Operator):
     '''operator: Saves current CryBlend configuration.'''
     bl_label = "Save Config File"
@@ -185,6 +168,9 @@ class SaveCryBlendConfiguration(bpy.types.Operator):
         Configuration.save()
         return {'FINISHED'}
 
+#------------------------------------------------------------------------------
+# Export Tools
+#------------------------------------------------------------------------------
 
 class AddCryExportNode(bpy.types.Operator):
     '''Add selected objects to an existing or new CryExportNode'''
@@ -192,40 +178,30 @@ class AddCryExportNode(bpy.types.Operator):
     bl_idname = "object.add_cry_export_node"
     bl_options = {"REGISTER", "UNDO"}
 
-    geometry = BoolProperty(default=False)
-    bpy.types.Scene.node_name = StringProperty(name="Name")
-    bpy.types.Scene.geometry_type = EnumProperty(
-            name="Type",
-            items=(
-                ("cgf", "CGF",
-                 "Static Geometry"),
-                ("chr", "CHR",
-                 "Character"),
-                ("skin", "SKIN",
-                 "Skinned Render Mesh")
-            ),
-            default="cgf",
+    node_type = EnumProperty(
+        name="Type",
+        items=(
+            ("cgf", "CGF",
+             "Static Geometry"),
+            ("cga", "CGA",
+             "Animated Geometry"),
+            ("chr", "CHR",
+             "Character"),
+            ("skin", "SKIN",
+             "Skinned Render Mesh"),
+            ("anm", "ANM",
+             "Geometry Animation"),
+            ("i_caf", "I_CAF",
+             "Character Animation"),
+        ),
+        default="cgf",
     )
-    bpy.types.Scene.animation_type = EnumProperty(
-            name="Type",
-            items=(
-                ("cga", "CGA",
-                 "Animated Geometry"),
-                ("anm", "ANM",
-                 "Geometry Animation"),
-                ("caf", "CAF",
-                 "Character Animation"),
-            ),
-            default="cga",
-    )
+    node_name = StringProperty(name="Name")
 
     def execute(self, context):
         if bpy.context.selected_objects:
             scene = bpy.context.scene
-            node_type = ("geometry_type" if getattr(self, "geometry") else "animation_type")
-            nodename = "{}.{}".format(getattr(scene, "node_name"),
-                                        getattr(scene, node_type))
-
+            nodename = "{}.{}".format(self.node_name, self.node_type)
             group = bpy.data.groups.get(nodename)
             if group is None:
                 bpy.ops.group.create(name=nodename)
@@ -233,7 +209,6 @@ class AddCryExportNode(bpy.types.Operator):
                 for object in bpy.context.selected_objects:
                     if object.name not in group.objects:
                         group.objects.link(object)
-
             message = "Adding Export Node"
         else:
             message = "No Objects Selected"
@@ -244,20 +219,10 @@ class AddCryExportNode(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
-    def draw(self, context):
-        scene = bpy.context.scene
-        layout = self.layout
-        col = layout.column()
-        row = col.row()
-        node_type = ("geometry_type" if getattr(self, "geometry") else "animation_type")
-        row.prop(scene, node_type, expand=True)
-        col.separator()
-        col.prop(scene, "node_name")
-
 
 class SelectedToCryExportNodes(bpy.types.Operator):
     '''Add selected objects to individual CryExportNodes.'''
-    bl_label = "Export Nodes from Objects"
+    bl_label = "Nodes from Object Names"
     bl_idname = "object.selected_to_cry_export_nodes"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -277,40 +242,12 @@ class SelectedToCryExportNodes(bpy.types.Operator):
         self.report({"INFO"}, message)
         return {"FINISHED"}
 
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
 
-class AddRootBone(bpy.types.Operator):
-    '''Click to add a root bone to the active armature.'''
-    bl_label = "Add Root Bone"
-    bl_idname = "armature.add_root_bone"
-
-    def execute(self, context):
-        active = bpy.context.active_object
-        if active is not None:
-            if active.type == "ARMATURE":
-                if utils.count_root_bones(active) == 1:
-                    root_bone = utils.get_root_bone(active)
-                    loc = root_bone.head
-                    if loc.x == 0 and loc.y == 0 and loc.z == 0:
-                        message = "Root bone already exists."
-                        self.report({'INFO'}, message)
-                        return {'FINISHED'}
-                message = "Adding root bone to armature."
-                old_mode = bpy.context.object.mode
-                bpy.ops.object.mode_set(mode="EDIT")
-                edit_bones = active.data.edit_bones
-                bpy.ops.armature.bone_primitive_add(name="root")
-                root_bone = edit_bones["root"]
-                bpy.ops.armature.select_all(action="DESELECT")
-                for edit_bone in edit_bones:
-                    if edit_bone.parent is None:
-                        edit_bone.parent = root_bone
-                bpy.ops.object.mode_set(mode="OBJECT")
-            else:
-                message = "Object is not an armature."
-        else:
-            message = "No Object Selected."
-        self.report({'INFO'}, message)
-        return {'FINISHED'}
+    def draw(self, context):
+        layout = self.layout
+        layout.label("Confirm...")
 
 
 class ApplyTransforms(bpy.types.Operator):
@@ -328,71 +265,9 @@ class ApplyTransforms(bpy.types.Operator):
         self.report({'INFO'}, message)
         return {'FINISHED'}
 
-
-class AddProxy(bpy.types.Operator):
-    '''Click to add proxy to selected mesh. The proxy will always display as a box but will \
-be converted to the selected shape in CryEngine.'''
-    bl_label = "Add Proxy"
-    bl_idname = "object.add_proxy"
-
-    type_ = StringProperty()
-
-    def execute(self, context):
-        active = bpy.context.active_object
-
-        if (active.type == "MESH"):
-            already_exists = False
-            for object_ in bpy.data.objects:
-                if (object_.name == "{0}_{1}-proxy".format(active.name, getattr(self, "type_")) or
-                        object_.name.endswith("-proxy")):
-                    already_exists = True
-                    break
-            if (not already_exists):
-                self.add_proxy(active)
-
-        message = "Adding %s proxy to active object" % getattr(self, "type_")
-        self.report({'INFO'}, message)
-        return {'FINISHED'}
-
-
-    def add_proxy(self, object_):
-        old_origin = object_.location.copy()
-        old_cursor = bpy.context.scene.cursor_location.copy()
-        bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
-        bpy.ops.object.select_all(action="DESELECT")
-        bpy.ops.mesh.primitive_cube_add()
-        bound_box = bpy.context.active_object
-        bound_box.name = "{0}_{1}-proxy".format(object_.name, getattr(self, "type_"))
-        bound_box.draw_type = "WIRE"
-        bound_box.dimensions = object_.dimensions
-        bound_box.location = object_.location
-        bound_box.rotation_euler = object_.rotation_euler
-
-        for group in object_.users_group:
-            bpy.ops.object.group_link(group=group.name)
-
-        proxy_material = bpy.data.materials.new("{0}_{1}-proxy__physProxyNone".format(object_.name, getattr(self, "type_")))
-        bound_box.data.materials.append(proxy_material)
-
-        if (getattr(self, "type_") == "box"):
-            bpy.ops.object.add_box_proxy_property()
-        elif (getattr(self, "type_") == "capsule"):
-            bpy.ops.object.add_capsule_proxy_property()
-        elif (getattr(self, "type_") == "cylinder"):
-            bpy.ops.object.add_cylinder_proxy_property()
-        else: # sphere proxy
-            bpy.ops.object.add_sphere_proxy_property()
-
-        bpy.context.scene.cursor_location = old_origin
-        bpy.ops.object.select_all(action="DESELECT")
-        object_.select = True
-        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
-        object_.select = False
-        bound_box.select = True
-        bpy.context.scene.objects.active = bound_box
-        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
-        bpy.context.scene.cursor_location = old_cursor
-
+#------------------------------------------------------------------------------
+# Material Tools
+#------------------------------------------------------------------------------
 
 class SetMaterialNames(bpy.types.Operator):
     '''Materials will be named after the first CryExportNode the Object is in.'''
@@ -488,39 +363,75 @@ def getMaterialPhysics():
             physicsProperties[properties["Name"]] = properties["Physics"]
     return physicsProperties
 
+#------------------------------------------------------------------------------
+# CryEngine-Related Tools
+#------------------------------------------------------------------------------
 
-class AddAnimNode(bpy.types.Operator):
-    '''Click to add an AnimNode to selection or, with nothing selected, \
-add an AnimNode to the scene.'''
-    bl_label = "Add AnimNode"
-    bl_idname = "object.add_anim_node"
-    animNameUserInput = StringProperty(name="Animation Name")
-    start_frame = FloatProperty(name="Start Frame")
-    end_frame = FloatProperty(name="End Frame")
+class AddProxy(bpy.types.Operator):
+    '''Click to add proxy to selected mesh. The proxy will always display as a box but will \
+be converted to the selected shape in CryEngine.'''
+    bl_label = "Add Proxy"
+    bl_idname = "object.add_proxy"
+
+    type_ = StringProperty()
 
     def execute(self, context):
-        object_ = bpy.context.active_object
+        active = bpy.context.active_object
 
-        # 'add' selects added object
-        bpy.ops.object.add(type='EMPTY')
-        empty_object = bpy.context.active_object
-        empty_object.name = 'animnode'
-        empty_object["animname"] = self.animNameUserInput
-        empty_object["startframe"] = self.start_frame
-        empty_object["endframe"] = self.end_frame
+        if (active.type == "MESH"):
+            already_exists = False
+            for object_ in bpy.data.objects:
+                if self.__is_proxy(object_.name):
+                    already_exists = True
+                    break
+            if (not already_exists):
+                self.__add_proxy(active)
 
-        if object_:
-            object_.select = True
-            bpy.context.scene.objects.active = object_
-
-        bpy.ops.object.parent_set(type='OBJECT')
-        message = "Adding AnimNode '%s'" % (self.animNameUserInput)
+        message = "Adding %s proxy to active object" % getattr(self, "type_")
         self.report({'INFO'}, message)
-        cbPrint(message)
         return {'FINISHED'}
 
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
+    def __is_proxy(self, object_name):
+        return object_name.endswith("-proxy")
+
+    def __add_proxy(self, object_):
+        old_origin = object_.location.copy()
+        old_cursor = bpy.context.scene.cursor_location.copy()
+        bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
+        bpy.ops.object.select_all(action="DESELECT")
+        bpy.ops.mesh.primitive_cube_add()
+        bound_box = bpy.context.active_object
+        bound_box.name = "{}_{}-proxy".format(object_.name, getattr(self, "type_"))
+        bound_box.draw_type = "WIRE"
+        bound_box.dimensions = object_.dimensions
+        bound_box.location = object_.location
+        bound_box.rotation_euler = object_.rotation_euler
+
+        for group in object_.users_group:
+            bpy.ops.object.group_link(group=group.name)
+
+        name = "{}__physProxyNone".format(bound_box.name)
+        proxy_material = bpy.data.materials.new(name)
+        bound_box.data.materials.append(proxy_material)
+
+        if (getattr(self, "type_") == "box"):
+            bpy.ops.object.add_box_proxy_property()
+        elif (getattr(self, "type_") == "capsule"):
+            bpy.ops.object.add_capsule_proxy_property()
+        elif (getattr(self, "type_") == "cylinder"):
+            bpy.ops.object.add_cylinder_proxy_property()
+        else: # sphere proxy
+            bpy.ops.object.add_sphere_proxy_property()
+
+        bpy.context.scene.cursor_location = old_origin
+        bpy.ops.object.select_all(action="DESELECT")
+        object_.select = True
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        object_.select = False
+        bound_box.select = True
+        bpy.context.scene.objects.active = bound_box
+        bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        bpy.context.scene.cursor_location = old_cursor
 
 
 class AddBreakableJoint(bpy.types.Operator):
@@ -605,64 +516,9 @@ def name_branch(is_new_branch):
     else:
         return "branch1_1"
 
-
-class OpenCryDevWebpage(bpy.types.Operator):
-    '''A link to the CryDev forums.'''
-    bl_label = "Visit CryDev Forums"
-    bl_idname = "file.open_crydev_webpage"
-
-    def execute(self, context):
-        url = "http://www.crydev.net/viewtopic.php?f=315&t=103136"
-        webbrowser.open(url, new=new)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
-
-
-class OpenGitHubWebpage(bpy.types.Operator):
-    '''A link to the CryBlend Tutorial Wiki'''
-    bl_label = "Visit CryBlend Tutorial Wiki"
-    bl_idname = "file.open_github_webpage"
-
-    def execute(self, context):
-        url = "https://github.com/travnick/CryBlend/wiki/users-area"
-        webbrowser.open(url, new=new)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
-
-
-class OpenCryEngineDocsWebpage(bpy.types.Operator):
-    '''A link to the CryEngine Docs Page.'''
-    bl_label = "Visit CryEngine Docs Page"
-    bl_idname = "file.open_cryengine_docs_webpage"
-
-    def execute(self, context):
-        url = "http://docs.cryengine.com/display/SDKDOC1/Home"
-        webbrowser.open(url, new=new)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
-
-
 #------------------------------------------------------------------------------
-# CryEngine User
-# Defined Properties:
+# CryEngine User-Defined Properties
 #------------------------------------------------------------------------------
-
-
-class OpenUDPWebpage(bpy.types.Operator):
-    '''A link to UDP.'''
-    bl_label = "Open Web Page for UDP"
-    bl_idname = "file.open_udp_webpage"
-
-    def execute(self, context):
-        url = "http://freesdk.crydev.net/display/SDKDOC3/UDP+Settings"
-        webbrowser.open(url, new=new)
-        self.report({'INFO'}, self.message)
-        cbPrint(self.message)
-        return {'FINISHED'}
-
 
 # Rendermesh:
 class AddMassProperty(bpy.types.Operator):
@@ -1082,8 +938,10 @@ class FixWheelTransforms(bpy.types.Operator):
 
         return {'FINISHED'}
 
+#------------------------------------------------------------------------------
+# Material Physics
+#------------------------------------------------------------------------------
 
-# Material Physics:
 class AddMaterialPhysDefault(bpy.types.Operator):
     '''__physDefault will be added to the material name.'''
     bl_label = "__physDefault"
@@ -1140,12 +998,9 @@ class AddMaterialPhysNoCollide(bpy.types.Operator):
         cbPrint(message)
         return add.add_phys_no_collide(self, context)
 
-
 #------------------------------------------------------------------------------
-# Mesh and Weight
-# Repair Tools:
+# Mesh Repair Tools
 #------------------------------------------------------------------------------
-
 
 class FindDegenerateFaces(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in \
@@ -1205,11 +1060,7 @@ it's mesh before running this.'''
     def execute(self, context):
         me = bpy.context.active_object
         vert_list = [vert for vert in me.data.vertices]
-        # bpy.ops.object.mode_set(mode='EDIT')
         context.tool_settings.mesh_select_mode = (True, False, False)
-        # bpy.ops.mesh.select_all(
-        #     {'object':me, 'active_object':me, 'edit_object':me},
-        #     action='DESELECT')
         bpy.ops.object.mode_set(mode='OBJECT')
         cbPrint("Locating degenerate faces.")
         for i in me.data.edges:
@@ -1317,11 +1168,43 @@ class AddUVTexture(bpy.types.Operator):
                         cbPrint(message)
             return {'FINISHED'}
 
+#------------------------------------------------------------------------------
+# Bone Utilities
+#------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------
-# Regarding Bone
-# Physics
-#------------------------------------------------------------------------------
+class AddRootBone(bpy.types.Operator):
+    '''Click to add a root bone to the active armature.'''
+    bl_label = "Add Root Bone"
+    bl_idname = "armature.add_root_bone"
+
+    def execute(self, context):
+        active = bpy.context.active_object
+        if active is not None:
+            if active.type == "ARMATURE":
+                if utils.count_root_bones(active) == 1:
+                    root_bone = utils.get_root_bone(active)
+                    loc = root_bone.head
+                    if loc.x == 0 and loc.y == 0 and loc.z == 0:
+                        message = "Root bone already exists."
+                        self.report({'INFO'}, message)
+                        return {'FINISHED'}
+                message = "Adding root bone to armature."
+                old_mode = bpy.context.object.mode
+                bpy.ops.object.mode_set(mode="EDIT")
+                edit_bones = active.data.edit_bones
+                bpy.ops.armature.bone_primitive_add(name="root")
+                root_bone = edit_bones["root"]
+                bpy.ops.armature.select_all(action="DESELECT")
+                for edit_bone in edit_bones:
+                    if edit_bone.parent is None:
+                        edit_bone.parent = root_bone
+                bpy.ops.object.mode_set(mode="OBJECT")
+            else:
+                message = "Object is not an armature."
+        else:
+            message = "No Object Selected."
+        self.report({'INFO'}, message)
+        return {'FINISHED'}
 
 
 class AddBoneGeometry(bpy.types.Operator):
@@ -1494,187 +1377,9 @@ class RenamePhysBones(bpy.types.Operator):
 
         return {'FINISHED'}
 
-
-class Export(bpy.types.Operator, ExportHelper):
-    '''Select to export to game.'''
-    bl_label = "Export to Game"
-    bl_idname = "scene.export_to_game"
-    filename_ext = ".dae"
-    filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
-
-    donot_merge = BoolProperty(
-            name="Do Not Merge Nodes",
-            description="Generally a good idea.",
-            default=True,
-            )
-    avg_pface = BoolProperty(
-            name="Average Planar Face Normals",
-            description="Help align face normals that have normals that are within 1 degree.",
-            default=False,
-            )
-    run_rc = BoolProperty(
-            name="Run RC",
-            description="Generally a good idea.",
-            default=True,
-            )
-    do_materials = BoolProperty(
-            name="Do Materials",
-            description="Generally a good idea.",
-            default=False,
-            )
-    convert_source_image_to_dds = BoolProperty(
-            name="Convert Textures to DDS",
-            description="Converts source textures to DDS while exporting materials.",
-            default=False,
-            )
-    save_tiff_during_conversion = BoolProperty(
-            name="Save TIFF During Conversion",
-            description="Saves TIFF images that are generated during conversion to DDS.",
-            default=False,
-            )
-    refresh_rc = BoolProperty(
-            name="Refresh RC Output",
-            description="Generally a good idea.",
-            default=True,
-            )
-    include_ik = BoolProperty(
-            name="Include IK in Character",
-            description="Adds IK from your skeleton to the phys skeleton upon export.",
-            default=False,
-            )
-    correct_weight = BoolProperty(
-            name="Correct Weights",
-            description="For use with .chr files.",
-            default=False,
-            )
-    make_layer = BoolProperty(
-            name="Make .lyr File",
-            description="Makes a .lyr to reassemble your scene in the CryEngine 3.",
-            default=False,
-            )
-    run_in_profiler = BoolProperty(
-            name="Profile CryBlend",
-            description="Select only if you want to profile CryBlend.",
-            default=False,
-            )
-
-    class Config:
-        def __init__(self, config):
-            attributes = (
-                'filepath',
-                'donot_merge',
-                'avg_pface',
-                'run_rc',
-                'do_materials',
-                'convert_source_image_to_dds',
-                'save_tiff_during_conversion',
-                'refresh_rc',
-                'include_ik',
-                'correct_weight',
-                'make_layer'
-            )
-
-            for attribute in attributes:
-                setattr(self, attribute, getattr(config, attribute))
-
-            setattr(self, 'cryblend_version', VERSION)
-            setattr(self, 'rc_path', Configuration.rc_path)
-            setattr(self, 'rc_for_textures_conversion_path',
-                    Configuration.rc_for_texture_conversion_path)
-            setattr(self, 'textures_dir', Configuration.textures_directory)
-
-    def execute(self, context):
-        cbPrint(Configuration.rc_path, 'debug')
-        try:
-            config = Export.Config(config=self)
-
-            if self.run_in_profiler:
-                import cProfile
-                cProfile.runctx('export.save(config)', {},
-                                {'export': export, 'config': config})
-            else:
-                export.save(config)
-
-            self.filepath = '//'
-
-        except exceptions.CryBlendException as exception:
-            cbPrint(exception.what(), 'error')
-            bpy.ops.screen.display_error('INVOKE_DEFAULT', message=exception.what())
-
-        return {'FINISHED'}
-
-    def draw(self, context):
-        layout = self.layout
-        col = layout.column()
-
-        box = col.box()
-        box.label("General")
-        box.prop(self, "donot_merge")
-        box.prop(self, "avg_pface")
-
-        box = col.box()
-        box.prop(self, "run_rc")
-        box.prop(self, "refresh_rc")
-
-        box = col.box()
-        box.label("Image and Material")
-        box.prop(self, "do_materials")
-        box.prop(self, "convert_source_image_to_dds")
-        box.prop(self, "save_tiff_during_conversion")
-
-        box = col.box()
-        box.label("Animation")
-        box.prop(self, "include_ik")
-
-        box = col.box()
-        box.label("Weight Correction")
-        box.prop(self, "correct_weight")
-
-        box = col.box()
-        box.label("CryEngine Editor")
-        box.prop(self, "make_layer")
-
-        box = col.box()
-        box.label("Developer Tools")
-        box.prop(self, "run_in_profiler")
-
-
-class ErrorHandler(bpy.types.Operator):
-    bl_label = "Error:"
-    bl_idname = "screen.display_error"
-
-    WIDTH = 400
-    HEIGHT = 200
-
-    message = bpy.props.StringProperty()
-
-    def execute(self, context):
-        self.report({'ERROR'}, self.message)
-        return {'FINISHED'}
-
-    def invoke(self, context, event):
-        wm = context.window_manager
-        return wm.invoke_popup(self, self.WIDTH, self.HEIGHT)
-
-    def draw(self, context):
-        self.col.label(self.bl_label, icon='ERROR')
-        self.col.split()
-        multiline_label(self.col, self.message)
-        self.col.split()
-        self.col.split(0.2)
-
-
-def multiline_label(col, text):
-    for line in text.splitlines():
-        row = col.split()
-        row.label(line)
-
-
 #------------------------------------------------------------------------------
-# Scripting
-# Module:
+# Scripting Module
 #------------------------------------------------------------------------------
-
 
 class SelectScriptEditor(bpy.types.Operator, PathSelectTemplate):
     '''Select a text editor of your choice to open scripts (i.e., notepad++.exe)'''
@@ -1802,12 +1507,204 @@ This will be used as the default program for opening scripts."
             except:
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
 
-
 #------------------------------------------------------------------------------
-# CryBlend
-# Interface:
+# Export Handler
 #------------------------------------------------------------------------------
 
+class Export(bpy.types.Operator, ExportHelper):
+    '''Select to export to game.'''
+    bl_label = "Export to Game"
+    bl_idname = "scene.export_to_game"
+    filename_ext = ".dae"
+    filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
+
+    apply_modifiers = BoolProperty(
+            name="Apply Modifiers",
+            description="Apply all modifiers before exporting.",
+            default=True,
+            )
+    donot_merge = BoolProperty(
+            name="Do Not Merge Nodes",
+            description="Generally a good idea.",
+            default=True,
+            )
+    do_materials = BoolProperty(
+            name="Do Materials",
+            description="Create MTL files for materials.",
+            default=True,
+            )
+    convert_source_image_to_dds = BoolProperty(
+            name="Convert Textures to DDS",
+            description="Converts source textures to DDS while exporting materials.",
+            default=False,
+            )
+    save_tiff_during_conversion = BoolProperty(
+            name="Save TIFF During Conversion",
+            description="Saves TIFF images that are generated during conversion to DDS.",
+            default=False,
+            )
+    make_chrparams = BoolProperty(
+            name="Make CHRPARAMS File",
+            description="Create a base CHRPARAMS file for character animations.",
+            default=False,
+            )
+    make_cdf = BoolProperty(
+            name="Make CDF File",
+            description="Create a base CDF file for character attachments.",
+            default=False,
+            )
+    include_ik = BoolProperty(
+            name="Include IK in Character",
+            description="Add IK to the physics skeleton upon export.",
+            default=False,
+            )
+    fix_weights = BoolProperty(
+            name="Fix Weights",
+            description="For use with .chr files. Generally a good idea.",
+            default=True,
+            )
+    average_planar = BoolProperty(
+            name="Average Planar Face Normals",
+            description="Align face normals within 1 degree of each other.",
+            default=False,
+            )
+    make_layer = BoolProperty(
+            name="Make LYR File",
+            description="Makes a LYR to reassemble your scene in CryEngine.",
+            default=False,
+            )
+    disable_rc = BoolProperty(
+            name="Disable RC",
+            description="Do not run the resource compiler.",
+            default=False,
+            )
+    save_dae = BoolProperty(
+            name="Save DAE File",
+            description="Save the DAE file for developing purposes.",
+            default=False,
+            )
+    run_in_profiler = BoolProperty(
+            name="Profile CryBlend",
+            description="Select only if you want to profile CryBlend.",
+            default=False,
+            )
+
+    class Config:
+        def __init__(self, config):
+            attributes = (
+                'filepath',
+                'apply_modifiers',
+                'donot_merge',
+                'do_materials',
+                'convert_source_image_to_dds',
+                'save_tiff_during_conversion',
+                'make_chrparams',
+                'make_cdf',
+                'include_ik',
+                'fix_weights',
+                'average_planar',
+                'make_layer',
+                'disable_rc',
+                'save_dae',
+                'run_in_profiler'
+            )
+
+            for attribute in attributes:
+                setattr(self, attribute, getattr(config, attribute))
+
+            setattr(self, 'cryblend_version', VERSION)
+            setattr(self, 'rc_path', Configuration.rc_path)
+            setattr(self, 'rc_for_textures_conversion_path',
+                    Configuration.rc_for_texture_conversion_path)
+            setattr(self, 'textures_dir', Configuration.textures_directory)
+
+    def execute(self, context):
+        cbPrint(Configuration.rc_path, 'debug')
+        try:
+            config = Export.Config(config=self)
+
+            if self.run_in_profiler:
+                import cProfile
+                cProfile.runctx('export.save(config)', {},
+                                {'export': export, 'config': config})
+            else:
+                export.save(config)
+
+            self.filepath = '//'
+
+        except exceptions.CryBlendException as exception:
+            cbPrint(exception.what(), 'error')
+            bpy.ops.screen.display_error('INVOKE_DEFAULT', message=exception.what())
+
+        return {'FINISHED'}
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+
+        box = col.box()
+        box.label("General", icon="WORLD")
+        box.prop(self, "apply_modifiers")
+        box.prop(self, "donot_merge")
+
+        box = col.box()
+        box.label("Image and Material", icon="TEXTURE")
+        box.prop(self, "do_materials")
+        box.prop(self, "convert_source_image_to_dds")
+        box.prop(self, "save_tiff_during_conversion")
+
+        box = col.box()
+        box.label("Character", icon="ARMATURE_DATA")
+        box.prop(self, "make_chrparams")
+        box.prop(self, "make_cdf")
+        box.prop(self, "include_ik")
+
+        box = col.box()
+        box.label("Corrective", icon="BRUSH_DATA")
+        box.prop(self, "fix_weights")
+        box.prop(self, "average_planar")
+
+        box = col.box()
+        box.label("CryEngine Editor", icon="OOPS")
+        box.prop(self, "make_layer")
+
+        box = col.box()
+        box.label("Developer Tools", icon="MODIFIER")
+        box.prop(self, "disable_rc")
+        box.prop(self, "save_dae")
+        box.prop(self, "run_in_profiler")
+
+
+class ErrorHandler(bpy.types.Operator):
+    bl_label = "Error:"
+    bl_idname = "screen.display_error"
+
+    message = bpy.props.StringProperty()
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        col.label(self.bl_label, icon='ERROR')
+        col.split()
+        multiline_label(col, self.message)
+        col.split()
+        col.split(0.2)
+
+
+def multiline_label(col, text):
+    for line in text.splitlines():
+        row = col.split()
+        row.label(line)
+
+#------------------------------------------------------------------------------
+# CryBlend Tab
+#------------------------------------------------------------------------------
 
 class PropPanel():
     bl_space_type = "PROPERTIES"
@@ -1826,60 +1723,6 @@ class View3DPanel():
     bl_region_type = "TOOLS"
     bl_category = "CryBlend"
 
- 
-class CryBlendPanel(PropPanel, Panel): 
-    bl_label = "CryBlend" 
-
-    def draw(self, context): 
-        layout = self.layout 
-
-        col = layout.column(align=True) 
-        col.label(text="Configuration Paths", icon="SCRIPT") 
-        col.separator() 
-        row = col.row(align=True) 
-        row.operator("file.find_rc", text="Find RC") 
-        row.operator("file.find_rc_for_texture_conversion", text="Find Texture RC") 
-        row = col.row(align=True) 
-        row.operator("file.select_textures_directory", text="Select Textures Folder") 
-        col.separator() 
-        col.operator("scene.export_to_game", icon="GAME") 
-
-
-class AddPhysicsProxyMenu(bpy.types.Menu):
-    bl_label = "Add Physics Proxy"
-    bl_idname = "menu.add_physics_proxy"
-
-    def draw(self, context):
-        layout = self.layout
-
-        add_box_proxy = layout.operator("object.add_proxy", text="Box", icon="META_CUBE")
-        add_box_proxy.type = "box"
-        add_capsule_proxy = layout.operator("object.add_proxy", text="Capsule", icon="META_ELLIPSOID")
-        add_capsule_proxy.type = "capsule"
-        add_cylinder_proxy = layout.operator("object.add_proxy", text="Cylinder", icon="META_CAPSULE")
-        add_cylinder_proxy.type = "cylinder"
-        add_sphere_proxy = layout.operator("object.add_proxy", text="Sphere", icon="META_BALL")
-        add_sphere_proxy.type = "sphere"
-
-
-class MeshRepairToolsMenu(bpy.types.Menu):
-    bl_label = "Weight Paint Repair"
-    bl_idname = "menu.weight_paint_repair"
-
-    def draw(self, context):
-        layout = self.layout
-
-        col = layout.column(align=True)
-        col.label(text="Configuration Paths", icon="SCRIPT")
-        col.separator()
-        row = col.row(align=True)
-        row.operator("file.find_rc", text="Find RC")
-        row.operator("file.find_rc_for_texture_conversion", text="Find Texture RC")
-        row = col.row(align=True)
-        row.operator("file.select_textures_directory", text="Select Textures Folder")
-        col.separator()
-        col.operator("scene.export_to_game", icon="GAME")
-
 
 class ExportUtilitiesPanel(View3DPanel, Panel):
     bl_label = "Export Utilities"
@@ -1888,15 +1731,12 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
 
         col = layout.column(align=True)
-        col.label("Add Export Node:", icon="GROUP")
+        col.label("ExportNodes", icon="GROUP")
         col.separator()
         row = col.row(align=True)
-        add_node = row.operator("object.add_cry_export_node", text="Geometry")
-        add_node.geometry = True
-        row.operator("object.add_cry_export_node", text="Animation")
-        col.operator("object.selected_to_cry_export_nodes", text="Nodes from Object Names")
+        row.operator("object.add_cry_export_node", text="Add ExportNode")
+        col.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
         col.separator()
-        col.operator("armature.add_root_bone", text="Add Root Bone")
         col.operator("object.apply_transforms", text="Apply All Transforms")
 
 
@@ -1907,10 +1747,10 @@ class CryUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
         col = layout.column(align=True)
 
-        col.label("Materials:", icon="MATERIAL")
+        col.label("Materials", icon="MATERIAL")
         col.separator()
-        col.operator("material.set_material_names", text="Update Material Names")
-        col.operator("material.remove_cry_blend_properties", text="Remove Material Properties")
+        col.operator("material.set_material_names", text="Do Material Convention")
+        col.operator("material.remove_cry_blend_properties", text="Undo Material Convention")
         col.separator()
 
         col.label("Add Physics Proxy", icon="ROTATE")
@@ -1930,27 +1770,31 @@ class CryUtilitiesPanel(View3DPanel, Panel):
 
         col.label("Breakables:", icon="PARTICLES")
         col.separator()
-        col.operator("object.add_joint")
+        col.operator("object.add_joint", text="Add Joint")
         col.separator()
 
-        col.label("Touch-Bending:", icon="MOD_SIMPLEDEFORM")
+        col.label("Touch Bending:", icon="OUTLINER_OB_EMPTY")
         col.separator()
-        col.operator("mesh.add_branch")
-        col.operator("mesh.add_branch_joint")
+        col.operator("mesh.add_branch", text="Add Branch")
+        col.operator("mesh.add_branch_joint", text="Add Branch Joint")
 
 
-class BonePhysicsPanel(View3DPanel, Panel):
-    bl_label = "Bone Physics"
+class BoneUtilitiesPanel(View3DPanel, Panel):
+    bl_label = "Bone Utilities"
 
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
 
-        col.label(text="Physics", icon="PHYSICS")
+        col.label("Skeleton", icon="BONE_DATA")
         col.separator()
-        col.operator("armature.add_bone_geometry")
-        col.operator("armature.remove_bone_geometry")
-        col.operator("armature.rename_phys_bones")
+        col.operator("armature.add_root_bone", text="Add Root Bone")
+        col.separator()
+        col.label("Physics", icon="PHYSICS")
+        col.separator()
+        col.operator("armature.add_bone_geometry", text="Add BoneGeometry")
+        col.operator("armature.remove_bone_geometry", text="Remove BoneGeometry")
+        col.operator("armature.rename_phys_bones", text="Rename Phys Bones")
 
 
 class MeshUtilitiesPanel(View3DPanel, Panel):
@@ -1985,22 +1829,26 @@ class CustomPropertiesPanel(View3DPanel, Panel):
         layout = self.layout
 
         layout.label("Properties:", icon="SCRIPT")
-        layout.menu("menu.add_property")
+        layout.menu("menu.add_property", text="Add Property")
 
 
-class HelpPanel(View3DPanel, Panel):
-    bl_label = "Help"
+class ConfigurationsPanel(View3DPanel, Panel):
+    bl_label = "Configurations"
 
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
 
-        col.label(text="Resources", icon='QUESTION')
+        col.label("Configure", icon="NEWFOLDER")
         col.separator()
-        col.operator("file.open_crydev_webpage", text = "CryDev Forums")
-        col.operator("file.open_github_webpage", text = "CryBlend Wiki")
-        col.operator("file.open_cryengine_docs_webpage", text = "CryEngine Docs")
+        col.operator("file.find_rc", text="Find RC")
+        col.operator("file.find_rc_for_texture_conversion", text="Find Texture RC")
+        col.separator()
+        col.operator("file.select_textures_directory", text="Select Textures Folder")
 
+#------------------------------------------------------------------------------
+# CryBlend Menus
+#------------------------------------------------------------------------------
 
 class CryBlendMainMenu(bpy.types.Menu):
     bl_label = 'CryBlend'
@@ -2012,17 +1860,18 @@ class CryBlendMainMenu(bpy.types.Menu):
         # version number
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
-        layout.operator("object.add_cry_export_node", text="Add ExportNode", icon='GROUP')
+        layout.operator("object.add_cry_export_node", text="Add ExportNode", icon="GROUP")
         layout.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
         layout.separator()
-
-        layout.operator("material.set_material_names", text="Update Material Names", icon="MATERIAL")
-        layout.operator("material.remove_cry_blend_properties", text="Remove Material Properties")
+        layout.operator("material.set_material_names", text="Do Material Convention", icon="MATERIAL")
+        layout.operator("material.remove_cry_blend_properties", text="Undo Material Convention")
+        layout.separator()
+        layout.operator("object.apply_transforms", text="Apply All Transforms", icon="MESH_DATA")
         layout.separator()
 
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
         layout.separator()
-        layout.menu(BonePhysicsMenu.bl_idname, icon='BONE_DATA')
+        layout.menu(BoneUtilitiesMenu.bl_idname, icon='BONE_DATA')
         layout.separator()
         layout.menu(BreakablesMenu.bl_idname, icon='PARTICLES')
         layout.separator()
@@ -2034,20 +1883,46 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.separator()
         layout.menu(GenerateScriptMenu.bl_idname, icon='TEXT')
         layout.separator()
-        layout.menu(HelpMenu.bl_idname, icon='QUESTION')
+        layout.menu(ConfigurationsMenu.bl_idname, icon='NEWFOLDER')
+
+        layout.separator()
+        layout.separator()
+        layout.operator("scene.export_to_game", icon="GAME")
 
 
-class BonePhysicsMenu(bpy.types.Menu):
-    bl_label = "Bone Physics"
+class AddPhysicsProxyMenu(bpy.types.Menu):
+    bl_label = "Add Physics Proxy"
+    bl_idname = "menu.add_physics_proxy"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.label("Proxies")
+        add_box_proxy = layout.operator("object.add_proxy", text="Box", icon="META_CUBE")
+        add_box_proxy.type_ = "box"
+        add_capsule_proxy = layout.operator("object.add_proxy", text="Capsule", icon="META_ELLIPSOID")
+        add_capsule_proxy.type_ = "capsule"
+        add_cylinder_proxy = layout.operator("object.add_proxy", text="Cylinder", icon="META_CAPSULE")
+        add_cylinder_proxy.type_ = "cylinder"
+        add_sphere_proxy = layout.operator("object.add_proxy", text="Sphere", icon="META_BALL")
+        add_sphere_proxy.type_ = "sphere"
+
+
+class BoneUtilitiesMenu(bpy.types.Menu):
+    bl_label = "Bone Utilities"
     bl_idname = "view3d.bone_utilities"
 
     def draw(self, context):
         layout = self.layout
 
+        layout.label(text="Skeleton")
+        layout.operator("armature.add_root_bone", text="Add Root Bone", icon="BONE_DATA")
+        layout.separator()
+
         layout.label(text="Physics")
-        layout.operator("armature.add_bone_geometry", icon="PHYSICS")
-        layout.operator("armature.remove_bone_geometry", icon="PHYSICS")
-        layout.operator("armature.rename_phys_bones", icon="PHYSICS")
+        layout.operator("armature.add_bone_geometry", text="Add BoneGeometry", icon="PHYSICS")
+        layout.operator("armature.remove_bone_geometry", text="Remove BoneGeometry", icon="PHYSICS")
+        layout.operator("armature.rename_phys_bones", text="Rename Phys Bones", icon="PHYSICS")
 
 
 class BreakablesMenu(bpy.types.Menu):
@@ -2057,8 +1932,8 @@ class BreakablesMenu(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.label(text="Add")
-        layout.operator("object.add_joint", icon="PROP_ON")
+        layout.label(text="Breakables")
+        layout.operator("object.add_joint", text="Add Joint", icon="PROP_ON")
 
 
 class TouchBendingMenu(bpy.types.Menu):
@@ -2068,9 +1943,9 @@ class TouchBendingMenu(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.label(text="Nodes")
-        layout.operator("mesh.add_branch", icon='MOD_SIMPLEDEFORM')
-        layout.operator("mesh.add_branch_joint", icon='EMPTY_DATA')
+        layout.label(text="Touch Bending")
+        layout.operator("mesh.add_branch", text="Add Branch", icon='MOD_SIMPLEDEFORM')
+        layout.operator("mesh.add_branch_joint", text="Add Branch Joint", icon='EMPTY_DATA')
 
 
 class MeshUtilitiesMenu(bpy.types.Menu):
@@ -2180,17 +2055,18 @@ class GenerateScriptMenu(bpy.types.Menu):
         layout.operator("file.select_script_editor", icon="TEXT")
 
 
-class HelpMenu(bpy.types.Menu):
-    bl_label = "Help"
-    bl_idname = "view3d.help"
+class ConfigurationsMenu(bpy.types.Menu):
+    bl_label = "Configurations"
+    bl_idname = "view3d.configurations"
 
     def draw(self, context):
         layout = self.layout
 
-        layout.label(text="Resources")
-        layout.operator("file.open_crydev_webpage", text = "CryDev Forums", icon='SPACE2')
-        layout.operator("file.open_github_webpage", text = "CryBlend Wiki", icon='SPACE2')
-        layout.operator("file.open_cryengine_docs_webpage", text = "CryEngine Docs", icon='SPACE2')
+        layout.label("Configure")
+        layout.operator("file.find_rc", text="Find RC", icon="SPACE2")
+        layout.operator("file.find_rc_for_texture_conversion", text="Find Texture RC", icon="SPACE2")
+        layout.separator()
+        layout.operator("file.select_textures_directory", text="Select Textures Folder", icon="FILE_FOLDER")
 
 
 class AddMaterialPhysicsMenu(bpy.types.Menu):
@@ -2209,6 +2085,32 @@ class AddMaterialPhysicsMenu(bpy.types.Menu):
         layout.operator("material.add_phys_no_collide", text="__physNoCollide", icon='PHYSICS')
 
 
+class CryBlendReducedMenu(bpy.types.Menu):
+    bl_label = 'CryBlend'
+    bl_idname = 'view3d.cryblend_reduced_menu'
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator("object.apply_transforms", text="Apply All Transforms", icon="MESH_DATA")
+        layout.separator()
+        layout.menu("menu.add_physics_proxy", icon="ROTATE")
+        layout.separator()
+        layout.menu(BoneUtilitiesMenu.bl_idname, icon='BONE_DATA')
+        layout.separator()
+        layout.menu(BreakablesMenu.bl_idname, icon='PARTICLES')
+        layout.separator()
+        layout.menu(TouchBendingMenu.bl_idname, icon='OUTLINER_OB_EMPTY')
+        layout.separator()
+        layout.menu(MeshUtilitiesMenu.bl_idname, icon='MESH_CUBE')
+        layout.separator()
+        layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
+        layout.separator()
+ 
+#------------------------------------------------------------------------------
+# Registration
+#------------------------------------------------------------------------------
+
 def get_classes_to_register():
     classes = (
         FindRC,
@@ -2226,11 +2128,7 @@ def get_classes_to_register():
         AddBreakableJoint,
         AddBranch,
         AddBranchJoint,
-        OpenCryDevWebpage,
-        OpenGitHubWebpage,
-        OpenCryEngineDocsWebpage,
 
-        OpenUDPWebpage,
         AddMassProperty,
         AddDensityProperty,
         AddPiecesProperty,
@@ -2285,26 +2183,25 @@ def get_classes_to_register():
         Export,
         ErrorHandler,
 
-        CryBlendPanel,
-
         ExportUtilitiesPanel,
         CryUtilitiesPanel,
-        BonePhysicsPanel,
+        BoneUtilitiesPanel,
         MeshUtilitiesPanel,
         CustomPropertiesPanel,
-        HelpPanel,
+        ConfigurationsPanel,
 
         CryBlendMainMenu,
         AddPhysicsProxyMenu,
-        BonePhysicsMenu,
+        BoneUtilitiesMenu,
         BreakablesMenu,
         TouchBendingMenu,
         MeshUtilitiesMenu,
         CustomPropertiesMenu,
         GenerateScriptMenu,
-        HelpMenu,
+        ConfigurationsMenu,
 
         AddMaterialPhysicsMenu,
+        CryBlendReducedMenu,
 
         SelectScriptEditor,
         GenerateScript,
@@ -2334,7 +2231,7 @@ def register():
     if kc:
         km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
         kmi = km.keymap_items.new('wm.call_menu', 'Q', 'PRESS', ctrl = False, shift = True)
-        kmi.properties.name = "view3d.cryblend_main_menu"
+        kmi.properties.name = "view3d.cryblend_reduced_menu"
 
     bpy.types.INFO_HT_header.append(draw_item)
     bpy.types.MATERIAL_MT_specials.append(physics_menu)
@@ -2352,7 +2249,7 @@ def unregister():
         km = kc.keymaps['3D View']
         for kmi in km.keymap_items:
             if kmi.idname == 'wm.call_menu':
-                if kmi.properties.name == "view3d.cryblend_main_menu":
+                if kmi.properties.name == "view3d.cryblend_reduced_menu":
                     km.keymap_items.remove(kmi)
                     break
 
