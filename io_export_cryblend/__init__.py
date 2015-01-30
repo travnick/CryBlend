@@ -193,6 +193,8 @@ class AddCryExportNode(bpy.types.Operator):
              "Geometry Animation"),
             ("i_caf", "I_CAF",
              "Character Animation"),
+            ("caf", "CAF",
+             "Character Animation"),
         ),
         default="cgf",
     )
@@ -1531,7 +1533,7 @@ class Export(bpy.types.Operator, ExportHelper):
     do_materials = BoolProperty(
             name="Do Materials",
             description="Create MTL files for materials.",
-            default=True,
+            default=False,
             )
     convert_source_image_to_dds = BoolProperty(
             name="Convert Textures to DDS",
