@@ -1387,7 +1387,7 @@ def fix_normalmap_in_mtl(mtl_file_name):
 
 def save(config):
     # prevent wasting time for exporting if RC was not found
-    if not os.path.isfile(config.rc_path):
+    if not config.disable_rc and not os.path.isfile(config.rc_path):
         raise exceptions.NoRcSelectedException
 
     exporter = CrytekDaeExporter(config)
