@@ -444,8 +444,8 @@ def __get_texture_slots():
 
 def __get_textures():
     items = []
-    texture_slots = get_type("texture_slots")
-    items.append(texture_slot.texture for texture_slot in texture_slots)
+    for texture_slot in get_type("texture_slots"):
+        items.append(texture_slot.texture)
 
     return items
 
