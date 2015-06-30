@@ -994,7 +994,7 @@ class CrytekDaeExporter:
 
         root_objects = []
         for object_ in group.objects:
-            if object_.parent is None:
+            if object_.parent is None or object_.type == 'MESH':
                 root_objects.append(object_)
         node = self.__write_visual_scene_node(root_objects, node, node)
 
@@ -1023,10 +1023,6 @@ class CrytekDaeExporter:
                     node.appendChild(extra)
 
                 nodeparent.appendChild(node)
-
-            if object_.children:
-                object_children = utils.get_object_children(object_)
-                self.__write_visual_scene_node(object_children, node, root)
 
         return root
 
