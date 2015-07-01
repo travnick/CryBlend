@@ -32,6 +32,7 @@ import re
 import subprocess
 import sys
 import xml.dom.minidom
+import time
 
 
 # globals
@@ -309,14 +310,14 @@ def replace_invalid_rc_characters(string):
     # Remove leading and trailing spaces.
     string.strip()
 
-    # Replace remaining white spaces with underscores.
-    string = "_".join(string.split())
+    # Replace remaining white spaces with double underscores.
+    string = "__".join(string.split())
 
     character_map = {
         "a":  "àáâå",
         "c":  "ç",
         "e":  "èéêë",
-        "i":  "ìíîï",
+        "i":  "ìíîïı",
         "l":  "ł",
         "n":  "ñ",
         "o":  "òóô",
@@ -334,8 +335,8 @@ def replace_invalid_rc_characters(string):
             string = string.replace(char, good)
             string = string.replace(char.upper(), good.upper())
 
-    # Remove all remaining non alphanumeric characters except underscores.
-    string = re.sub("[^_0-9A-Za-z]", "", string)
+    # Remove all remaining non alphanumeric characters except underscores and dots.
+    string = re.sub("[^.^_0-9A-Za-z]", "", string)
 
     return string
 
@@ -666,6 +667,10 @@ def tag_fakebone(pose_bone):
         if object_.name == pose_bone.name:
             object_["fakebone"] = "fakebone"
 
+def select_all():
+    for object_ in bpy.context.scene.objects:
+        object_.select = True
+
 def deselect_all():
     for object_ in bpy.context.scene.objects:
         object_.select = False
@@ -688,6 +693,10 @@ def find_bone_geometry(bonename):
         if object_.name == "{!s}_boneGeometry".format(bonename):
             return object_
 
+# -----------------------------------------------------
+# Fakebone Functions -> Skeleton and animation section
+# -----------------------------------------------------
+
 def add_fakebones():
     '''Add helpers to track bone transforms.'''
     scene = bpy.context.scene
@@ -696,22 +705,34 @@ def add_fakebones():
     if armature is None:
         return
 
+    try:
+        skeleton = bpy.data.armatures[armature.name]
+    except:
+        raise TypeError("Armature object name and object data name must "
+            + "be same! You may set it in properties or outliner editor.")
+
+    skeleton.pose_position = 'REST'
+    time.sleep(0.5)
+
     deselect_all()
     scene.frame_set(scene.frame_start)
     for pose_bone in armature.pose.bones:
         bmatrix = pose_bone.bone.head_local
-        bpy.ops.mesh.primitive_cube_add(radius=.1, location=bmatrix)
+        bpy.ops.mesh.primitive_cube_add(radius=.01, location=bmatrix)
         fakebone = bpy.context.active_object
-        for group in armature.users_group:
-            group.objects.link(fakebone)
         fakebone.name = pose_bone.name
         fakebone["fakebone"] = "fakebone"
         scene.objects.active = armature
         armature.data.bones.active = pose_bone.bone
-        bpy.ops.object.parent_set(type='BONE')
+        bpy.ops.object.parent_set(type='BONE_RELATIVE')
 
-    keyframe_fakebones(armature)
+    ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
 
+    for group in armature.users_group:
+        node_type = get_node_type(group.name)
+
+        if node_type in ALLOWED_NODE_TYPES:
+            process_animation(armature, skeleton)
 
 def remove_fakebones():
     '''Select to remove all fakebones from the scene.'''
@@ -727,68 +748,83 @@ def remove_fakebones():
             object_.select = True
             bpy.ops.object.delete(use_global=False)
 
+# ----------------------------------
+# Animation and Keyframe Functions
+# ----------------------------------
 
-def keyframe_fakebones(armature):
-    scene = bpy.context.scene
+def process_animation(armature, skeleton):
+    '''Process animation to export.'''
+    skeleton.pose_position = 'POSE'
+    time.sleep(0.5)
 
-    keyframes = get_keyframes(armature)
-    if keyframes is None:
-        return
+    select_all()
 
-    locations, rotations = calculate_fakebone_transforms(armature, keyframes)
-    i = 0
-    for frame in keyframes:
-        scene.frame_set(frame)
-        for bone in armature.pose.bones:
-            fakebone = scene.objects.get(bone.name)
-            fakebone.location = locations[i]
-            fakebone.rotation_euler = rotations[i]
-            fakebone.keyframe_insert(data_path="location")
-            fakebone.keyframe_insert(data_path="rotation_euler")
-            i += 1
-            
-    scene.frame_set(scene.frame_start)
-
+    location_list, rotation_list = get_keyframes(armature)
+    set_keyframes(armature, location_list, rotation_list)
+    cbPrint("Animation was processed.")
 
 def get_keyframes(armature):
-    keyframes = []
-    animation_data = armature.animation_data
-    if (animation_data is None or animation_data.action is None):
-        return
-    action = animation_data.action
-    for fcurve in action.fcurves:
-        for keyframe in fcurve.keyframe_points:
-            keyframe_entry = int(keyframe.co.x)
-            if (keyframe_entry not in keyframes):
-                keyframes.append(keyframe_entry)
-    return keyframes
+    '''Get each bone location and rotation for each frame.'''
+    location_list = []
+    rotation_list = []
 
+    for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end + 1):
+        bpy.context.scene.frame_set(frame)
 
-def calculate_fakebone_transforms(armature, keyframes):
-    scene = bpy.context.scene
-    locations = rotations = []
-    for frame in keyframes:
-        scene.frame_set(frame)
+        locations = {}
+        rotations = {}
+
         for bone in armature.pose.bones:
-            fakebone = scene.objects.get(bone.name)
-            if (fakebone is None):
-                return {"FINISHED"}
-            bonecm = fakebone.matrix_local
-            if (bone.parent and bone.parent.parent):
-                bonepm = scene.objects.get(bone.parent.name).matrix_local
-                # Relative to parent = inverse parent bone matrix * bone matrix
-                animatrix = bonepm.inverted() * bonecm
-            else:
-                # Root bone or bones connected directly to root
-                animatrix = bonecm
-            lm, rm, sm = animatrix.decompose()
-            locations.append(lm)
-            rotations.append(rm.to_euler())
-    return locations, rotations
+            fakeBone = bpy.context.scene.objects[bone.name]
 
-def get_object_children(parent):
-    return [object_ for object_ in parent.children
-            if object_.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+            if bone.parent and bone.parent.parent:
+                parentMatrix = bpy.context.scene.objects[bone.parent.name].matrix_world
+
+                animatrix = parentMatrix.inverted() * fakeBone.matrix_world
+                lm, rm, sm = animatrix.decompose()
+                locations[bone.name] = lm
+                rotations[bone.name] = rm.to_euler()
+
+            else:
+                lm, rm, sm = fakeBone.matrix_world.decompose()
+                locations[bone.name] = lm
+                rotations[bone.name] = rm.to_euler()
+
+        location_list.append(locations.copy())
+        rotation_list.append(rotations.copy())
+
+        del locations
+        del rotations
+
+    cbPrint("Keyframes were appended to lists.")
+
+    return location_list, rotation_list
+
+def set_keyframes(armature, location_list, rotation_list):
+    '''Insert each keyframe from lists.'''
+
+    bpy.context.scene.frame_set(bpy.context.scene.frame_start)
+
+    for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end + 1):
+        set_keyframe(armature, frame, location_list, rotation_list)
+
+    bpy.context.scene.frame_set(bpy.context.scene.frame_start)
+    cbPrint("Keyframes were inserted to armature fakebones.")
+
+def set_keyframe(armature, frame, location_list, rotation_list):
+    '''Inset keyframe for current frame from lists.'''
+    bpy.context.scene.frame_set(frame)
+
+    for bone in armature.pose.bones:
+        index = frame - bpy.context.scene.frame_start
+
+        fakeBone = bpy.context.scene.objects[bone.name]
+
+        fakeBone.location = location_list[index][bone.name]
+        fakeBone.rotation_euler = rotation_list[index][bone.name]
+
+        fakeBone.keyframe_insert(data_path="location")
+        fakeBone.keyframe_insert(data_path="rotation_euler")
 
 
 def get_root_bone(armature_object):

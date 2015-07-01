@@ -776,7 +776,7 @@ class CrytekDaeExporter:
                 animation_clip.setAttribute("end",
                                             "{:f}".format(utils.convert_time(scene.frame_end)))
                 is_animation = False
-                for object_ in group.objects:
+                for object_ in bpy.context.selected_objects:
                     if (object_.type != 'ARMATURE' and object_.animation_data and
                             object_.animation_data.action):
 
