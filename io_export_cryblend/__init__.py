@@ -278,9 +278,48 @@ class SetMaterialNames(bpy.types.Operator):
     """
     bl_label = "Update material names in CryExportNodes"
     bl_idname = "material.set_material_names"
-    physUserInput = StringProperty(name="Physics", default = "physDefault")
+
+    material_name = StringProperty(name="Cry Material Name")
+    material_phys = EnumProperty(
+        name="Physic Proxy",
+        items=(
+            ("physDefault", "Default", ""),
+            ("physProxyNoDraw", "Physical Proxy", ""),
+            ("physNoCollide", "No Collide", ""),
+            ("physObstruct", "Obstruct", ""),
+            ("physNone", "None", "")
+        ),
+        default="physDefault")
+
+    just_rephysic = BoolProperty(name="Only Physic",
+        description="Only change physic of selected material.")
+
+    object_ = None
+    errorReport = None
+
+    def __init__(self):
+        self.object_ = bpy.context.active_object
+
+        if self.object_ is None or self.object_.users_group is None:
+            self.errorReport = "Please select a object in export node!"
+            return None
+
+        for group in self.object_.users_group:
+            if utils.is_export_node(group.name):
+                self.material_name = utils.get_node_name(group.name)
+                return None
+
+        self.errorReport = "Please select a object in export node!"
+
+        return None
 
     def execute(self, context):
+        if self.errorReport is not None:
+            return {'FINISHED'}
+
+        if self.just_rephysic:
+            return add.add_phys_material(self, context, self.material_phys)
+
         # Revert all materials to fetch also those that are no longer in a group
         # and store their possible physics properties in a dictionary.
         physicsProperties = getMaterialPhysics()
@@ -290,7 +329,7 @@ class SetMaterialNames(bpy.types.Operator):
         # of materials in it.
         materialCounter = getMaterialCounter()
 
-        for group in bpy.data.groups:
+        for group in self.object_.users_group:
             if utils.is_export_node(group.name):
                 for object in group.objects:
                     for slot in object.material_slots:
@@ -304,11 +343,11 @@ class SetMaterialNames(bpy.types.Operator):
                             if physicsProperties.get(slot.material.name):
                                 physics = physicsProperties[slot.material.name]
                             else:
-                                physics = self.physUserInput
+                                physics = self.material_phys
 
                             # Rename.
-                            slot.material.name = "{}__{:03d}__{}__{}".format(
-                                    utils.get_node_name(group.name.replace("CryExportNode_", "")),
+                            slot.material.name = "{}__{:02d}__{}__{}".format(
+                                    self.material_name,
                                     materialCounter[group.name],
                                     utils.replace_invalid_rc_characters(materialOldName),
                                     physics)
@@ -320,6 +359,9 @@ class SetMaterialNames(bpy.types.Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
+        if self.errorReport is not None:
+            return self.report({'ERROR'}, self.errorReport)
+
         return context.window_manager.invoke_props_dialog(self)
 
 
@@ -951,7 +993,7 @@ class AddMaterialPhysDefault(bpy.types.Operator):
         message = "Adding __physDefault"
         self.report({'INFO'}, message)
         cbPrint(message)
-        return add.add_phys_default(self, context)
+        return add.add_phys_material(self, context, self.bl_label)
 
 
 class AddMaterialPhysProxyNoDraw(bpy.types.Operator):
@@ -963,7 +1005,7 @@ class AddMaterialPhysProxyNoDraw(bpy.types.Operator):
         message = "Adding __physProxyNoDraw"
         self.report({'INFO'}, message)
         cbPrint(message)
-        return add.add_phys_proxy_no_draw(self, context)
+        return add.add_phys_material(self, context, self.bl_label)
 
 
 class AddMaterialPhysNone(bpy.types.Operator):
@@ -975,7 +1017,7 @@ class AddMaterialPhysNone(bpy.types.Operator):
         message = "Adding __physNone"
         self.report({'INFO'}, message)
         cbPrint(message)
-        return add.add_phys_none(self, context)
+        return add.add_phys_material(self, context, self.bl_label)
 
 
 class AddMaterialPhysObstruct(bpy.types.Operator):
@@ -984,7 +1026,7 @@ class AddMaterialPhysObstruct(bpy.types.Operator):
     bl_idname = "material.add_phys_obstruct"
 
     def execute(self, context):
-        return add.add_phys_obstruct(self, context)
+        return add.add_phys_material(self, context, self.bl_label)
 
 
 class AddMaterialPhysNoCollide(bpy.types.Operator):
@@ -996,7 +1038,7 @@ class AddMaterialPhysNoCollide(bpy.types.Operator):
         message = "Adding __physNoCollide"
         self.report({'INFO'}, message)
         cbPrint(message)
-        return add.add_phys_no_collide(self, context)
+        return add.add_phys_material(self, context, self.bl_label)
 
 #------------------------------------------------------------------------------
 # Mesh Repair Tools

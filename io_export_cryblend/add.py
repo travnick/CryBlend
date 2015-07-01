@@ -193,39 +193,15 @@ def add_deformable_property(self, context, mass, stiffness, hardness,
 
 
 # material physics
-def add_phys_default(self, context):
+def add_phys_material(self, context, physName):
+    if not physName.startswith("__"):
+        physName = "__" + physName
+
     me = bpy.context.active_object
     if me.active_material:
-        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physDefault")
-    return{'FINISHED'}
+        me.active_material.name = replacePhysMaterial(me.active_material.name, physName)
 
-
-def add_phys_none(self, context):
-    me = bpy.context.active_object
-    if me.active_material:
-        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physNone")
-    return{'FINISHED'}
-
-
-def add_phys_proxy_no_draw(self, context):
-    me = bpy.context.active_object
-    if me.active_material:
-        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physProxyNoDraw")
-    return{'FINISHED'}
-
-
-def add_phys_obstruct(self, context):
-    me = bpy.context.active_object
-    if me.active_material:
-        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physObstruct")
-    return{'FINISHED'}
-
-
-def add_phys_no_collide(self, context):
-    me = bpy.context.active_object
-    if me.active_material:
-        me.active_material.name = replacePhysMaterial(me.active_material.name, "__physNoCollide")
-    return{'FINISHED'}
+    return {'FINISHED'}
 
 
 def replacePhysMaterial(materialname, phys):
