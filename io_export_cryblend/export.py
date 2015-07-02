@@ -994,7 +994,8 @@ class CrytekDaeExporter:
 
         root_objects = []
         for object_ in group.objects:
-            if object_.parent is None or object_.type == 'MESH':
+            if (object_.parent is None or object_.type == 'MESH') and \
+                            not object_.name.endswith("_boneGeometry"):
                 root_objects.append(object_)
         node = self.__write_visual_scene_node(root_objects, node, node)
 
@@ -1046,7 +1047,7 @@ class CrytekDaeExporter:
 
             bone_geometry = utils.find_bone_geometry(bone.name)
             if bone_geometry is not None:
-                instance = self.__create_instance(object_)
+                instance = self.__create_instance_for_bone(bone, bone_geometry)
                 node.appendChild(instance)
 
             extra = self.__create_physic_proxy_for_bone(object_, bone)
@@ -1055,8 +1056,32 @@ class CrytekDaeExporter:
 
             nodeparent.appendChild(node)
 
-            if object_.children:
+            if bone.children:
                 self.__write_bone_list(bone.children, object_, node, root)
+                
+    def __create_instance_for_bone(self, bone, bone_geometry):
+        instance = None
+
+        instance = self.__doc.createElement("instance_geometry")
+        instance.setAttribute("url", "#%s" % (bone.name + "_boneGeometry"))
+        bm = self.__doc.createElement("bind_material")
+        tc = self.__doc.createElement("technique_common")
+
+        for mat in bone_geometry.material_slots:
+            im = self.__doc.createElement("instance_material")
+            im.setAttribute("symbol", "%s" % (mat.name))
+            im.setAttribute("target", "#%s" % (mat.name))
+            bvi = self.__doc.createElement("bind_vertex_input")
+            bvi.setAttribute("semantic", "UVMap")
+            bvi.setAttribute("input_semantic", "TEXCOORD")
+            bvi.setAttribute("input_set", "0")
+            im.appendChild(bvi)
+            tc.appendChild(im)
+
+        bm.appendChild(tc)
+        instance.appendChild(bm)
+
+        return instance
 
     def __create_physic_proxy_for_bone(self, object_, bone):
         extra = None

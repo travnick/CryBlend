@@ -675,6 +675,12 @@ def find_fakebone(bonename):
     for object_ in bpy.context.scene.objects:
         if object_.name == bonename:
             return object_
+        else:
+            physBoneName = object_.name + "_Phys"
+            parentFrame = object_.name + "_Phys_ParentFrame"
+
+            if bonename == physBoneName or bonename == parentFrame:
+                return object_
 
 
 def find_bone_geometry(bonename):
