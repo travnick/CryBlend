@@ -35,7 +35,7 @@ if "bpy" in locals():
     imp.reload(exceptions)
 else:
     import bpy
-    from io_export_cryblend import utils, exceptions
+    from io_export_cryblend import utils, add, exceptions
 
 from io_export_cryblend.dds_converter import DdsConverterRunner
 from io_export_cryblend.outPipe import cbPrint
@@ -1029,6 +1029,10 @@ class CrytekDaeExporter:
                 instance = self.__create_instance_for_bone(bone, bone_geometry)
                 node.appendChild(instance)
 
+            extra = self.__create_physic_proxy_for_bone(object_, bone)
+            if extra is not None:
+                node.appendChild(extra)
+
             nodeparent.appendChild(node)
 
             if bone.children:
@@ -1057,6 +1061,26 @@ class CrytekDaeExporter:
         instance.appendChild(bm)
 
         return instance
+
+    def __create_physic_proxy_for_bone(self, object_, bone):
+        extra = None
+        try:
+            bonePhys = object_.pose.bones[bone.name]['phys_proxy']
+            cbPrint (bone.name + " physic proxy is " + bonePhys)
+
+            extra = self.__doc.createElement("extra")
+            techcry = self.__doc.createElement("technique")
+            techcry.setAttribute("profile", "CryEngine")
+            prop2 = self.__doc.createElement("properties")
+
+            cryprops = self.__doc.createTextNode("%s" % bonePhys)
+            prop2.appendChild(cryprops)
+            techcry.appendChild(prop2)
+            extra.appendChild(techcry)
+        except:
+            pass
+
+        return extra
 
     def __write_transforms(self, object_, node):
         trans = self.__create_translation_node(object_)
@@ -1198,33 +1222,34 @@ class CrytekDaeExporter:
     def __create_ik_properties(self, bone, object_, export_node):
         props = ""
         if self.__config.include_ik and bone.name.endswith("_Phys"):
-            nodename = root.getAttribute('id')[14:]
-            props_name = bone.name.replace("_", "*")
+            nodename = export_node.getAttribute('id')[14:]
+            props_name = bone.name.replace("__", "*")
 
             armature_object = bpy.data.objects[object_.name[:-5]]
             pose_bone = armature_object.pose.bones[bone.name[:-5]]
+
+            xIK, yIK, zIK = add.get_bone_ik_max_min (pose_bone)
+
+            damping, spring, spring_tension = add.get_bone_ik_properties(pose_bone)
 
             props = join(
                         '%{!s}%'.format(nodename),
                         '--PRprops_name={!s}_'.format(props_name),
 
-                        'xmax={!s}_'.format(pose_bone.ik_max_x),
-                        'xmin={!s}_'.format(pose_bone.ik_min_x),
-                        'xdamping={!s}_'.format(pose_bone.ik_stiffness_x),
-                        'xspringangle={!s}_'.format(0.0),
-                        'xspringtension={!s}_'.format(1.0),
+                        xIK,
+                        'xdamping={!s}_'.format(damping[0]),
+                        'xspringangle={!s}_'.format(spring[0]),
+                        'xspringtension={!s}_'.format(spring_tension[0]),
 
-                        'ymax={!s}_'.format(pose_bone.ik_max_y),
-                        'ymin={!s}_'.format(pose_bone.ik_min_y),
-                        'ydamping={!s}_'.format(pose_bone.ik_stiffness_y),
-                        'yspringangle={!s}_'.format(0.0),
-                        'yspringtension={!s}_'.format(1.0),
+                        yIK,
+                        'ydamping={!s}_'.format(damping[1]),
+                        'yspringangle={!s}_'.format(spring[1]),
+                        'yspringtension={!s}_'.format(spring_tension[1]),
 
-                        'zmax={!s}_'.format(pose_bone.ik_max_z),
-                        'zmin={!s}_'.format(pose_bone.ik_min_z),
-                        'zdamping={!s}_'.format(pose_bone.ik_stiffness_z),
-                        'zspringangle={!s}_'.format(0.0),
-                        'zspringtension={!s}_'.format(1.0)
+                        zIK,
+                        'zdamping={!s}_'.format(damping[2]),
+                        'zspringangle={!s}_'.format(spring[2]),
+                        'zspringtension={!s}_'.format(spring_tension[2])
                     )
 
         return props

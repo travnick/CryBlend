@@ -18,8 +18,42 @@ import bpy
 import bpy.ops
 import bpy_extras
 import re
+import math
 # from add_utils import AddObjectHelper, add_object_data
 
+# bone inverse kinematics
+def get_bone_ik_max_min (pose_bone):
+    xIK = yIK = zIK = ""
+
+    if pose_bone.lock_ik_x:
+        xIK = 'xmax={!s}_'.format(0.0) + 'xmin={!s}_'.format(0.0)
+    else:
+        xIK = 'xmax={!s}_'.format(math.degrees(pose_bone.ik_max_x)) \
+            + 'xmin={!s}_'.format(math.degrees(pose_bone.ik_min_x))
+
+    if pose_bone.lock_ik_y:
+        yIK = 'ymax={!s}_'.format(0.0) + 'ymin={!s}_'.format(0.0)
+    else:
+        yIK = 'ymax={!s}_'.format(math.degrees(pose_bone.ik_max_y)) \
+            + 'ymin={!s}_'.format(math.degrees(pose_bone.ik_min_y))
+
+    if pose_bone.lock_ik_z:
+        zIK = 'zmax={!s}_'.format(0.0) + 'zmin={!s}_'.format(0.0)
+    else:
+        zIK = 'zmax={!s}_'.format(math.degrees(pose_bone.ik_max_z)) \
+            + 'zmin={!s}_'.format(math.degrees(pose_bone.ik_min_z))
+
+    return xIK, yIK, zIK
+
+def get_bone_ik_properties (pose_bone):
+    damping = [1.0, 1.0, 1.0]
+    spring = [0.0, 0.0, 0.0]
+    spring_tension = [1.0, 1.0, 1.0]
+
+    try:
+        damping = pose_bone['Damping']
+    except:
+        pass
 
 # jointed breakables
 # joint

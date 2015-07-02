@@ -59,7 +59,7 @@ else:
     from io_export_cryblend import add, export, exceptions, utils
 
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
-    FloatProperty, IntProperty, StringProperty
+    FloatProperty, IntProperty, StringProperty, BoolVectorProperty
 from bpy.types import Menu, Panel
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.configuration import Configuration
@@ -74,6 +74,7 @@ import os.path
 import pickle
 import webbrowser
 import subprocess
+import math
 
 
 # for help
@@ -460,14 +461,7 @@ be converted to the selected shape in CryEngine.'''
         proxy_material = bpy.data.materials.new(name)
         bound_box.data.materials.append(proxy_material)
 
-        if (getattr(self, "type_") == "box"):
-            bpy.ops.object.add_box_proxy_property()
-        elif (getattr(self, "type_") == "capsule"):
-            bpy.ops.object.add_capsule_proxy_property()
-        elif (getattr(self, "type_") == "cylinder"):
-            bpy.ops.object.add_cylinder_proxy_property()
-        else: # sphere proxy
-            bpy.ops.object.add_sphere_proxy_property()
+        bound_box['phys_proxy'] = getattr(self, "type_")
 
         bpy.context.scene.cursor_location = old_origin
         bpy.ops.object.select_all(action="DESELECT")
@@ -565,6 +559,120 @@ def name_branch(is_new_branch):
 #------------------------------------------------------------------------------
 # CryEngine User-Defined Properties
 #------------------------------------------------------------------------------
+
+# Inverse Kinematics:
+class EditInverseKinematics(bpy.types.Operator):
+    '''Edit inverse kinematics properties for selected bone.'''
+    bl_label = "Edit Inverse Kinematics of Selected Bone"
+    bl_idname = "object.edit_inverse_kinematics"
+
+    info = "Force this bone proxy to be a {} primitive in the engine."
+
+    proxy_type = EnumProperty(
+        name="Physic Proxy",
+        items=(
+            ("box", "Box", info.format('Box')),
+            ("cylinder", "Cylinder", info.format('Cylinder')),
+            ("capsule", "Capsule", info.format('Capsule')),
+            ("sphere", "Sphere", info.format('Sphere'))
+        ),
+        default="capsule")
+
+    is_rotation_lock = BoolVectorProperty(name="Rotation Lock  [X, Y, Z]:",
+        description="Bone Rotation Lock X, Y, Z")
+
+    rotation_min = bpy.props.IntVectorProperty(name="Rot Limit Min:",
+        description="Bone Rotation Minimum Limit X, Y, Z",
+        default=(-180, -180, -180), min=-180, max=0)
+    rotation_max = bpy.props.IntVectorProperty(name="Rot Limit Max:",
+        description="Bone Rotation Maximum Limit X, Y, Z",
+        default=(180, 180, 180), min=0, max=180)
+
+    bone_spring = FloatVectorProperty(name="Spring  [X, Y, Z]:",
+        description="",
+        default=(0.0, 0.0, 0.0), min=0.0, max=1.0)
+
+    bone_spring_tension = FloatVectorProperty(name="Spring Tension  [X, Y, Z]:",
+        description="",
+        default=(1.0, 1.0, 1.0), min=-3.14159, max=3.14159)
+
+    bone_damping = FloatVectorProperty(name="Damping  [X, Y, Z]:",
+        description="",
+        default=(1.0, 1.0, 1.0), min=0.0, max=1.0)
+
+    bone = None
+
+    def __init__(self):
+        armature = utils.get_armature()
+
+        if armature == None:
+            return None
+
+        for temp_bone in armature.pose.bones:
+            if temp_bone.bone.select:
+                self.bone = temp_bone
+                break
+
+        if self.bone == None:
+            return None
+
+        try:
+            self.proxy_type = self.bone['phys_proxy']
+        except:
+            pass
+
+        self.is_rotation_lock[0] = self.bone.lock_ik_x
+        self.is_rotation_lock[1] = self.bone.lock_ik_y
+        self.is_rotation_lock[2] = self.bone.lock_ik_z
+
+        self.rotation_min[0] = math.degrees(self.bone.ik_min_x)
+        self.rotation_min[1] = math.degrees(self.bone.ik_min_y)
+        self.rotation_min[2] = math.degrees(self.bone.ik_min_z)
+
+        self.rotation_max[0] = math.degrees(self.bone.ik_max_x)
+        self.rotation_max[1] = math.degrees(self.bone.ik_max_y)
+        self.rotation_max[2] = math.degrees(self.bone.ik_max_z)
+
+        try:
+            self.bone_spring = self.bone['Spring']
+            self.bone_spring_tension = self.bone['Spring Tension']
+            self.bone_damping = self.bone['Damping']
+        except:
+            pass
+
+        return None
+
+    def execute(self, context):
+        if self.bone == None:
+            cbPrint ("Please select a bone in pose mode!")
+            return {'FINISHED'}
+
+        self.bone['phys_proxy'] = self.proxy_type
+
+        self.bone.lock_ik_x = self.is_rotation_lock[0]
+        self.bone.lock_ik_y = self.is_rotation_lock[1]
+        self.bone.lock_ik_z = self.is_rotation_lock[2]
+
+        self.bone.ik_min_x = math.radians(self.rotation_min[0])
+        self.bone.ik_min_y = math.radians(self.rotation_min[1])
+        self.bone.ik_min_z = math.radians(self.rotation_min[2])
+
+        self.bone.ik_max_x = math.radians(self.rotation_max[0])
+        self.bone.ik_max_y = math.radians(self.rotation_max[1])
+        self.bone.ik_max_z = math.radians(self.rotation_max[2])
+
+        self.bone['Spring'] = self.bone_spring
+        self.bone['Spring Tension'] = self.bone_spring_tension
+        self.bone['Damping'] = self.bone_damping
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        if self.bone is None:
+            return self.report({'ERROR'}, "Please select a bone in pose"
+                                        + "mode to use this property!")
+
+        return context.window_manager.invoke_props_dialog(self)
 
 # Rendermesh:
 class AddMassProperty(bpy.types.Operator):
@@ -1835,6 +1943,12 @@ class BoneUtilitiesPanel(View3DPanel, Panel):
         col.label("Skeleton", icon="BONE_DATA")
         col.separator()
         col.operator("armature.add_root_bone", text="Add Root Bone")
+
+        col.separator()
+        col.label(text="Bone")
+        col.separator()
+        col.operator("object.edit_inverse_kinematics", text=" Edit Inverse Kinematics", icon="CONSTRAINT")
+
         col.separator()
         col.label("Physics", icon="PHYSICS")
         col.separator()
@@ -1963,6 +2077,10 @@ class BoneUtilitiesMenu(bpy.types.Menu):
 
         layout.label(text="Skeleton")
         layout.operator("armature.add_root_bone", text="Add Root Bone", icon="BONE_DATA")
+        layout.separator()
+
+        layout.label(text="Bone")
+        layout.operator("object.edit_inverse_kinematics", text=" Edit Inverse Kinematics", icon="CONSTRAINT")
         layout.separator()
 
         layout.label(text="Physics")
@@ -2204,6 +2322,8 @@ def get_classes_to_register():
         AddMaxAngleConstraint,
         AddDampingConstraint,
         AddCollisionConstraint,
+
+        EditInverseKinematics,
 
         AddDeformableProperties,
         AddWheelProperty,
