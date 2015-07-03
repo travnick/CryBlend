@@ -826,6 +826,92 @@ def set_keyframe(armature, frame, location_list, rotation_list):
         fakeBone.keyframe_insert(data_path="location")
         fakeBone.keyframe_insert(data_path="rotation_euler")
 
+def apply_animation_scale():
+    '''Apply Animation Scale.'''
+    scene = bpy.context.scene
+    remove_unused_meshes()
+
+    armature = None
+    for object_ in scene.objects:
+        if object_.type == 'ARMATURE':
+            armature = object_
+            break
+
+    if armature is None:
+        cbPrint("There is no armature in scene!")
+        return
+
+    skeleton = bpy.data.armatures[armature.name]
+
+    empties = []
+
+    deselect_all()
+    scene.frame_set(scene.frame_start)
+    for pose_bone in armature.pose.bones:
+        bmatrix = pose_bone.bone.head_local
+        bpy.ops.object.empty_add(type='PLAIN_AXES', radius=0.1)
+        empty = bpy.context.active_object
+        empty.name = pose_bone.name
+
+        bpy.ops.object.constraint_add(type='CHILD_OF')
+        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_x = False
+        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_y = False
+        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_z = False
+
+        bpy.data.objects[empty.name].constraints['Child Of'].target = armature
+        bpy.data.objects[empty.name].constraints['Child Of'].subtarget = pose_bone.name
+
+        cbPrint("Baking animation on " + empty.name + "...")
+        bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end,
+            step=1, only_selected=True, visual_keying=True, clear_constraints=True,
+            clear_parents=False, bake_types={'OBJECT'})
+
+        empties.append (empty)
+
+    for empty in empties:
+        empty.select = True
+
+    cbPrint("Baked Animation successfully on empties.")
+    deselect_all()
+
+    bpy.context.scene.objects.active = armature
+    armature.select = True
+    bpy.ops.anim.keyframe_clear_v3d()
+
+    bpy.ops.object.transform_apply(rotation=True, scale=True)
+
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.ops.pose.user_transforms_clear()
+
+    for pose_bone in armature.pose.bones:
+        pose_bone.constraints.new(type='COPY_LOCATION')
+        pose_bone.constraints.new(type='COPY_ROTATION')
+
+        for empty in empties:
+            if empty.name == pose_bone.name:
+                pose_bone.constraints['Copy Location'].target = empty
+                pose_bone.constraints['Copy Rotation'].target = empty
+                break
+
+        pose_bone.bone.select = True
+
+    cbPrint("Baking Animation on skeleton...")
+    bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end,
+        step=1, only_selected=True, visual_keying=True, clear_constraints=True,
+        clear_parents=False, bake_types={'POSE'})
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    deselect_all()
+
+    cbPrint("Clearing empty data...")
+    for empty in empties:
+        empty.select = True
+
+    bpy.ops.object.delete()
+
+    cbPrint("Apply Animation was completed.")
+
 
 def get_root_bone(armature_object):
     for bone in get_bones(armature_object):
