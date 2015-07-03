@@ -1445,7 +1445,16 @@ class RenamePhysBones(bpy.types.Operator):
                     bone.name = "%s_Phys" % bone.name
 
         return {'FINISHED'}
-        
+
+class ApplyAnimationScale(bpy.types.Operator):
+    '''Select to apply animation skeleton scaling and rotation'''
+    bl_label = "Apply Animation Scaling"
+    bl_idname = "ops.apply_animation_scaling"
+
+    def execute(self, context):
+        utils.apply_animation_scale()
+        return {'FINISHED'}
+
 class RemoveFakeBones(bpy.types.Operator):
         '''(Deprecated) Remove all fakebones for backward compatibility'''
         bl_label = "Remove All FakeBones"
@@ -1874,6 +1883,7 @@ class BoneUtilitiesPanel(View3DPanel, Panel):
         col.label("Skeleton", icon="BONE_DATA")
         col.separator()
         col.operator("armature.add_root_bone", text="Add Root Bone")
+        col.operator("ops.apply_animation_scaling", text="Apply Animation Scaling")
         col.operator("scene.remove_fake_bones", text="Remove Old Fakebones")
 
         col.separator()
@@ -2009,6 +2019,7 @@ class BoneUtilitiesMenu(bpy.types.Menu):
 
         layout.label(text="Skeleton")
         layout.operator("armature.add_root_bone", text="Add Root Bone", icon="BONE_DATA")
+        layout.operator("ops.apply_animation_scaling", text="Apply Animation Scaling", icon='BONE_DATA')
         layout.operator("scene.remove_fake_bones", text="Remove Old Fakebones", icon='BONE_DATA')
         layout.separator()
 
@@ -2202,6 +2213,8 @@ def get_classes_to_register():
         AddBoneGeometry,
         RemoveBoneGeometry,
         RemoveFakeBones,
+
+        ApplyAnimationScale,
 
         Export,
         ErrorHandler,
