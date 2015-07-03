@@ -1194,12 +1194,13 @@ class CrytekDaeExporter:
         extra = self.__doc.createElement("extra")
         technique = self.__doc.createElement("technique")
         technique.setAttribute("profile", "CryEngine")
-        # Tag properties onto the end of the item.
         properties = self.__doc.createElement("properties")
+
+        ALLOWED_NODE_TYPES = ("cgf", "cga", "chr", "skin", "anm", "i_caf")
+
         if utils.is_export_node(node.name):
             node_type = utils.get_node_type(node.name)
-            allowed = {"cgf", "cga", "chr", "skin", "anm", "i_caf"}
-            if node_type in allowed:
+            if node_type in ALLOWED_NODE_TYPES:
                 prop = self.__doc.createTextNode("fileType={}".format(node_type))
                 properties.appendChild(prop)
             if self.__config.donot_merge:
@@ -1209,9 +1210,8 @@ class CrytekDaeExporter:
             if not node.rna_type.id_data.items():
                 return
         for prop in node.rna_type.id_data.items():
-            if prop:
-                user_defined_property = self.__doc.createTextNode("{!s}".format(prop[1]))
-                properties.appendChild(user_defined_property)
+            self.__create_user_defined_property(prop, properties)
+
         technique.appendChild(properties)
 
         if (node.name[:6] == "_joint"):
@@ -1221,6 +1221,20 @@ class CrytekDaeExporter:
         extra.appendChild(technique)
 
         return extra
+
+    def __create_user_defined_property(self, prop, node):
+        if prop:
+            prop_name = prop[0]
+            if add.is_user_defined_property(prop_name):
+                udp = None
+
+                if type(prop[1]) is str:
+                    udp = self.__doc.createTextNode("{!s}".format(prop[1]))
+                else:
+                    udp = self.__doc.createTextNode("{!s}=".format(prop[0])
+                                                  + "{!s}".format(prop[1]))
+
+                node.appendChild(udp)
 
     def __create_helper_joint(self, object_):
         x1, y1, z1, x2, y2, z2 = utils.get_bounding_box(object_)
