@@ -1295,6 +1295,16 @@ def write_to_file(config, doc, filepath, exe):
                                                 group.name)
                     args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
                     rc_second_pass = subprocess.Popen(args)
+                elif node_type == 'i_caf':
+                    try:
+                        tempName = group.name[:group.name.rindex('.')]
+                        tempPath = dae_path[:dae_path.rindex('\\')]
+                        fName = tempPath + "\\" + tempName
+                        os.remove(fName + ".animsettings")
+                        os.remove(fName + ".caf")
+                        os.remove(fName + ".$animsettings")
+                    except:
+                        pass
 
         if config.do_materials:
             mtl_fix_thread = threading.Thread(
