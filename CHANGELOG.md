@@ -1,5 +1,34 @@
 # Changelog:
 
+## 5.1
+#### Compatibility:
+* Only compatible with CryEngine 3.5 and up.
+* Only compatible with Blender 2.7 and up.
+* Supports primary assets: CGF, CGA, CHR, SKIN, ANM, I_CAF.
+
+#### UI Changes:
+* Apply Scale Animaiton.
+* Edit Inverse Kinematics panel in Bone Utilities.
+* Do materials and fix weight default were set to false in export menu.
+* Add Property is changed with User Defined Properties menu.
+
+#### New Features:
+* Skeleton Physic.
+* New Inverse Kinematics Bone Panel in Bone Utilities.
+* Cycles render material support.
+* Completely new interactive User Defined Property system.
+* Added apply rotation and scale for skeleton that have animation without break bone.
+* Delete .animsettings, .caf, .$animsettings files if there are exist for clean reexport animation.
+* Set main material name which show in cryengine.
+* Change selected material physic in Do Material panel.
+
+#### Improvements/Fixes:
+* Texture export fix.
+* Skeleton Animaiton.
+* Blender 2.74 and up Skeleton and Animation support.
+* Now bone names replace double underscore with whitespace like maya.
+* CGF file is processed one time by rc.
+
 ## 5.0
 #### Compatibility:
 * Only compatible with CryEngine 3.5 and up.

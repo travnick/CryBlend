@@ -3,6 +3,7 @@
 # Purpose:     Utility functions for use throughout the add-on
 #
 # Author:      Angelo J. Miner
+# Extended by: Özkan Afacan
 #
 # Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012

@@ -21,7 +21,7 @@
 # Purpose:     Primary python file for CryBlend add-on
 #
 # Author:      Angelo J. Miner
-# Extended by: Duo Oratar, Mikołaj Milej, stardidi, Daniel White
+# Extended by: Duo Oratar, Mikołaj Milej, stardidi, Daniel White, Özkan Afacan
 #
 # Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012
@@ -31,9 +31,10 @@
 
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
-    "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, stardidi, Daniel White",
+    "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, stardidi, " \
+              "Daniel White, Özkan Afacan",
     "blender": (2, 70, 0),
-    "version": (5, 0, 0),
+    "version": (5, 1, 0),
     "location": "CryBlend Menu",
     "description": "CryEngine3 Utilities and Exporter",
     "warning": "",
