@@ -174,10 +174,16 @@ class CrytekDaeExporter:
 
         images_to_convert = []
 
-        for image in self.__get_image_textures_in_export_nodes():
-            image_element = self.__export_library_image(images_to_convert,
+        if bpy.context.scene.render.engine == 'CYCLES':
+            for image in self.__get_nodes_images_in_export_nodes():
+                image_element = self.__export_library_image(images_to_convert,
                                                         image)
-            library_images.appendChild(image_element)
+                library_images.appendChild(image_element)
+        else:
+            for image in self.__get_image_textures_in_export_nodes():
+                image_element = self.__export_library_image(images_to_convert,
+                                                        image)
+                library_images.appendChild(image_element)
 
         if self.__config.convert_source_image_to_dds:
             self.__convert_images_to_dds(images_to_convert)
@@ -234,20 +240,13 @@ class CrytekDaeExporter:
 
     def __export_library_effects_material(self, material, current_element):
         images = [[], [], []]
-        texture_slots = utils.get_texture_slots_for_material(material)
-        for texture_slot in texture_slots:
-            image = texture_slot.texture.image
-            if not image:
-                raise exceptions.CryBlendException(
-                            "One of texture slots has no image assigned.")
 
-            surface, sampler = self.__create_surface_and_sampler(image.name)
-            if texture_slot.use_map_color_diffuse:
-                images[0] = [image.name, surface, sampler] 
-            if texture_slot.use_map_color_spec:
-                images[1] = [image.name, surface, sampler]
-            if texture_slot.use_map_normal:
-                images[2] = [image.name, surface, sampler]
+        is_cycles_render = bpy.context.scene.render.engine == 'CYCLES'
+
+        if is_cycles_render:
+            self.__get_cycles_render_images(material, images)
+        else:
+            self.__get_blender_render_images(material, images)
 
         effect_node = self.__doc.createElement("effect")
         effect_node.setAttribute("id", "%s_fx" % material.name)
@@ -262,7 +261,7 @@ class CrytekDaeExporter:
         phong = self.__create_material_node(material, images)
         technique_common.appendChild(phong)
         profile_node.appendChild(technique_common)
-        
+
         extra = self.__create_double_sided_extra("GOOGLEEARTH")
         profile_node.appendChild(extra)
         effect_node.appendChild(profile_node)
@@ -270,6 +269,38 @@ class CrytekDaeExporter:
         extra = self.__create_double_sided_extra("MAX3D")
         effect_node.appendChild(extra)
         current_element.appendChild(effect_node)
+
+    def __get_cycles_render_images(self, material, images):
+        cycles_nodes = utils.get_texture_nodes_for_material(material)
+        for cycles_node in cycles_nodes:
+            image = cycles_node.image
+            if not image:
+                raise exceptions.CryBlendException(
+                    "One of texture slots has no image assigned.")
+
+            surface, sampler = self.__create_surface_and_sampler(image.name)
+            if cycles_node.name == "Image Texture":
+                images[0] = [image.name, surface, sampler]
+            if cycles_node.name == "Specular":
+                images[1] = [image.name, surface, sampler]
+            if cycles_node.name == "Normal":
+                images[2] = [image.name, surface, sampler]
+
+    def __get_blender_render_images(self, material, images):
+        texture_slots = utils.get_texture_slots_for_material(material)
+        for texture_slot in texture_slots:
+            image = texture_slot.texture.image
+            if not image:
+                raise exceptions.CryBlendException(
+                    "One of texture slots has no image assigned.")
+
+            surface, sampler = self.__create_surface_and_sampler(image.name)
+            if texture_slot.use_map_color_diffuse:
+                images[0] = [image.name, surface, sampler]
+            if texture_slot.use_map_color_spec:
+                images[1] = [image.name, surface, sampler]
+            if texture_slot.use_map_normal:
+                images[2] = [image.name, surface, sampler]
 
     def __create_surface_and_sampler(self, image_name):
         surface = self.__doc.createElement("newparam")

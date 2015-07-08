@@ -38,8 +38,11 @@ import xml.dom.minidom
 toDegrees = 180.0 / math.pi
 
 
-def color_to_string(r, g, b, a):
-    return "{:f} {:f} {:f} {:f}".format(r, g, b, a)
+def color_to_string(color, a):
+    if type(color) in (float, int):
+        return "{:f} {:f} {:f} {:f}".format(color, color, color, a)
+    elif type(color).__name__ == "Color":
+        return "{:f} {:f} {:f} {:f}".format(color.r, color.g, color.b, a)
 
 
 def convert_time(frame):
@@ -347,7 +350,8 @@ def get_type(type_):
         "bone_geometry": __get_bone_geometry,
         "materials": __get_materials,
         "texture_slots": __get_texture_slots,
-        "textures": __get_textures
+        "textures": __get_textures,
+        "texture_nodes": __get_texture_nodes_for_cycles
     }
     return list(set(dispatch[type_]()))
 
@@ -410,6 +414,17 @@ def __get_bone_geometry():
 
     return items
 
+def __get_texture_nodes_for_cycles():
+    cycles_nodes = []
+
+    for material in get_type("materials"):
+        if material.use_nodes:
+            for node in material.node_tree.nodes:
+                if is_valid_cycles_texture_node(node):
+                    cycles_nodes.append(node)
+
+    return cycles_nodes
+
 def __get_materials():
     items = []
     allowed = {"MESH"}
@@ -443,6 +458,16 @@ def get_export_nodes():
 
     return export_nodes
 
+
+def get_texture_nodes_for_material(material):
+    cycles_nodes = []
+
+    if material.use_nodes:
+        for node in material.node_tree.nodes:
+            if is_valid_cycles_texture_node(node):
+                cycles_nodes.append(node)
+
+    return cycles_nodes
 
 def get_texture_slots_for_material(material):
     texture_slots = []
@@ -494,22 +519,30 @@ def raise_exception_if_textures_have_same_type(texture_types):
 def is_valid_image(image):
     return image.has_data and image.filepath
 
+def is_valid_cycles_texture_node(node):
+    ALLOWED_NODE_NAMES = ('Image Texture', 'Specular', 'Normal')
+    if node.type == 'TEX_IMAGE' and node.name in ALLOWED_NODE_NAMES:
+        if node.image:
+            return True
+
+    return False
+
 
 def get_material_color(material, type_):
-    if type_ == "emission":
-        r = b = g = material.emit
-    elif type_ == "ambient":
-        r = b = g = material.ambient
-    elif type_ == "diffuse":
-        r = material.diffuse_color.r
-        g = material.diffuse_color.g
-        b = material.diffuse_color.b
-    elif type_ == "specular":
-        r = material.specular_color.r
-        g = material.specular_color.g
-        b = material.specular_color.b
+    color = 0.0
+    alpha = 1.0
 
-    col = color_to_string(r, g, b, 1.0)
+    if type_ == "emission":
+        color = material.emit
+    elif type_ == "ambient":
+        color = material.ambient
+    elif type_ == "diffuse":
+        color = material.diffuse_color
+        alpha = material.alpha
+    elif type_ == "specular":
+        color = material.specular_color
+
+    col = color_to_string(color, alpha)
     return col
 
 def get_material_attribute(material, type_):
