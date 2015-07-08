@@ -2,7 +2,7 @@
 # Name:        add.py
 # Purpose:     Holds functions for adding various UDP properties/helper items
 #
-# Author:      Angelo J. Miner
+# Author:      Angelo J. Miner, Özkan Afacan
 #
 # Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012

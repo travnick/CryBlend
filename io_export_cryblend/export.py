@@ -21,7 +21,7 @@
 #
 # Author:      Angelo J. Miner,
 #                some code borrowed from fbx exporter Campbell Barton
-# Extended by: Duo Oratar
+# Extended by: Duo Oratar, Özkan Afacan
 #
 # Created:     23/01/2012
 # Copyright:   (c) Angelo J. Miner 2012
