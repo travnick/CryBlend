@@ -1618,7 +1618,7 @@ class Export(bpy.types.Operator, ExportHelper):
     do_materials = BoolProperty(
             name="Do Materials",
             description="Create MTL files for materials.",
-            default=True,
+            default=False,
             )
     convert_source_image_to_dds = BoolProperty(
             name="Convert Textures to DDS",
@@ -1653,7 +1653,7 @@ class Export(bpy.types.Operator, ExportHelper):
     fix_weights = BoolProperty(
             name="Fix Weights",
             description="For use with .chr files. Generally a good idea.",
-            default=True,
+            default=False,
             )
     average_planar = BoolProperty(
             name="Average Planar Face Normals",
