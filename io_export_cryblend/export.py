@@ -168,6 +168,10 @@ class CrytekDaeExporter:
         liblights = self.__doc.createElement("library_lights")
         root_element.appendChild(liblights)
 
+#------------------------------------------------------------------
+# Library Images
+#------------------------------------------------------------------
+
     def __export_library_images(self, parent_element):
         library_images = self.__doc.createElement("library_images")
         parent_element.appendChild(library_images)
@@ -231,6 +235,10 @@ class CrytekDaeExporter:
                                 self.__config.rc_for_textures_conversion_path)
         converter.start_conversion(images_to_convert,
                                    self.__config.save_tiff_during_conversion)
+
+#--------------------------------------------------------------
+# Library Effects
+#--------------------------------------------------------------
 
     def __export_library_effects(self, parent_element):
         current_element = self.__doc.createElement("library_effects")
@@ -395,6 +403,10 @@ class CrytekDaeExporter:
 
         return extra
 
+#------------------------------------------------------------------
+# Library Materials
+#------------------------------------------------------------------
+
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement("library_materials")
         materials = utils.get_type("materials")
@@ -408,6 +420,10 @@ class CrytekDaeExporter:
             library_materials.appendChild(material_element)
 
         parent_element.appendChild(library_materials)
+
+#------------------------------------------------------------------
+# Library Geometries
+#------------------------------------------------------------------
 
     def __export_library_geometries(self, parent_element):
         libgeo = self.__doc.createElement("library_geometries")
@@ -633,6 +649,11 @@ class CrytekDaeExporter:
         else:
             return "{:d} {:d} {:d} ".format(vert, normal, texcoord)
 
+# -------------------------------------------------------------------------
+# Library Controllers   --> Skeleton Armature and brief of bones (names)
+#                       --> Skin Geometry, Weights, Translation Matrices
+# -------------------------------------------------------------------------
+
     def __export_library_controllers(self, parent_element):
         library_node = self.__doc.createElement("library_controllers")
 
@@ -755,6 +776,10 @@ class CrytekDaeExporter:
         vertex_weights.appendChild(v)
 
         skin_node.appendChild(vertex_weights)
+
+# -----------------------------------------------------------------------------
+# Library Animation and Clips   --> Animations section, fakebones, geometries
+# -----------------------------------------------------------------------------
 
     def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
@@ -942,6 +967,11 @@ class CrytekDaeExporter:
         sampler.appendChild(outangent)
 
         return sampler
+
+# ---------------------------------------------------------------------
+# Library Visual Scene --> Skeleton and _Phys bones write each bone
+#       transformations and instance url (_boneGeometry) and extras.
+# ---------------------------------------------------------------------
 
     def __export_library_visual_scenes(self, parent_element):
         current_element = self.__doc.createElement("library_visual_scenes")
