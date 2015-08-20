@@ -1233,25 +1233,20 @@ def write_to_file(config, doc, filepath, exe):
 
         if rc_process is not None:
             rc_process.wait()
-            components = dae_path.split("\\")
-            name = components[len(components)-1]
-            output_path = dae_path[:-len(name)]
+            name = os.path.basename(dae_path)
+            output_path = os.path.dirname(dae_path)
             for group in utils.get_export_nodes():
                 node_type = utils.get_node_type(group.name)
                 allowed = {"cgf", "cga", "chr", "skin"}
                 if node_type in allowed:
-                    out_file = "{0}{1}".format(output_path,
-                                                group.name)
+                    out_file = os.path.join(output_path, group.name)
                     args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
                     rc_second_pass = subprocess.Popen(args)
                 elif node_type == 'i_caf':
                     try:
-                        tempName = group.name[:group.name.rindex('.')]
-                        tempPath = dae_path[:dae_path.rindex('\\')]
-                        fName = tempPath + "\\" + tempName
-                        os.remove(fName + ".animsettings")
-                        os.remove(fName + ".caf")
-                        os.remove(fName + ".$animsettings")
+                        os.remove(os.path.join(output_path, ".animsettings"))
+                        os.remove(os.path.join(output_path, ".caf"))
+                        os.remove(os.path.join(output_path, ".$animsettings"))
                     except:
                         pass
 
