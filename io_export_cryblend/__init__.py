@@ -298,10 +298,14 @@ class SetMaterialNames(bpy.types.Operator):
     errorReport = None
 
     def __init__(self):
+        cryNodeReport = "Please select a object that in a Cry Export node" \
+            + " for 'Do Material Convention'. If you have not created" \
+            + " it yet, please create it with 'Add ExportNode' tool."
+
         self.object_ = bpy.context.active_object
 
         if self.object_ is None or self.object_.users_group is None:
-            self.errorReport = "Please select a object in export node!"
+            self.errorReport = cryNodeReport
             return None
 
         for group in self.object_.users_group:
@@ -309,7 +313,7 @@ class SetMaterialNames(bpy.types.Operator):
                 self.material_name = utils.get_node_name(group.name)
                 return None
 
-        self.errorReport = "Please select a object in export node!"
+        self.errorReport = cryNodeReport
 
         return None
 
