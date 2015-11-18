@@ -3,6 +3,7 @@
 # Purpose:     Utility functions for use throughout the add-on
 #
 # Author:      Angelo J. Miner
+# Extended by: Özkan Afacan
 #
 # Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012
@@ -32,14 +33,18 @@ import re
 import subprocess
 import sys
 import xml.dom.minidom
+import time
 
 
 # globals
 toDegrees = 180.0 / math.pi
 
 
-def color_to_string(r, g, b, a):
-    return "{:f} {:f} {:f} {:f}".format(r, g, b, a)
+def color_to_string(color, a):
+    if type(color) in (float, int):
+        return "{:f} {:f} {:f} {:f}".format(color, color, color, a)
+    elif type(color).__name__ == "Color":
+        return "{:f} {:f} {:f} {:f}".format(color.r, color.g, color.b, a)
 
 
 def convert_time(frame):
@@ -306,14 +311,14 @@ def replace_invalid_rc_characters(string):
     # Remove leading and trailing spaces.
     string.strip()
 
-    # Replace remaining white spaces with underscores.
-    string = "_".join(string.split())
+    # Replace remaining white spaces with double underscores.
+    string = "__".join(string.split())
 
     character_map = {
         "a":  "àáâå",
         "c":  "ç",
         "e":  "èéêë",
-        "i":  "ìíîï",
+        "i":  "ìíîïı",
         "l":  "ł",
         "n":  "ñ",
         "o":  "òóô",
@@ -331,8 +336,8 @@ def replace_invalid_rc_characters(string):
             string = string.replace(char, good)
             string = string.replace(char.upper(), good.upper())
 
-    # Remove all remaining non alphanumeric characters except underscores.
-    string = re.sub("[^_0-9A-Za-z]", "", string)
+    # Remove all remaining non alphanumeric characters except underscores and dots.
+    string = re.sub("[^.^_0-9A-Za-z]", "", string)
 
     return string
 
@@ -347,7 +352,8 @@ def get_type(type_):
         "bone_geometry": __get_bone_geometry,
         "materials": __get_materials,
         "texture_slots": __get_texture_slots,
-        "textures": __get_textures
+        "textures": __get_textures,
+        "texture_nodes": __get_texture_nodes_for_cycles
     }
     return list(set(dispatch[type_]()))
 
@@ -410,6 +416,17 @@ def __get_bone_geometry():
 
     return items
 
+def __get_texture_nodes_for_cycles():
+    cycles_nodes = []
+
+    for material in get_type("materials"):
+        if material.use_nodes:
+            for node in material.node_tree.nodes:
+                if is_valid_cycles_texture_node(node):
+                    cycles_nodes.append(node)
+
+    return cycles_nodes
+
 def __get_materials():
     items = []
     allowed = {"MESH"}
@@ -429,8 +446,8 @@ def __get_texture_slots():
 
 def __get_textures():
     items = []
-    texture_slots = get_type("texture_slots")
-    items.append(texture_slot.texture for texture_slot in texture_slots)
+    for texture_slot in get_type("texture_slots"):
+        items.append(texture_slot.texture)
 
     return items
 
@@ -443,6 +460,16 @@ def get_export_nodes():
 
     return export_nodes
 
+
+def get_texture_nodes_for_material(material):
+    cycles_nodes = []
+
+    if material.use_nodes:
+        for node in material.node_tree.nodes:
+            if is_valid_cycles_texture_node(node):
+                cycles_nodes.append(node)
+
+    return cycles_nodes
 
 def get_texture_slots_for_material(material):
     texture_slots = []
@@ -494,22 +521,30 @@ def raise_exception_if_textures_have_same_type(texture_types):
 def is_valid_image(image):
     return image.has_data and image.filepath
 
+def is_valid_cycles_texture_node(node):
+    ALLOWED_NODE_NAMES = ('Image Texture', 'Specular', 'Normal')
+    if node.type == 'TEX_IMAGE' and node.name in ALLOWED_NODE_NAMES:
+        if node.image:
+            return True
+
+    return False
+
 
 def get_material_color(material, type_):
-    if type_ == "emission":
-        r = b = g = material.emit
-    elif type_ == "ambient":
-        r = b = g = material.ambient
-    elif type_ == "diffuse":
-        r = material.diffuse_color.r
-        g = material.diffuse_color.g
-        b = material.diffuse_color.b
-    elif type_ == "specular":
-        r = material.specular_color.r
-        g = material.specular_color.g
-        b = material.specular_color.b
+    color = 0.0
+    alpha = 1.0
 
-    col = color_to_string(r, g, b, 1.0)
+    if type_ == "emission":
+        color = material.emit
+    elif type_ == "ambient":
+        color = material.ambient
+    elif type_ == "diffuse":
+        color = material.diffuse_color
+        alpha = material.alpha
+    elif type_ == "specular":
+        color = material.specular_color
+
+    col = color_to_string(color, alpha)
     return col
 
 def get_material_attribute(material, type_):
@@ -633,6 +668,10 @@ def tag_fakebone(pose_bone):
         if object_.name == pose_bone.name:
             object_["fakebone"] = "fakebone"
 
+def select_all():
+    for object_ in bpy.context.scene.objects:
+        object_.select = True
+
 def deselect_all():
     for object_ in bpy.context.scene.objects:
         object_.select = False
@@ -642,12 +681,22 @@ def find_fakebone(bonename):
     for object_ in bpy.context.scene.objects:
         if object_.name == bonename:
             return object_
+        else:
+            physBoneName = object_.name + "_Phys"
+            parentFrame = object_.name + "_Phys_ParentFrame"
+
+            if bonename == physBoneName or bonename == parentFrame:
+                return object_
 
 
 def find_bone_geometry(bonename):
     for object_ in bpy.context.scene.objects:
         if object_.name == "{!s}_boneGeometry".format(bonename):
             return object_
+
+# -----------------------------------------------------
+# Fakebone Functions -> Skeleton and animation section
+# -----------------------------------------------------
 
 def add_fakebones():
     '''Add helpers to track bone transforms.'''
@@ -657,22 +706,34 @@ def add_fakebones():
     if armature is None:
         return
 
+    try:
+        skeleton = bpy.data.armatures[armature.name]
+    except:
+        raise TypeError("Armature object name and object data name must "
+            + "be same! You may set it in properties or outliner editor.")
+
+    skeleton.pose_position = 'REST'
+    time.sleep(0.5)
+
     deselect_all()
     scene.frame_set(scene.frame_start)
     for pose_bone in armature.pose.bones:
         bmatrix = pose_bone.bone.head_local
-        bpy.ops.mesh.primitive_cube_add(radius=.1, location=bmatrix)
+        bpy.ops.mesh.primitive_cube_add(radius=.01, location=bmatrix)
         fakebone = bpy.context.active_object
-        for group in armature.users_group:
-            group.objects.link(fakebone)
         fakebone.name = pose_bone.name
         fakebone["fakebone"] = "fakebone"
         scene.objects.active = armature
         armature.data.bones.active = pose_bone.bone
-        bpy.ops.object.parent_set(type='BONE')
+        bpy.ops.object.parent_set(type='BONE_RELATIVE')
 
-    keyframe_fakebones(armature)
+    ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
 
+    for group in armature.users_group:
+        node_type = get_node_type(group.name)
+
+        if node_type in ALLOWED_NODE_TYPES:
+            process_animation(armature, skeleton)
 
 def remove_fakebones():
     '''Select to remove all fakebones from the scene.'''
@@ -688,68 +749,169 @@ def remove_fakebones():
             object_.select = True
             bpy.ops.object.delete(use_global=False)
 
+# ----------------------------------
+# Animation and Keyframe Functions
+# ----------------------------------
 
-def keyframe_fakebones(armature):
-    scene = bpy.context.scene
+def process_animation(armature, skeleton):
+    '''Process animation to export.'''
+    skeleton.pose_position = 'POSE'
+    time.sleep(0.5)
 
-    keyframes = get_keyframes(armature)
-    if keyframes is None:
-        return
+    select_all()
 
-    locations, rotations = calculate_fakebone_transforms(armature, keyframes)
-    i = 0
-    for frame in keyframes:
-        scene.frame_set(frame)
-        for bone in armature.pose.bones:
-            fakebone = scene.objects.get(bone.name)
-            fakebone.location = locations[i]
-            fakebone.rotation_euler = rotations[i]
-            fakebone.keyframe_insert(data_path="location")
-            fakebone.keyframe_insert(data_path="rotation_euler")
-            i += 1
-            
-    scene.frame_set(scene.frame_start)
-
+    location_list, rotation_list = get_keyframes(armature)
+    set_keyframes(armature, location_list, rotation_list)
+    cbPrint("Animation was processed.")
 
 def get_keyframes(armature):
-    keyframes = []
-    animation_data = armature.animation_data
-    if (animation_data is None or animation_data.action is None):
-        return
-    action = animation_data.action
-    for fcurve in action.fcurves:
-        for keyframe in fcurve.keyframe_points:
-            keyframe_entry = int(keyframe.co.x)
-            if (keyframe_entry not in keyframes):
-                keyframes.append(keyframe_entry)
-    return keyframes
+    '''Get each bone location and rotation for each frame.'''
+    location_list = []
+    rotation_list = []
 
+    for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end + 1):
+        bpy.context.scene.frame_set(frame)
 
-def calculate_fakebone_transforms(armature, keyframes):
-    scene = bpy.context.scene
-    locations = rotations = []
-    for frame in keyframes:
-        scene.frame_set(frame)
+        locations = {}
+        rotations = {}
+
         for bone in armature.pose.bones:
-            fakebone = scene.objects.get(bone.name)
-            if (fakebone is None):
-                return {"FINISHED"}
-            bonecm = fakebone.matrix_local
-            if (bone.parent and bone.parent.parent):
-                bonepm = scene.objects.get(bone.parent.name).matrix_local
-                # Relative to parent = inverse parent bone matrix * bone matrix
-                animatrix = bonepm.inverted() * bonecm
-            else:
-                # Root bone or bones connected directly to root
-                animatrix = bonecm
-            lm, rm, sm = animatrix.decompose()
-            locations.append(lm)
-            rotations.append(rm.to_euler())
-    return locations, rotations
+            fakeBone = bpy.context.scene.objects[bone.name]
 
-def get_object_children(parent):
-    return [object_ for object_ in parent.children
-            if object_.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+            if bone.parent and bone.parent.parent:
+                parentMatrix = bpy.context.scene.objects[bone.parent.name].matrix_world
+
+                animatrix = parentMatrix.inverted() * fakeBone.matrix_world
+                lm, rm, sm = animatrix.decompose()
+                locations[bone.name] = lm
+                rotations[bone.name] = rm.to_euler()
+
+            else:
+                lm, rm, sm = fakeBone.matrix_world.decompose()
+                locations[bone.name] = lm
+                rotations[bone.name] = rm.to_euler()
+
+        location_list.append(locations.copy())
+        rotation_list.append(rotations.copy())
+
+        del locations
+        del rotations
+
+    cbPrint("Keyframes were appended to lists.")
+
+    return location_list, rotation_list
+
+def set_keyframes(armature, location_list, rotation_list):
+    '''Insert each keyframe from lists.'''
+
+    bpy.context.scene.frame_set(bpy.context.scene.frame_start)
+
+    for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end + 1):
+        set_keyframe(armature, frame, location_list, rotation_list)
+
+    bpy.context.scene.frame_set(bpy.context.scene.frame_start)
+    cbPrint("Keyframes were inserted to armature fakebones.")
+
+def set_keyframe(armature, frame, location_list, rotation_list):
+    '''Inset keyframe for current frame from lists.'''
+    bpy.context.scene.frame_set(frame)
+
+    for bone in armature.pose.bones:
+        index = frame - bpy.context.scene.frame_start
+
+        fakeBone = bpy.context.scene.objects[bone.name]
+
+        fakeBone.location = location_list[index][bone.name]
+        fakeBone.rotation_euler = rotation_list[index][bone.name]
+
+        fakeBone.keyframe_insert(data_path="location")
+        fakeBone.keyframe_insert(data_path="rotation_euler")
+
+def apply_animation_scale():
+    '''Apply Animation Scale.'''
+    scene = bpy.context.scene
+    remove_unused_meshes()
+
+    armature = None
+    for object_ in scene.objects:
+        if object_.type == 'ARMATURE':
+            armature = object_
+            break
+
+    if armature is None:
+        cbPrint("There is no armature in scene!")
+        return
+
+    skeleton = bpy.data.armatures[armature.name]
+
+    empties = []
+
+    deselect_all()
+    scene.frame_set(scene.frame_start)
+    for pose_bone in armature.pose.bones:
+        bmatrix = pose_bone.bone.head_local
+        bpy.ops.object.empty_add(type='PLAIN_AXES', radius=0.1)
+        empty = bpy.context.active_object
+        empty.name = pose_bone.name
+
+        bpy.ops.object.constraint_add(type='CHILD_OF')
+        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_x = False
+        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_y = False
+        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_z = False
+
+        bpy.data.objects[empty.name].constraints['Child Of'].target = armature
+        bpy.data.objects[empty.name].constraints['Child Of'].subtarget = pose_bone.name
+
+        cbPrint("Baking animation on " + empty.name + "...")
+        bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end,
+            step=1, only_selected=True, visual_keying=True, clear_constraints=True,
+            clear_parents=False, bake_types={'OBJECT'})
+
+        empties.append (empty)
+
+    for empty in empties:
+        empty.select = True
+
+    cbPrint("Baked Animation successfully on empties.")
+    deselect_all()
+
+    bpy.context.scene.objects.active = armature
+    armature.select = True
+    bpy.ops.anim.keyframe_clear_v3d()
+
+    bpy.ops.object.transform_apply(rotation=True, scale=True)
+
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.ops.pose.user_transforms_clear()
+
+    for pose_bone in armature.pose.bones:
+        pose_bone.constraints.new(type='COPY_LOCATION')
+        pose_bone.constraints.new(type='COPY_ROTATION')
+
+        for empty in empties:
+            if empty.name == pose_bone.name:
+                pose_bone.constraints['Copy Location'].target = empty
+                pose_bone.constraints['Copy Rotation'].target = empty
+                break
+
+        pose_bone.bone.select = True
+
+    cbPrint("Baking Animation on skeleton...")
+    bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end,
+        step=1, only_selected=True, visual_keying=True, clear_constraints=True,
+        clear_parents=False, bake_types={'POSE'})
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    deselect_all()
+
+    cbPrint("Clearing empty data...")
+    for empty in empties:
+        empty.select = True
+
+    bpy.ops.object.delete()
+
+    cbPrint("Apply Animation was completed.")
 
 
 def get_root_bone(armature_object):
