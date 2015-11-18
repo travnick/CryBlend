@@ -1675,6 +1675,11 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Add IK to the physics skeleton upon export.",
             default=False,
             )
+    convert_space = BoolProperty(
+            name="Convert to Whitespaces",
+            description="Convert double underscores to whitespaces in skeleton.",
+            default=False,
+            )
     fix_weights = BoolProperty(
             name="Fix Weights",
             description="For use with .chr files. Generally a good idea.",
@@ -1718,6 +1723,7 @@ class Export(bpy.types.Operator, ExportHelper):
                 'make_chrparams',
                 'make_cdf',
                 'include_ik',
+                'convert_space',
                 'fix_weights',
                 'average_planar',
                 'make_layer',
@@ -1775,6 +1781,7 @@ class Export(bpy.types.Operator, ExportHelper):
         box.prop(self, "make_chrparams")
         box.prop(self, "make_cdf")
         box.prop(self, "include_ik")
+        box.prop(self, "convert_space")
 
         box = col.box()
         box.label("Corrective", icon="BRUSH_DATA")

@@ -694,7 +694,11 @@ class CrytekDaeExporter:
 
         bones = utils.get_bones(armature)
         id_ = "{!s}_{!s}-joints".format(armature.name, object_.name)
-        bone_names = [bone.name for bone in bones]
+        bone_names = []
+        for bone in bones:
+            props = self.__create_ik_properties(bone, armature, armature.name)
+            bone_name = bone.name + props
+            bone_names.append(bone_name)
         source = utils.write_source(id_,
                                     "IDREF",
                                     bone_names,
@@ -1031,7 +1035,7 @@ class CrytekDaeExporter:
         bonenames = []
 
         for bone in bones:
-            props = self.__create_ik_properties(bone, object_, root)
+            props = self.__create_ik_properties(bone, object_, object_.name)
             nodename = join(bone.name, props)
             bonenames.append(nodename)
 
@@ -1215,10 +1219,9 @@ class CrytekDaeExporter:
 
         return joint
 
-    def __create_ik_properties(self, bone, object_, export_node):
+    def __create_ik_properties(self, bone, object_, skeleton_name):
         props = ""
         if self.__config.include_ik and bone.name.endswith("_Phys"):
-            nodename = export_node.getAttribute('id')[14:]
             props_name = bone.name.replace("__", "*")
 
             armature_object = bpy.data.objects[object_.name[:-5]]
@@ -1229,7 +1232,7 @@ class CrytekDaeExporter:
             damping, spring, spring_tension = add.get_bone_ik_properties(pose_bone)
 
             props = join(
-                        '%{!s}%'.format(nodename),
+                        '%{!s}%'.format(skeleton_name),
                         '--PRprops_name={!s}_'.format(props_name),
 
                         xIK,
@@ -1247,6 +1250,12 @@ class CrytekDaeExporter:
                         'zspringangle={!s}_'.format(spring[2]),
                         'zspringtension={!s}_'.format(spring_tension[2])
                     )
+        elif self.__config.convert_space:
+            props = '%{!s}%'.format(skeleton_name)
+
+            if bone.parent is not None:
+                props_name = bone.name.replace("__", "*")
+                props += '--PRprops_name={!s}'.format(props_name)
 
         return props
 
