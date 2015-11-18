@@ -1274,7 +1274,8 @@ def write_to_file(config, doc, filepath, exe):
     file.close()
 
     dae_path = utils.get_absolute_path_for_rc(filepath)
-    rc_params = ["/verbose", "/threads=processors", "/refresh"]
+    rc_params = ["/verbose", "/threads=processors", "/refresh",
+                 "/vertexindexformat=u16"]
 
     if not config.disable_rc:
         if config.do_materials:
@@ -1286,10 +1287,10 @@ def write_to_file(config, doc, filepath, exe):
             rc_process.wait()
             name = os.path.basename(dae_path)
             output_path = os.path.dirname(dae_path)
+            ALLOWED_NODE_TYPES = ("chr", "skin")
             for group in utils.get_export_nodes():
                 node_type = utils.get_node_type(group.name)
-                allowed = {"cgf", "cga", "chr", "skin"}
-                if node_type in allowed:
+                if node_type in ALLOWED_NODE_TYPES:
                     out_file = os.path.join(output_path, group.name)
                     args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
                     rc_second_pass = subprocess.Popen(args)
