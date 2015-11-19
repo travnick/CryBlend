@@ -530,7 +530,7 @@ class AddBranchJoint(bpy.types.Operator):
 
 
 def get_vertex_data():
-    selected_vert_coordinates = [i.co for i in bpy.context.active_object.data.vertices if i.select] 
+    selected_vert_coordinates = [i.co for i in bpy.context.active_object.data.vertices if i.select]
     return selected_vert_coordinates
 
 

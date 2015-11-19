@@ -707,7 +707,7 @@ class CrytekDaeExporter:
         skin_node.appendChild(source)
 
     def __process_bone_matrices(self, object_, armature, skin_node):
-        
+
         bones = utils.get_bones(armature)
         bone_matrices = []
         for bone in bones:
@@ -1058,7 +1058,7 @@ class CrytekDaeExporter:
 
             if bone.children:
                 self.__write_bone_list(bone.children, object_, node, root)
-                
+
     def __create_instance_for_bone(self, bone, bone_geometry):
         instance = None
 
