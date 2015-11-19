@@ -1376,6 +1376,15 @@ class RenamePhysBones(bpy.types.Operator):
                     bone.name = "%s_Phys" % bone.name
 
         return {'FINISHED'}
+        
+class RemoveFakeBones(bpy.types.Operator):
+        '''(Deprecated) Remove all fakebones for backward compatibility'''
+        bl_label = "Remove All FakeBones"
+        bl_idname = "scene.remove_fake_bones"
+
+        def execute(self, context):
+            utils.remove_fakebones()
+            return {'FINISHED'}
 
 #------------------------------------------------------------------------------
 # Scripting Module
@@ -1789,6 +1798,7 @@ class BoneUtilitiesPanel(View3DPanel, Panel):
         col.label("Skeleton", icon="BONE_DATA")
         col.separator()
         col.operator("armature.add_root_bone", text="Add Root Bone")
+        col.operator("scene.remove_fake_bones", text="Remove Old Fakebones")
         col.separator()
         col.label("Physics", icon="PHYSICS")
         col.separator()
@@ -1917,6 +1927,7 @@ class BoneUtilitiesMenu(bpy.types.Menu):
 
         layout.label(text="Skeleton")
         layout.operator("armature.add_root_bone", text="Add Root Bone", icon="BONE_DATA")
+        layout.operator("scene.remove_fake_bones", text="Remove Old Fakebones", icon='BONE_DATA')
         layout.separator()
 
         layout.label(text="Physics")
@@ -2179,6 +2190,7 @@ def get_classes_to_register():
         RenamePhysBones,
         AddBoneGeometry,
         RemoveBoneGeometry,
+        RemoveFakeBones,
 
         Export,
         ErrorHandler,
