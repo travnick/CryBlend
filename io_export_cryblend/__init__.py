@@ -124,13 +124,13 @@ to be able to export your textures as dds files.'''
     filename_ext = ".exe"
 
     def process(self, filepath):
-        Configuration.rc_for_texture_conversion_path = "%s" % filepath
+        Configuration.texture_rc_path = "%s" % filepath
         cbPrint("Found RC at {!r}.".format(
-                        Configuration.rc_for_texture_conversion_path),
+                        Configuration.texture_rc_path),
                 'debug')
 
     def invoke(self, context, event):
-        self.filepath = Configuration.rc_for_texture_conversion_path
+        self.filepath = Configuration.texture_rc_path
 
         return ExportHelper.invoke(self, context, event)
 
@@ -140,18 +140,18 @@ class SelectTexturesDirectory(bpy.types.Operator, PathSelectTemplate):
 for textures in .mtl file.'''
 
     bl_label = "Select Textures Directory"
-    bl_idname = "file.select_textures_directory"
+    bl_idname = "file.select_texture_dir"
 
     filename_ext = ""
 
     def process(self, filepath):
-        Configuration.textures_directory = "%s" % os.path.dirname(filepath)
+        Configuration.texture_dir = "%s" % os.path.dirname(filepath)
         cbPrint("Textures directory: {!r}.".format(
-                                            Configuration.textures_directory),
+                                            Configuration.texture_dir),
                 'debug')
 
     def invoke(self, context, event):
-        self.filepath = Configuration.textures_directory
+        self.filepath = Configuration.texture_dir
 
         return ExportHelper.invoke(self, context, event)
 
@@ -1611,7 +1611,7 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Apply all modifiers before exporting.",
             default=True,
             )
-    donot_merge = BoolProperty(
+    do_not_merge = BoolProperty(
             name="Do Not Merge Nodes",
             description="Generally a good idea.",
             default=True,
@@ -1621,14 +1621,9 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Create MTL files for materials.",
             default=False,
             )
-    convert_source_image_to_dds = BoolProperty(
-            name="Convert Textures to DDS",
+    do_textures = BoolProperty(
+            name="Do Textures",
             description="Converts source textures to DDS while exporting materials.",
-            default=False,
-            )
-    save_tiff_during_conversion = BoolProperty(
-            name="Save TIFF During Conversion",
-            description="Saves TIFF images that are generated during conversion to DDS.",
             default=False,
             )
     make_chrparams = BoolProperty(
@@ -1676,6 +1671,11 @@ class Export(bpy.types.Operator, ExportHelper):
             description="Save the DAE file for developing purposes.",
             default=False,
             )
+    save_tiffs = BoolProperty(
+            name="Save TIFFs",
+            description="Saves TIFF images that are generated during conversion to DDS.",
+            default=False,
+            )
     run_in_profiler = BoolProperty(
             name="Profile CryBlend",
             description="Select only if you want to profile CryBlend.",
@@ -1687,10 +1687,9 @@ class Export(bpy.types.Operator, ExportHelper):
             attributes = (
                 'filepath',
                 'apply_modifiers',
-                'donot_merge',
+                'do_not_merge',
                 'do_materials',
-                'convert_source_image_to_dds',
-                'save_tiff_during_conversion',
+                'do_textures',
                 'make_chrparams',
                 'make_cdf',
                 'include_ik',
@@ -1700,6 +1699,7 @@ class Export(bpy.types.Operator, ExportHelper):
                 'make_layer',
                 'disable_rc',
                 'save_dae',
+                'save_tiffs',
                 'run_in_profiler'
             )
 
@@ -1708,9 +1708,8 @@ class Export(bpy.types.Operator, ExportHelper):
 
             setattr(self, 'cryblend_version', VERSION)
             setattr(self, 'rc_path', Configuration.rc_path)
-            setattr(self, 'rc_for_textures_conversion_path',
-                    Configuration.rc_for_texture_conversion_path)
-            setattr(self, 'textures_dir', Configuration.textures_directory)
+            setattr(self, 'texture_rc_path', Configuration.texture_rc_path)
+            setattr(self, 'texture_dir', Configuration.texture_dir)
 
     def execute(self, context):
         cbPrint(Configuration.rc_path, 'debug')
@@ -1739,13 +1738,12 @@ class Export(bpy.types.Operator, ExportHelper):
         box = col.box()
         box.label("General", icon="WORLD")
         box.prop(self, "apply_modifiers")
-        box.prop(self, "donot_merge")
+        box.prop(self, "do_not_merge")
 
         box = col.box()
-        box.label("Image and Material", icon="TEXTURE")
+        box.label("Material & Texture", icon="TEXTURE")
         box.prop(self, "do_materials")
-        box.prop(self, "convert_source_image_to_dds")
-        box.prop(self, "save_tiff_during_conversion")
+        box.prop(self, "do_textures")
 
         box = col.box()
         box.label("Character", icon="ARMATURE_DATA")
@@ -1767,6 +1765,7 @@ class Export(bpy.types.Operator, ExportHelper):
         box.label("Developer Tools", icon="MODIFIER")
         box.prop(self, "disable_rc")
         box.prop(self, "save_dae")
+        box.prop(self, "save_tiffs")
         box.prop(self, "run_in_profiler")
 
 
@@ -1947,7 +1946,7 @@ class ConfigurationsPanel(View3DPanel, Panel):
         col.operator("file.find_rc", text="Find RC")
         col.operator("file.find_rc_for_texture_conversion", text="Find Texture RC")
         col.separator()
-        col.operator("file.select_textures_directory", text="Select Textures Folder")
+        col.operator("file.select_texture_dir", text="Select Textures Folder")
 
 #------------------------------------------------------------------------------
 # CryBlend Menus
@@ -2126,7 +2125,7 @@ class ConfigurationsMenu(bpy.types.Menu):
         layout.operator("file.find_rc", text="Find RC", icon="SPACE2")
         layout.operator("file.find_rc_for_texture_conversion", text="Find Texture RC", icon="SPACE2")
         layout.separator()
-        layout.operator("file.select_textures_directory", text="Select Textures Folder", icon="FILE_FOLDER")
+        layout.operator("file.select_texture_dir", text="Select Textures Folder", icon="FILE_FOLDER")
 
 
 class AddMaterialPhysicsMenu(bpy.types.Menu):
