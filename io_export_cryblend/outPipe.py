@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------
-# Name:        outPipe.py
+# Name:        outpipe.py
 # Purpose:     Pipeline for console output
 #
 # Author:      N/A

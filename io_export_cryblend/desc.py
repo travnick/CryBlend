@@ -4,8 +4,8 @@
 #
 # Author:      Özkan Afacan
 #
-# Created:     02/07/2015
-# Copyright:   (c) Özkan Afacan 2015
+# Created:     02/07/2016
+# Copyright:   (c) Özkan Afacan 2016
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 
