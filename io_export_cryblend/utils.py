@@ -21,7 +21,7 @@ else:
     from io_export_cryblend import exceptions
 
 
-from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.outpipe import cbPrint
 from mathutils import Matrix, Vector
 from xml.dom.minidom import Document, parseString
 import bpy
@@ -37,8 +37,12 @@ import time
 
 
 # globals
-toDegrees = 180.0 / math.pi
+to_degrees = 180.0 / math.pi
 
+
+#------------------------------------------------------------------------------
+# Conversions:
+#------------------------------------------------------------------------------
 
 def color_to_string(color, a):
     if type(color) in (float, int):
@@ -47,80 +51,10 @@ def color_to_string(color, a):
         return "{:f} {:f} {:f} {:f}".format(color.r, color.g, color.b, a)
 
 
-def convert_time(frame):
+def frame_to_time(frame):
     fps_base = bpy.context.scene.render.fps_base
     fps = bpy.context.scene.render.fps
     return (fps_base * frame) / fps
-
-
-# the following func is from
-# http://ronrothman.com/
-#    public/leftbraned/xml-dom-minidom-toprettyxml-and-silly-whitespace/
-# modified to use the current ver of shipped python
-def fix_write_xml(self, writer, indent="", addindent="", newl=""):
-    # indent = current indentation
-    # addindent = indentation to add to higher levels
-    # newl = newline string
-        writer.write(indent + "<" + self.tagName)
-        attrs = self._get_attributes()
-        for a_name in sorted(attrs.keys()):
-            writer.write(" %s=\"" % a_name)
-            xml.dom.minidom._write_data(writer, attrs[a_name].value)
-            writer.write("\"")
-        if self.childNodes:
-            if (len(self.childNodes) == 1
-                and self.childNodes[0].nodeType
-                    == xml.dom.minidom.Node.TEXT_NODE):
-                writer.write(">")
-                self.childNodes[0].writexml(writer, "", "", "")
-                writer.write("</%s>%s" % (self.tagName, newl))
-                return
-            writer.write(">%s" % (newl))
-            for node in self.childNodes:
-                node.writexml(writer, indent + addindent, addindent, newl)
-            writer.write("%s</%s>%s" % (indent, self.tagName, newl))
-        else:
-            writer.write("/>%s" % (newl))
-
-
-def get_guid():
-    GUID = "{%s-%s-%s-%s-%s}" % (random_hex_sector(8),
-                                 random_hex_sector(4),
-                                 random_hex_sector(4),
-                                 random_hex_sector(4),
-                                 random_hex_sector(12))
-    return GUID
-
-
-def random_hex_sector(length):
-    fixed_length_hex_format = "%0" + str(length) + "x"
-    return fixed_length_hex_format % random.randrange(16 ** length)
-
-
-# borrowed from obj exporter
-# modified by angelo j miner
-def veckey3d(v):
-    return (round(v.x / 32767.0),
-            round(v.y / 32767.0),
-            round(v.z / 32767.0))
-
-
-def veckey3d2(v):
-    return (v.x,
-            v.y,
-            v.z)
-
-
-def veckey3d21(v):
-    return [round(v.x, 6),
-            round(v.y, 6),
-            round(v.z, 6)]
-
-
-def veckey3d3(vn, fn):
-    return (round((fn.x * vn.x) / 2),
-            round((fn.y * vn.y) / 2),
-            round((fn.z * vn.z) / 2))
 
 
 def matrix_to_string(matrix):
@@ -146,11 +80,33 @@ def matrix_to_array(matrix):
 
     return array
 
+
 def write_matrix(matrix, node):
     doc = Document()
     for row in matrix:
         row_string = floats_to_string(row)
         node.appendChild(doc.createTextNode(row_string))
+
+
+def join(*items):
+    strings = []
+    for item in items:
+        strings.append(str(item))
+    return "".join(strings)
+
+
+#------------------------------------------------------------------------------
+# Matrix Manipulations:
+#------------------------------------------------------------------------------
+
+def negate_z_axis_of_matrix(matrix_local):
+    for i in range(0, 3):
+        matrix_local[i][3] = -matrix_local[i][3]
+
+
+#------------------------------------------------------------------------------
+# Path Manipulations:
+#------------------------------------------------------------------------------
 
 def get_absolute_path(file_path):
     [is_relative, file_path] = strip_blender_path_prefix(file_path)
@@ -219,40 +175,6 @@ def make_relative_path(filepath, start):
         raise exceptions.TextureAndBlendDiskMismatchException(start, filepath)
 
 
-def get_mtl_files_in_directory(directory):
-    MTL_MATCH_STRING = "*.{!s}".format("mtl")
-
-    mtl_files = []
-    for file in os.listdir(directory):
-        if fnmatch.fnmatch(file, MTL_MATCH_STRING):
-            filepath = "{!s}/{!s}".format(directory, file)
-            mtl_files.append(filepath)
-
-    return mtl_files
-
-
-def run_rc(rc_path, files_to_process, params=None):
-    cbPrint(rc_path)
-    process_params = [rc_path]
-
-    if isinstance(files_to_process, list):
-        process_params.extend(files_to_process)
-    else:
-        process_params.append(files_to_process)
-
-    process_params.extend(params)
-
-    cbPrint(params)
-    cbPrint(files_to_process)
-
-    try:
-        run_object = subprocess.Popen(process_params)
-    except:
-        raise exceptions.NoRcSelectedException
-
-    return run_object
-
-
 def get_path_with_new_extension(image_path, extension):
     return "%s.%s" % (os.path.splitext(image_path)[0], extension)
 
@@ -261,27 +183,9 @@ def get_extension_from_path(image_path):
     return "%s" % (os.path.splitext(image_path)[1])
 
 
-def extract_cryblend_properties(materialname):
-    """Returns the CryBlend properties of a materialname as dict or
-    None if name is invalid.
-    """
-    if is_cryblend_material(materialname):
-        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
-        properties = {}
-        properties["ExportNode"] = groups[0][0]
-        properties["Number"] = int(groups[0][1])
-        properties["Name"] = groups[0][2]
-        properties["Physics"] = groups[0][3]
-        return properties
-    return None
-
-
-def is_cryblend_material(materialname):
-    if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
-        return True
-    else:
-        return False
-
+#------------------------------------------------------------------------------
+# File Clean-Up:
+#------------------------------------------------------------------------------
 
 def clean_file():
     for texture in get_type("textures"):
@@ -342,6 +246,39 @@ def replace_invalid_rc_characters(string):
     return string
 
 
+def fix_weights():
+    for object_ in get_type("skins"):
+        override = get_3d_context(object_)
+        try:
+            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+        except:
+            raise exceptions.CryBlendException("Please fix weightless vertices first.")
+    cbPrint("Weights Corrected.")
+
+
+def apply_modifiers():
+    for object_ in bpy.data.objects:
+        for mod in object_.modifiers:
+            if mod.type != "ARMATURE":
+                try:
+                    bpy.ops.object.modifier_apply(modifier=mod.name)
+                except RuntimeError:
+                    pass
+
+
+#------------------------------------------------------------------------------
+# Collections:
+#------------------------------------------------------------------------------
+
+def get_export_nodes():
+    export_nodes = []
+    for group in bpy.context.blend_data.groups:
+        if is_export_node(group.name) and len(group.objects) > 0:
+            export_nodes.append(group)
+
+    return export_nodes
+
+
 def get_type(type_):
     dispatch = {
         "nodes": __get_nodes,
@@ -357,12 +294,14 @@ def get_type(type_):
     }
     return list(set(dispatch[type_]()))
 
+
 def __get_nodes():
     items = []
     for group in get_export_nodes():
         items.extend(group.objects)
 
     return items
+
 
 def __get_geometry():
     items = []
@@ -372,6 +311,7 @@ def __get_geometry():
            items.append(object_)
 
     return items
+
 
 def __get_controllers():
     items = []
@@ -383,6 +323,7 @@ def __get_controllers():
                     items.append(object_.parent)
 
     return items
+
 
 def __get_skins():
     items = []
@@ -397,6 +338,7 @@ def __get_skins():
 
     return items
 
+
 def __get_fakebones():
     items = []
     allowed = {"MESH"}
@@ -405,6 +347,7 @@ def __get_fakebones():
             items.append(object_)
 
     return items
+
 
 def __get_bone_geometry():
     items = []
@@ -415,6 +358,7 @@ def __get_bone_geometry():
             items.append(object_)
 
     return items
+
 
 def __get_texture_nodes_for_cycles():
     cycles_nodes = []
@@ -427,6 +371,7 @@ def __get_texture_nodes_for_cycles():
 
     return cycles_nodes
 
+
 def __get_materials():
     items = []
     allowed = {"MESH"}
@@ -437,12 +382,14 @@ def __get_materials():
 
     return items
 
+
 def __get_texture_slots():
     items = []
     for material in get_type("materials"):
         items.extend(get_texture_slots_for_material(material))
 
     return items
+
 
 def __get_textures():
     items = []
@@ -452,14 +399,9 @@ def __get_textures():
     return items
 
 
-def get_export_nodes():
-    export_nodes = []
-    for group in bpy.context.blend_data.groups:
-        if is_export_node(group.name) and len(group.objects) > 0:
-            export_nodes.append(group)
-
-    return export_nodes
-
+#------------------------------------------------------------------------------
+# Textures:
+#------------------------------------------------------------------------------
 
 def get_texture_nodes_for_material(material):
     cycles_nodes = []
@@ -521,6 +463,7 @@ def raise_exception_if_textures_have_same_type(texture_types):
 def is_valid_image(image):
     return image.has_data and image.filepath
 
+
 def is_valid_cycles_texture_node(node):
     ALLOWED_NODE_NAMES = ('Image Texture', 'Specular', 'Normal')
     if node.type == 'TEX_IMAGE' and node.name in ALLOWED_NODE_NAMES:
@@ -529,6 +472,10 @@ def is_valid_cycles_texture_node(node):
 
     return False
 
+
+#------------------------------------------------------------------------------
+# Materials:
+#------------------------------------------------------------------------------
 
 def get_material_color(material, type_):
     color = 0.0
@@ -547,6 +494,7 @@ def get_material_color(material, type_):
     col = color_to_string(color, alpha)
     return col
 
+
 def get_material_attribute(material, type_):
     if type_ == "shininess":
         float = material.specular_hardness
@@ -556,20 +504,31 @@ def get_material_attribute(material, type_):
     return str(float)
 
 
-def get_bounding_box(object_):
-    box = object_.bound_box
-    vmin = Vector([box[0][0], box[0][1], box[0][2]])
-    vmax = Vector([box[6][0], box[6][1], box[6][2]])
+def is_cryblend_material(materialname):
+    if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
+        return True
+    else:
+        return False
 
-    return vmin[0], vmin[1], vmin[2], vmax[0], vmax[1], vmax[2]
+
+def extract_cryblend_properties(materialname):
+    """Returns the CryBlend properties of a materialname as dict or
+    None if name is invalid.
+    """
+    if is_cryblend_material(materialname):
+        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
+        properties = {}
+        properties["ExportNode"] = groups[0][0]
+        properties["Number"] = int(groups[0][1])
+        properties["Name"] = groups[0][2]
+        properties["Physics"] = groups[0][3]
+        return properties
+    return None
 
 
-def parent(children, parent):
-    for object_ in children:
-        object_.parent = parent
-
-    return
-
+#------------------------------------------------------------------------------
+# ExportNodes:
+#------------------------------------------------------------------------------
 
 def is_export_node(nodename):
     extensions = [".cgf", ".cga", ".chr", ".skin", ".anm", ".i_caf"]
@@ -588,94 +547,20 @@ def are_duplicate_nodes():
     if len(unique_nodenames) < len(nodenames):
         return True
 
-def get_node_type(groupname):
-    node_components = groupname.split(".")
-    return node_components[-1]
-
 
 def get_node_name(groupname):
     node_type = get_node_type(groupname)
     return groupname[:-(len(node_type)+1)]
 
-
-def generate_file_contents(type_):
-    if type_ == "chrparams":
-        return """<Params>\
-<AnimationList>\
-<Animation name="???" path="???.caf"/>\
-</AnimationList>\
-</Params>"""
-
-    elif type_ == "cdf":
-        return """<CharacterDefinition>\
-<Model File="???.chr" Material="???"/>\
-<AttachmentList>\
-<Attachment Type="CA_BONE" AName="???" Rotation="1,0,0,0" Position="0,0,0" BoneName="???" Flags="0"/>\
-<Attachment Type="CA_SKIN" AName="???" Binding="???.skin" Flags="0"/>\
-</AttachmentList>\
-<ShapeDeformation COL0="0" COL1="0" COL2="0" COL3="0" COL4="0" COL5="0" COL6="0" COL7="0"/>\
-</CharacterDefinition>"""
+   
+def get_node_type(groupname):
+    node_components = groupname.split(".")
+    return node_components[-1]
 
 
-def generate_file(filepath, contents):
-    if not os.path.exists(filepath):
-        file = open(filepath, "w")
-        file.write(contents)
-        file.close()
-
-
-def generate_xml(filepath, contents):
-    if not os.path.exists(filepath):
-        script = parseString(contents)
-        contents = script.toprettyxml(indent="    ")
-        generate_file(filepath, contents)
-
-
-def get_armature_for_object(object_):
-    if object_.parent is not None:
-        if object_.parent.type == "ARMATURE":
-            return object_.parent
-
-
-def get_armature():
-    for object_ in get_type("controllers"):
-        return object_
-
-
-def get_bones(armature):
-    return [bone for bone in armature.data.bones]
-
-
-def is_fakebone(object_):
-    fakebone = 0
-    for prop in object_.rna_type.id_data.items():
-        if prop:
-            if prop[1] == "fakebone":
-                fakebone = 1
-                break
-
-    return fakebone
-
-
-def remove_unused_meshes():
-    for mesh in bpy.data.meshes:
-        if mesh.users == 0:
-            bpy.data.meshes.remove(mesh)
-
-
-def tag_fakebone(pose_bone):
-    for object_ in bpy.context.scene.objects:
-        if object_.name == pose_bone.name:
-            object_["fakebone"] = "fakebone"
-
-def select_all():
-    for object_ in bpy.context.scene.objects:
-        object_.select = True
-
-def deselect_all():
-    for object_ in bpy.context.scene.objects:
-        object_.select = False
-
+#------------------------------------------------------------------------------
+# Fakebones:
+#------------------------------------------------------------------------------
 
 def find_fakebone(bonename):
     for object_ in bpy.context.scene.objects:
@@ -689,14 +574,20 @@ def find_fakebone(bonename):
                 return object_
 
 
-def find_bone_geometry(bonename):
-    for object_ in bpy.context.scene.objects:
-        if object_.name == "{!s}_boneGeometry".format(bonename):
-            return object_
+def is_fakebone(object_):
+    fakebone = 0
+    for prop in object_.rna_type.id_data.items():
+        if prop:
+            if prop[1] == "fakebone":
+                fakebone = 1
+                break
 
-# -----------------------------------------------------
+    return fakebone
+
+
+#------------------------------------------------------------------------------
 # Fakebone Functions -> Skeleton and animation section
-# -----------------------------------------------------
+#------------------------------------------------------------------------------
 
 def add_fakebones():
     '''Add helpers to track bone transforms.'''
@@ -735,6 +626,7 @@ def add_fakebones():
         if node_type in ALLOWED_NODE_TYPES:
             process_animation(armature, skeleton)
 
+
 def remove_fakebones():
     '''Select to remove all fakebones from the scene.'''
     deselect_all()
@@ -749,9 +641,10 @@ def remove_fakebones():
             object_.select = True
             bpy.ops.object.delete(use_global=False)
 
-# ----------------------------------
+
+#------------------------------------------------------------------------------
 # Animation and Keyframe Functions
-# ----------------------------------
+#------------------------------------------------------------------------------
 
 def process_animation(armature, skeleton):
     '''Process animation to export.'''
@@ -763,6 +656,7 @@ def process_animation(armature, skeleton):
     location_list, rotation_list = get_keyframes(armature)
     set_keyframes(armature, location_list, rotation_list)
     cbPrint("Animation was processed.")
+
 
 def get_keyframes(armature):
     '''Get each bone location and rotation for each frame.'''
@@ -801,6 +695,7 @@ def get_keyframes(armature):
 
     return location_list, rotation_list
 
+
 def set_keyframes(armature, location_list, rotation_list):
     '''Insert each keyframe from lists.'''
 
@@ -811,6 +706,7 @@ def set_keyframes(armature, location_list, rotation_list):
 
     bpy.context.scene.frame_set(bpy.context.scene.frame_start)
     cbPrint("Keyframes were inserted to armature fakebones.")
+
 
 def set_keyframe(armature, frame, location_list, rotation_list):
     '''Inset keyframe for current frame from lists.'''
@@ -826,6 +722,7 @@ def set_keyframe(armature, frame, location_list, rotation_list):
 
         fakeBone.keyframe_insert(data_path="location")
         fakeBone.keyframe_insert(data_path="rotation_euler")
+
 
 def apply_animation_scale():
     '''Apply Animation Scale.'''
@@ -914,6 +811,20 @@ def apply_animation_scale():
     cbPrint("Apply Animation was completed.")
 
 
+#------------------------------------------------------------------------------
+# BoneGeometry:
+#------------------------------------------------------------------------------
+
+def find_bone_geometry(bonename):
+    for object_ in bpy.context.scene.objects:
+        if object_.name == "{!s}_boneGeometry".format(bonename):
+            return object_
+
+
+#------------------------------------------------------------------------------
+# Skeleton:
+#------------------------------------------------------------------------------
+
 def get_root_bone(armature_object):
     for bone in get_bones(armature_object):
         if bone.parent is None:
@@ -928,20 +839,65 @@ def count_root_bones(armature_object):
 
     return count
 
-def negate_z_axis_of_matrix(matrix_local):
-    for i in range(0, 3):
-        matrix_local[i][3] = -matrix_local[i][3]
+
+def get_armature_for_object(object_):
+    if object_.parent is not None:
+        if object_.parent.type == "ARMATURE":
+            return object_.parent
 
 
-def fix_weights():
-    for object_ in get_type("skins"):
-        override = get_3d_context(object_)
-        try:
-            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
-        except:
-            raise exceptions.CryBlendException("Please fix weightless vertices first.")
-    cbPrint("Weights Corrected.")
+def get_armature():
+    for object_ in get_type("controllers"):
+        return object_
 
+
+def get_bones(armature):
+    return [bone for bone in armature.data.bones]
+
+
+#------------------------------------------------------------------------------
+# General:
+#------------------------------------------------------------------------------
+
+def select_all():
+    for object_ in bpy.context.scene.objects:
+        object_.select = True
+
+
+def deselect_all():
+    for object_ in bpy.context.scene.objects:
+        object_.select = False
+
+
+def get_object_children(parent):
+    return [object_ for object_ in parent.children
+            if object_.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+
+
+def parent(children, parent):
+    for object_ in children:
+        object_.parent = parent
+
+    return
+
+
+def remove_unused_meshes():
+    for mesh in bpy.data.meshes:
+        if mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+
+
+def get_bounding_box(object_):
+    box = object_.bound_box
+    vmin = Vector([box[0][0], box[0][1], box[0][2]])
+    vmax = Vector([box[6][0], box[6][1], box[6][2]])
+
+    return vmin[0], vmin[1], vmin[2], vmax[0], vmax[1], vmax[2]
+
+
+#------------------------------------------------------------------------------
+# Overriding Context:
+#------------------------------------------------------------------------------
 
 def get_3d_context(object_):
     window = bpy.context.window
@@ -965,17 +921,75 @@ def get_3d_context(object_):
     return override
 
 
-def apply_modifiers():
-    for object_ in bpy.data.objects:
-        for mod in object_.modifiers:
-            if mod.type != "ARMATURE":
-                try:
-                    bpy.ops.object.modifier_apply(modifier=mod.name)
-                except RuntimeError:
-                    pass
+#------------------------------------------------------------------------------
+# Layer File:
+#------------------------------------------------------------------------------
+
+def get_guid():
+    GUID = "{%s-%s-%s-%s-%s}" % (random_hex_sector(8),
+                                 random_hex_sector(4),
+                                 random_hex_sector(4),
+                                 random_hex_sector(4),
+                                 random_hex_sector(12))
+    return GUID
 
 
-def write_source(id_, type_, array, params, doc):
+def random_hex_sector(length):
+    fixed_length_hex_format = "%0" + str(length) + "x"
+    return fixed_length_hex_format % random.randrange(16 ** length)
+
+
+#------------------------------------------------------------------------------
+# Scripting:
+#------------------------------------------------------------------------------
+
+def generate_file_contents(type_):
+    if type_ == "chrparams":
+        return """<Params>\
+<AnimationList>\
+<Animation name="???" path="???.caf"/>\
+</AnimationList>\
+</Params>"""
+
+    elif type_ == "cdf":
+        return """<CharacterDefinition>\
+<Model File="???.chr" Material="???"/>\
+<AttachmentList>\
+<Attachment Type="CA_BONE" AName="???" Rotation="1,0,0,0" Position="0,0,0" BoneName="???" Flags="0"/>\
+<Attachment Type="CA_SKIN" AName="???" Binding="???.skin" Flags="0"/>\
+</AttachmentList>\
+<ShapeDeformation COL0="0" COL1="0" COL2="0" COL3="0" COL4="0" COL5="0" COL6="0" COL7="0"/>\
+</CharacterDefinition>"""
+
+
+def generate_file(filepath, contents):
+    if not os.path.exists(filepath):
+        file = open(filepath, "w")
+        file.write(contents)
+        file.close()
+
+
+def generate_xml(filepath, contents):
+    if not os.path.exists(filepath):
+        if isinstance(contents, str):
+            script = parseString(contents)
+        else:
+            script = contents
+        contents = script.toprettyxml(indent="    ")
+        generate_file(filepath, contents)
+
+
+def remove_file(filepath):
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+
+#------------------------------------------------------------------------------
+# Collada:
+#------------------------------------------------------------------------------
+
+def write_source(id_, type_, array, params):
+    doc = Document()
     length = len(array)
     if type_ == "float4x4":
         stride = 16
@@ -1035,11 +1049,34 @@ def write_input(name, offset, type_, semantic):
     return input
 
 
-def join(*items):
-    strings = []
-    for item in items:
-        strings.append(str(item))
-    return "".join(strings)
+# The following function is from:
+# http://ronrothman.com/
+#    public/leftbrained/xml-dom-minidom-toprettyxml-and-silly-whitespace/
+# modified to use the current version of shipped python
+def fix_write_xml(self, writer, indent="", addindent="", newl=""):
+    # indent = current indentation
+    # addindent = indentation to add to higher levels
+    # newl = newline string
+        writer.write(indent + "<" + self.tagName)
+        attrs = self._get_attributes()
+        for a_name in sorted(attrs.keys()):
+            writer.write(" %s=\"" % a_name)
+            xml.dom.minidom._write_data(writer, attrs[a_name].value)
+            writer.write("\"")
+        if self.childNodes:
+            if (len(self.childNodes) == 1
+                and self.childNodes[0].nodeType
+                    == xml.dom.minidom.Node.TEXT_NODE):
+                writer.write(">")
+                self.childNodes[0].writexml(writer, "", "", "")
+                writer.write("</%s>%s" % (self.tagName, newl))
+                return
+            writer.write(">%s" % (newl))
+            for node in self.childNodes:
+                node.writexml(writer, indent + addindent, addindent, newl)
+            writer.write("%s</%s>%s" % (indent, self.tagName, newl))
+        else:
+            writer.write("/>%s" % (newl))
 
 
 # this is needed if you want to access more than the first def
