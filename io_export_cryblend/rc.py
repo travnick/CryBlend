@@ -49,7 +49,7 @@ class _DAEConverter:
 
     def __call__(self):
         filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
-        utils.generate_xml(filepath, self.__doc)
+        utils.generate_xml(filepath, self.__doc, overwrite=True)
 
         dae_path = utils.get_absolute_path_for_rc(filepath)
 
@@ -269,7 +269,7 @@ class _TIFConverter:
             except:
                 cbPrint("Failed to invert green channel")
 
-            rc_process = run_rc(self.__config.rc_for_textures_conversion_path,
+            rc_process = run_rc(self.__config.texture_rc_path,
                                       tiff_image_for_rc,
                                       rc_params)
 
@@ -283,7 +283,7 @@ class _TIFConverter:
 
             rc_process.wait()
 
-        if self.__config.rc_for_textures_conversion_path:
+        if self.__config.texture_rc_path:
             self.__save_tiffs()
 
         self.__remove_tmp_files()

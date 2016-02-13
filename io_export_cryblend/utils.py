@@ -108,12 +108,13 @@ def negate_z_axis_of_matrix(matrix_local):
 # Path Manipulations:
 #------------------------------------------------------------------------------
 
+
 def get_absolute_path(file_path):
     [is_relative, file_path] = strip_blender_path_prefix(file_path)
 
     if is_relative:
         blend_file_path = os.path.dirname(bpy.data.filepath)
-        file_path = "%s/%s" % (blend_file_path, file_path)
+        file_path = '%s/%s' % (blend_file_path, file_path)
 
     return os.path.abspath(file_path)
 
@@ -121,12 +122,12 @@ def get_absolute_path(file_path):
 def get_absolute_path_for_rc(file_path):
     # 'z:' is for wine (linux, mac) path
     # there should be better way to determine it
-    WINE_DEFAULT_DRIVE_LETTER = "z:"
+    WINE_DEFAULT_DRIVE_LETTER = 'z:'
 
     file_path = get_absolute_path(file_path)
 
-    if not sys.platform == 'win32':
-        file_path = "%s%s" % (WINE_DEFAULT_DRIVE_LETTER, file_path)
+    if sys.platform != 'win32':
+        file_path = '%s%s' % (WINE_DEFAULT_DRIVE_LETTER, file_path)
 
     return file_path
 
@@ -156,7 +157,7 @@ def get_relative_path(filepath, start=None):
 
 def strip_blender_path_prefix(path):
     is_relative = False
-    BLENDER_RELATIVE_PATH_PREFIX = "//"
+    BLENDER_RELATIVE_PATH_PREFIX = '//'
     prefix_length = len(BLENDER_RELATIVE_PATH_PREFIX)
 
     if path.startswith(BLENDER_RELATIVE_PATH_PREFIX):
@@ -175,12 +176,59 @@ def make_relative_path(filepath, start):
         raise exceptions.TextureAndBlendDiskMismatchException(start, filepath)
 
 
-def get_path_with_new_extension(image_path, extension):
-    return "%s.%s" % (os.path.splitext(image_path)[0], extension)
+def get_path_with_new_extension(path, extension):
+    return '%s.%s' % (os.path.splitext(path)[0], extension)
 
 
-def get_extension_from_path(image_path):
-    return "%s" % (os.path.splitext(image_path)[1])
+def strip_extension_from_path(path):
+    return os.path.splitext(path)[0]
+
+
+def get_extension_from_path(path):
+    return os.path.splitext(path)[1]
+
+
+def normalize_path(path):
+    path = path.replace("\\", "/")
+
+    multiple_paths = re.compile("/{2,}")
+    path = multiple_paths.sub("/", path)
+
+    if path[0] == "/":
+        path = path[1:]
+    
+    if path[-1] == "/":
+        path = path[:-1]
+
+    return path
+
+
+def build_path(*components):
+    path = "/".join(components)
+    path = path.replace("/.", ".") # accounts for extension
+    return normalize_path(path)
+
+
+def get_filename(path):
+    path_normalized = normalize_path(path)
+    components = path_normalized.split("/")
+    name = os.path.splitext(components[-1])[0]
+    return name
+
+
+def trim_path_to(path, trim_to):
+    path_normalized = normalize_path(path)
+    components = path_normalized.split("/")
+    for index, component in enumerate(components):
+        if component == trim_to:
+            cbPrint("FOUND AN INSTANCE")
+            break;
+    cbPrint(index)
+    components_trimmed = components[index:]
+    cbPrint(components_trimmed)
+    path_trimmed = build_path(*components_trimmed)
+    cbPrint(path_trimmed)
+    return path_trimmed
 
 
 #------------------------------------------------------------------------------
@@ -240,8 +288,8 @@ def replace_invalid_rc_characters(string):
             string = string.replace(char, good)
             string = string.replace(char.upper(), good.upper())
 
-    # Remove all remaining non alphanumeric characters except underscores and dots.
-    string = re.sub("[^.^_0-9A-Za-z]", "", string)
+    # Remove all remaining non alphanumeric characters except underscores, dots, and dollar signs.
+    string = re.sub("[^.^_^$0-9A-Za-z]", "", string)
 
     return string
 
@@ -524,6 +572,20 @@ def extract_cryblend_properties(materialname):
         properties["Physics"] = groups[0][3]
         return properties
     return None
+
+
+def get_material_props(materialname):
+    if has__material_physics(materialname):
+        groups = re.findall('(.*)__(phys[A-Za-z0-9]+)', materialname)
+        return replace_invalid_rc_characters(groups[0][0]), groups[0][1]
+    return replace_invalid_rc_characters(materialname), "physDefault"
+
+
+def has__material_physics(materialname):
+    if re.search('.*__phys[A-Za-z0-9]+', materialname):
+          return True
+    else:
+        return False
 
 
 #------------------------------------------------------------------------------
@@ -962,21 +1024,21 @@ def generate_file_contents(type_):
 </CharacterDefinition>"""
 
 
-def generate_file(filepath, contents):
-    if not os.path.exists(filepath):
-        file = open(filepath, "w")
+def generate_file(filepath, contents, overwrite=False):
+    if not os.path.exists(filepath) or overwrite:
+        file = open(filepath, 'w')
         file.write(contents)
         file.close()
 
 
-def generate_xml(filepath, contents):
+def generate_xml(filepath, contents, overwrite=False):
     if not os.path.exists(filepath):
         if isinstance(contents, str):
             script = parseString(contents)
         else:
             script = contents
         contents = script.toprettyxml(indent="    ")
-        generate_file(filepath, contents)
+        generate_file(filepath, contents, overwrite=False)
 
 
 def remove_file(filepath):

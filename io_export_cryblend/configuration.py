@@ -24,9 +24,9 @@ class __Configuration:
                                             create=True)
     __CONFIG_FILENAME = 'cryblend.cfg'
     __CONFIG_FILEPATH = os.path.join(__CONFIG_PATH, __CONFIG_FILENAME)
-    __DEFAULT_CONFIGURATION = {'RC_LOCATION': r'',
-                              'RC_FOR_TEXTURES_CONVERSION': r'',
-                              'TEXTURES_DIR': r'',
+    __DEFAULT_CONFIGURATION = {'RC_PATH': r'',
+                              'TEXTURE_RC_PATH': r'',
+                              'TEXTURE_DIR': r'',
                               'SCRIPT_EDITOR': r''}
 
     def __init__(self):
@@ -34,30 +34,30 @@ class __Configuration:
 
     @property
     def rc_path(self):
-        return self.__CONFIG['RC_LOCATION']
+        return self.__CONFIG['RC_PATH']
 
     @rc_path.setter
     def rc_path(self, value):
-        self.__CONFIG['RC_LOCATION'] = value
+        self.__CONFIG['RC_PATH'] = value
 
     @property
-    def rc_for_texture_conversion_path(self):
-        if (not self.__CONFIG['RC_FOR_TEXTURES_CONVERSION']):
+    def texture_rc_path(self):
+        if (not self.__CONFIG['TEXTURE_RC_PATH']):
             return self.rc_path
 
-        return self.__CONFIG['RC_FOR_TEXTURES_CONVERSION']
+        return self.__CONFIG['TEXTURE_RC_PATH']
 
-    @rc_for_texture_conversion_path.setter
-    def rc_for_texture_conversion_path(self, value):
-        self.__CONFIG['RC_FOR_TEXTURES_CONVERSION'] = value
+    @texture_rc_path.setter
+    def texture_rc_path(self, value):
+        self.__CONFIG['TEXTURE_RC_PATH'] = value
 
     @property
-    def textures_directory(self):
-        return self.__CONFIG['TEXTURES_DIR']
+    def texture_dir(self):
+        return self.__CONFIG['TEXTURE_DIR']
 
-    @textures_directory.setter
-    def textures_directory(self, value):
-        self.__CONFIG['TEXTURES_DIR'] = value
+    @texture_dir.setter
+    def texture_dir(self, value):
+        self.__CONFIG['TEXTURE_DIR'] = value
 
     @property
     def script_editor(self):
