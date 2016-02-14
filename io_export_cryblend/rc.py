@@ -181,8 +181,8 @@ class _DAEConverter:
                  'Id': utils.get_guid(),
                  'LayerGUID': layer.getAttribute('GUID'),
                  'Layer': layer_name,
-                 'Pos': "%s, %s, %s" % origin[:],
-                 'Rotate': "%s, %s, %s, %s" % rotation[:],
+                 'Pos': "{}, {}, {}".format(origin[:]),
+                 'Rotate': "{}, {}, {}, {}".format(rotation[:]),
                  'EntityClass': 'BasicEntity',
                  'FloorNumber': '-1',
                  'RenderNearest': '0',
@@ -199,7 +199,7 @@ class _DAEConverter:
             )
             properties = createAttributes(
                 'Properties',
-                {'object_Model': '/Objects/%s.cgf' % group.name[14:],
+                {'object_Model': '/Objects/{}.cgf'.format(group.name[14:]),
                  'bCanTriggerAreas': '0',
                  'bExcludeCover': '0',
                  'DmgFactorWhenCollidingAI': '1',
@@ -305,7 +305,7 @@ class _TIFConverter:
             temp_normal_image = image.copy()
             self.__invert_green_channel(temp_normal_image)
             # save to file and delete the temporary image
-            new_normal_image_path = "%s_cb_normal.%s" % (os.path.splitext(
+            new_normal_image_path = "{}_cb_normal.{}".format(os.path.splitext(
                 temp_normal_image.filepath_raw)[0],
                 os.path.splitext(
                 temp_normal_image.filepath_raw)[1])

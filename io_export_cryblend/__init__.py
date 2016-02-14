@@ -105,7 +105,7 @@ class FindRC(bpy.types.Operator, PathSelectTemplate):
     filename_ext = ".exe"
 
     def process(self, filepath):
-        Configuration.rc_path = "%s" % filepath
+        Configuration.rc_path = filepath
         cbPrint("Found RC at {!r}.".format(Configuration.rc_path), 'debug')
 
     def invoke(self, context, event):
@@ -125,7 +125,7 @@ to be able to export your textures as dds files.'''
     filename_ext = ".exe"
 
     def process(self, filepath):
-        Configuration.texture_rc_path = "%s" % filepath
+        Configuration.texture_rc_path = filepath
         cbPrint("Found RC at {!r}.".format(
             Configuration.texture_rc_path),
             'debug')
@@ -146,7 +146,7 @@ for textures in .mtl file.'''
     filename_ext = ""
 
     def process(self, filepath):
-        Configuration.texture_dir = "%s" % os.path.dirname(filepath)
+        Configuration.texture_dir = os.path.dirname(filepath)
         cbPrint("Textures directory: {!r}.".format(
             Configuration.texture_dir),
             'debug')
@@ -295,7 +295,7 @@ be converted to the selected shape in CryEngine.'''
             if (not already_exists):
                 self.__add_proxy(active)
 
-        message = "Adding %s proxy to active object" % getattr(self, "type_")
+        message = "Adding {} proxy to active object".format(getattr(self, "type_"))
         self.report({'INFO'}, message)
         return {'FINISHED'}
 
@@ -319,7 +319,7 @@ be converted to the selected shape in CryEngine.'''
         for group in object_.users_group:
             bpy.ops.object.group_link(group=group.name)
 
-        name = "{}__physProxyNone".format(bound_box.name)
+        name = "{}__physProxyNoDraw".format(bound_box.name)
         proxy_material = bpy.data.materials.new(name)
         bound_box.data.materials.append(proxy_material)
 
@@ -427,11 +427,10 @@ def name_branch(is_new_branch):
                         highest_joint_number = joint_number
     if (highest_branch_number != 0):
         if (is_new_branch):
-            return ("branch%s_1" % (highest_branch_number + 1))
+            return "branch{}_1".format(highest_branch_number + 1)
         else:
-            return (
-                "branch%s_%s" %
-                (highest_branch_number, highest_joint_number + 1))
+            return "branch{}_{}".format(
+                    highest_branch_number, highest_joint_number + 1)
     else:
         return "branch1_1"
 
@@ -1108,7 +1107,7 @@ it's mesh before running this.'''
         if degenerate_count > 0:
             bpy.ops.object.mode_set(mode='EDIT')
             self.report({'WARNING'},
-                        "Found %i degenerate faces" % degenerate_count)
+                        "Found {} degenerate faces".format(degenerate_count))
         else:
             self.report({'INFO'}, "No degenerate faces found")
             # Restore the original mode
@@ -1309,20 +1308,20 @@ class AddBoneGeometry(bpy.types.Operator):
             if obj.type == 'ARMATURE' and obj.select:
 
                 physBonesList = []
-                if "%s_Phys" % obj.name in nameList:
+                if "{}_Phys".format(obj.name) in nameList:
                     for bone in bpy.data.objects[
-                            "%s_Phys" % obj.name].data.bones:
+                            "{}_Phys".format(obj.name)].data.bones:
                         physBonesList.append(bone.name)
 
                 for bone in obj.data.bones:
-                    if ((not "%s_boneGeometry" % bone.name in nameList
-                         and not "%s_Phys" % obj.name in nameList)
-                            or ("%s_Phys" % obj.name in nameList
-                                and "%s_Phys" % bone.name in physBonesList
-                                and not "%s_boneGeometry" % bone.name in nameList)
+                    if ((not "{}_boneGeometry".format(bone.name) in nameList
+                         and not "{}_Phys".format(obj.name) in nameList)
+                            or ("{}_Phys".format(obj.name) in nameList
+                                and "{}_Phys".format(bone.name) in physBonesList
+                                and not "{}_boneGeometry".format(bone.name) in nameList)
                         ):
                         mesh = bpy.data.meshes.new(
-                            "%s_boneGeometry" % bone.name
+                            "{}_boneGeometry".format(bone.name)
                         )
                         bm = bmesh.new()
 
@@ -1417,15 +1416,14 @@ class RemoveBoneGeometry(bpy.types.Operator):
             obj = bpy.context.scene.objects[name]
             physBonesList = []
             # Get list of phys bones in matching phys skel
-            if "%s_Phys" % obj.name in nameList:
-                for bone in bpy.data.objects["%s_Phys" % obj.name].data.bones:
+            if "{}_Phys".format(obj.name) in nameList:
+                for bone in bpy.data.objects["{}_Phys".format(obj.name)].data.bones:
                     physBonesList.append(bone.name)
 
             for bone in obj.data.bones:  # For each bone
-                if "%s_boneGeometry" % bone.name in nameList:
+                if "{}_boneGeometry".format(bone.name) in nameList:
                     bpy.data.objects[
-                        "%s_boneGeometry" %
-                        bone.name].select = True
+                        "{}_boneGeometry".format(bone.name)].select = True
 
             bpy.ops.object.delete()
 
@@ -1443,7 +1441,7 @@ class RenamePhysBones(bpy.types.Operator):
             if ('_Phys' == obj.name[-5:]
                     and obj.type == 'ARMATURE'):
                 for bone in obj.data.bones:
-                    bone.name = "%s_Phys" % bone.name
+                    bone.name = "{}_Phys".format(bone.name)
 
         return {'FINISHED'}
 
@@ -1974,7 +1972,7 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout = self.layout
 
         # version number
-        layout.label(text='v%s' % VERSION)
+        layout.label(text='v{}'.format(VERSION))
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
         layout.operator(
             "object.add_cry_export_node",

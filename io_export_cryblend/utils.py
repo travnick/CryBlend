@@ -61,7 +61,7 @@ def frame_to_time(frame):
 def matrix_to_string(matrix):
     rows = []
     for row in matrix:
-        rows.append(" ".join("%s" % column for column in row))
+        rows.append(" ".join("{}".format(column) for column in row))
 
     return " ".join(rows)
 
@@ -114,7 +114,7 @@ def get_absolute_path(file_path):
 
     if is_relative:
         blend_file_path = os.path.dirname(bpy.data.filepath)
-        file_path = '%s/%s' % (blend_file_path, file_path)
+        file_path = '{}/{}'.format(blend_file_path, file_path)
 
     return os.path.abspath(file_path)
 
@@ -127,7 +127,7 @@ def get_absolute_path_for_rc(file_path):
     file_path = get_absolute_path(file_path)
 
     if sys.platform != 'win32':
-        file_path = '%s%s' % (WINE_DEFAULT_DRIVE_LETTER, file_path)
+        file_path = '{}{}'.format(WINE_DEFAULT_DRIVE_LETTER, file_path)
 
     return file_path
 
@@ -177,7 +177,7 @@ def make_relative_path(filepath, start):
 
 
 def get_path_with_new_extension(path, extension):
-    return '%s.%s' % (os.path.splitext(path)[0], extension)
+    return '{}.{}'.format(os.path.splitext(path)[0], extension)
 
 
 def strip_extension_from_path(path):
@@ -993,16 +993,16 @@ def get_3d_context(object_):
 #------------------------------------------------------------------------------
 
 def get_guid():
-    GUID = "{%s-%s-%s-%s-%s}" % (random_hex_sector(8),
-                                 random_hex_sector(4),
-                                 random_hex_sector(4),
-                                 random_hex_sector(4),
-                                 random_hex_sector(12))
+    GUID = "{{}-{}-{}-{}-{}}".format(random_hex_sector(8),
+                                     random_hex_sector(4),
+                                     random_hex_sector(4),
+                                     random_hex_sector(4),
+                                     random_hex_sector(12))
     return GUID
 
 
 def random_hex_sector(length):
-    fixed_length_hex_format = "%0" + str(length) + "x"
+    fixed_length_hex_format = "%0{}x".format(length)
     return fixed_length_hex_format % random.randrange(16 ** length)
 
 
