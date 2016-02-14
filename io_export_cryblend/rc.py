@@ -22,6 +22,7 @@ else:
     from io_export_cryblend import utils
 
 from io_export_cryblend.outpipe import cbPrint
+import fnmatch
 import os
 import shutil
 import subprocess
@@ -110,7 +111,7 @@ class _DAEConverter:
         if return_code == SUCCESS:
             export_directory = os.path.dirname(dae_file)
 
-            mtl_files = self.get_mtl_files_in_directory(export_directory)
+            mtl_files = self.__get_mtl_files_in_directory(export_directory)
 
             for mtl_file_name in mtl_files:
                 self.__fix_normalmap_in_mtl(mtl_file_name)

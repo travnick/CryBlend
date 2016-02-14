@@ -103,28 +103,29 @@ class CrytekDaeExporter:
                     if slot.material is None:
                         continue
 
-                    material_counter[group.name] += 1
-                    nodename = utils.get_node_name(
-                        group.name.replace("CryExportNode_", ""))
-                    name, physics = utils.get_material_props(
-                        slot.material.name)
+                    if slot.material not in materials:
+                        material_counter[group.name] += 1
+                        nodename = utils.get_node_name(
+                            group.name.replace("CryExportNode_", ""))
+                        name, physics = utils.get_material_props(
+                            slot.material.name)
 
-                    materialname = "{}__{:03d}__{}__{}".format(
-                        nodename,
-                        material_counter[group.name],
-                        name,
-                        physics)
+                        materialname = "{}__{:03d}__{}__{}".format(
+                            nodename,
+                            material_counter[group.name],
+                            name,
+                            physics)
 
-                    materials[materialname] = slot.material
+                        materials[slot.material] = materialname
 
         return materials
 
     def __get_materials_for_object(self, object_):
         materials = OrderedDict()
-        for materialname, material in self.__materials.items():
+        for material, materialname in self.__materials.items():
             for object_material in object_.data.materials:
                 if material.name == object_material.name:
-                    materials[materialname] = material
+                    materials[material] = materialname
 
         return materials
 
@@ -252,12 +253,12 @@ class CrytekDaeExporter:
     def __export_library_effects(self, parent_element):
         current_element = self.__doc.createElement('library_effects')
         parent_element.appendChild(current_element)
-        for materialname, material in self.__materials.items():
+        for material, materialname in self.__materials.items():
             self.__export_library_effects_material(
-                materialname, material, current_element)
+                material, materialname, current_element)
 
     def __export_library_effects_material(
-            self, materialname, material, current_element):
+            self, material, materialname, current_element):
         images = [[], [], []]
 
         is_cycles_render = bpy.context.scene.render.engine == 'CYCLES'
@@ -421,9 +422,8 @@ class CrytekDaeExporter:
 
     def __export_library_materials(self, parent_element):
         library_materials = self.__doc.createElement('library_materials')
-        materials = utils.get_type('materials')
 
-        for materialname, material in self.__materials.items():
+        for material, materialname in self.__materials.items():
             material_element = self.__doc.createElement('material')
             material_element.setAttribute('id', '%s' % materialname)
             instance_effect = self.__doc.createElement('instance_effect')
@@ -580,7 +580,7 @@ class CrytekDaeExporter:
 
     def __write_polylist(self, object_, mesh, root):
         matindex = 0
-        for materialname, material in self.__get_materials_for_object(
+        for material, materialname in self.__get_materials_for_object(
                 object_).items():
             vert_data = ''
             verts_per_poly = ''
@@ -1203,7 +1203,7 @@ class CrytekDaeExporter:
         bind_material = self.__doc.createElement('bind_material')
         technique_common = self.__doc.createElement('technique_common')
 
-        for materialname, material in self.__get_materials_for_object(
+        for material, materialname in self.__get_materials_for_object(
                 object_).items():
             instance_material = self.__doc.createElement(
                 'instance_material')
