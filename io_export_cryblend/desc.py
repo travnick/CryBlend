@@ -1,11 +1,13 @@
 ﻿#------------------------------------------------------------------------------
 # Name:        desc.py
-# Purpose:     Hold descriptions of UDP and IK properties.
+# Purpose:     Holds descriptions of UDP and IK properties.
 #
-# Author:      Özkan Afacan
+# Author:      Özkan Afacan,
+#              Angelo J. Miner, Daniel White, David Marcelis, Duo Oratar,
+#              Mikołaj Milej, Oscar Martin Garcia
 #
-# Created:     02/07/2016
-# Copyright:   (c) Özkan Afacan 2016
+# Created:     07/02/2015
+# Copyright:   (c) Özkan Afacan 2015
 # License:     GPLv2+
 #------------------------------------------------------------------------------
 
@@ -13,7 +15,10 @@
 
 list = {}
 
-# Materials Physic
+
+#------------------------------------------------------------------------------
+# Material Physics:
+#------------------------------------------------------------------------------
 
 list['physDefault'] = "The render geometry is used as physics proxy. This " \
     + "is expensive for complex objects, so use this only for simple objects" \
@@ -30,7 +35,9 @@ list['physObstruct'] = "Used for Soft Cover to block AI view " \
 
 list['physNone'] = "The render geometry have no physic just render it."
 
-# Inverse Kinematics
+#------------------------------------------------------------------------------
+# Inverse Kinematics:
+#------------------------------------------------------------------------------
 
 list['spring'] = "Stiffness of an angular spring at a joint can be adjusted " \
     + "via the 'Spring Tension' parameter. A value of 1 means acceleration " \
@@ -40,7 +47,9 @@ list['damping'] = "The 'dampening' value in the IK Limit options will " \
     + "effect how loose the joint will be in the rag doll simulation of " \
     + "the dead body. Most times you will want the dampening value set at 1,0."
 
-# Physic Proxy
+#------------------------------------------------------------------------------
+# Physics Proxy:
+#------------------------------------------------------------------------------
 
 ''' "phys_proxy", "colltype_player", "no_explosion_occlusion", "wheel" '''
 
@@ -55,7 +64,9 @@ list['colltpye_player'] = "If a phys proxy node has this string, then: " \
     + "impacts. 2- If this object contains other phys proxy nodes, " \
     + "then those other nodes will not receive player collisions."
 
-# Render Mesh
+#------------------------------------------------------------------------------
+# Render Mesh:
+#------------------------------------------------------------------------------
 
 ''' "entity", "mass", "density", "pieces", "dynamic", "no_hit_refinement" '''
 
@@ -88,7 +99,9 @@ list['other_rendermesh'] = "(Mostly obsolete now) - This would be required " \
     + "always be children of the rendermesh however, in which case " \
     + "other_rendermesh is not required."
 
-# Joint Node
+#------------------------------------------------------------------------------
+# Joint Node:
+#------------------------------------------------------------------------------
 
 ''' "limit", "bend", "twist", "pull", "push",
 "shift", "player_can_break", "gameplay_critical" '''
@@ -118,7 +131,9 @@ list['player_can_break'] = "Joints in the entire breakable entity can be " \
 list['gameplay_critical'] = "Joints in the entire entity will break, even " \
     + "if jointed breaking is disabled overall. "
 
-# Deformable
+#------------------------------------------------------------------------------
+# Deformable:
+#------------------------------------------------------------------------------
 
 ''' "stiffness", "hardness", "max_stretch", "max_impulse",
 "skin_dist", "thickness", "explosion_scale", "notaprim" '''

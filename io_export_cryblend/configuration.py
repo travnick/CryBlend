@@ -1,8 +1,10 @@
 #------------------------------------------------------------------------------
 # Name:        configuration.py
-# Purpose:     Storing CryBlend configuration settings
+# Purpose:     Stores CryBlend configuration settings
 #
-# Author:      Mikołaj Milej
+# Author:      Mikołaj Milej,
+#              Angelo J. Miner, Daniel White, David Marcelis, Duo Oratar,
+#              Oscar Martin Garcia, Özkan Afacan
 #
 # Created:     02/10/2013
 # Copyright:   (c) Mikołaj Milej 2013
@@ -25,9 +27,9 @@ class __Configuration:
     __CONFIG_FILENAME = 'cryblend.cfg'
     __CONFIG_FILEPATH = os.path.join(__CONFIG_PATH, __CONFIG_FILENAME)
     __DEFAULT_CONFIGURATION = {'RC_PATH': r'',
-                              'TEXTURE_RC_PATH': r'',
-                              'TEXTURE_DIR': r'',
-                              'SCRIPT_EDITOR': r''}
+                               'TEXTURE_RC_PATH': r'',
+                               'TEXTURE_DIR': r'',
+                               'SCRIPT_EDITOR': r''}
 
     def __init__(self):
         self.__CONFIG = self.__load({})

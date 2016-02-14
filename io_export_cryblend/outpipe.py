@@ -2,7 +2,9 @@
 # Name:        outpipe.py
 # Purpose:     Pipeline for console output
 #
-# Author:      N/A
+# Author:      Angelo J. Miner,
+#              Daniel White, David Marcelis, Duo Oratar, Mikołaj Milej,
+#              Oscar Martin Garcia, Özkan Afacan
 #
 # Created:     N/A
 # Copyright:   (c) N/A
@@ -17,6 +19,7 @@ from logging import basicConfig, info, debug, warning, DEBUG
 
 
 class OutPipe():
+
     def __init__(self):
         pass
 
@@ -35,7 +38,7 @@ class OutPipe():
 
         else:
             raise exceptions.CryBlendException("No such message type {!r}".
-                                    format(message_type))
+                                               format(message_type))
 
 
 op = OutPipe()
@@ -43,4 +46,3 @@ op = OutPipe()
 
 def cbPrint(msg, message_type='info'):
     op.pump(msg, message_type)
-
