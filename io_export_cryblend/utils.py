@@ -2,8 +2,9 @@
 # Name:        utils.py
 # Purpose:     Utility functions for use throughout the add-on
 #
-# Author:      Angelo J. Miner
-# Extended by: Özkan Afacan
+# Author:      Angelo J. Miner,
+#              Daniel White, David Marcelis, Duo Oratar, Mikołaj Milej,
+#              Oscar Martin Garcia, Özkan Afacan
 #
 # Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012
@@ -108,7 +109,6 @@ def negate_z_axis_of_matrix(matrix_local):
 # Path Manipulations:
 #------------------------------------------------------------------------------
 
-
 def get_absolute_path(file_path):
     [is_relative, file_path] = strip_blender_path_prefix(file_path)
 
@@ -196,7 +196,7 @@ def normalize_path(path):
 
     if path[0] == "/":
         path = path[1:]
-    
+
     if path[-1] == "/":
         path = path[:-1]
 
@@ -205,7 +205,7 @@ def normalize_path(path):
 
 def build_path(*components):
     path = "/".join(components)
-    path = path.replace("/.", ".") # accounts for extension
+    path = path.replace("/.", ".")  # accounts for extension
     return normalize_path(path)
 
 
@@ -222,7 +222,7 @@ def trim_path_to(path, trim_to):
     for index, component in enumerate(components):
         if component == trim_to:
             cbPrint("FOUND AN INSTANCE")
-            break;
+            break
     cbPrint(index)
     components_trimmed = components[index:]
     cbPrint(components_trimmed)
@@ -238,7 +238,8 @@ def trim_path_to(path, trim_to):
 def clean_file():
     for texture in get_type("textures"):
         try:
-            texture.image.name = replace_invalid_rc_characters(texture.image.name)
+            texture.image.name = replace_invalid_rc_characters(
+                texture.image.name)
         except AttributeError:
             pass
     for material in get_type("materials"):
@@ -267,20 +268,20 @@ def replace_invalid_rc_characters(string):
     string = "__".join(string.split())
 
     character_map = {
-        "a":  "àáâå",
-        "c":  "ç",
-        "e":  "èéêë",
-        "i":  "ìíîïı",
-        "l":  "ł",
-        "n":  "ñ",
-        "o":  "òóô",
-        "u":  "ùúû",
-        "y":  "ÿ",
+        "a": "àáâå",
+        "c": "ç",
+        "e": "èéêë",
+        "i": "ìíîïı",
+        "l": "ł",
+        "n": "ñ",
+        "o": "òóô",
+        "u": "ùúû",
+        "y": "ÿ",
         "ss": "ß",
         "ae": "äæ",
         "oe": "ö",
         "ue": "ü"
-    } # Expand with more individual replacement rules.
+    }  # Expand with more individual replacement rules.
 
     # Individual replacement.
     for good, bad in character_map.items():
@@ -288,7 +289,8 @@ def replace_invalid_rc_characters(string):
             string = string.replace(char, good)
             string = string.replace(char.upper(), good.upper())
 
-    # Remove all remaining non alphanumeric characters except underscores, dots, and dollar signs.
+    # Remove all remaining non alphanumeric characters except underscores,
+    # dots, and dollar signs.
     string = re.sub("[^.^_^$0-9A-Za-z]", "", string)
 
     return string
@@ -298,9 +300,11 @@ def fix_weights():
     for object_ in get_type("skins"):
         override = get_3d_context(object_)
         try:
-            bpy.ops.object.vertex_group_normalize_all(override, lock_active=False)
+            bpy.ops.object.vertex_group_normalize_all(
+                override, lock_active=False)
         except:
-            raise exceptions.CryBlendException("Please fix weightless vertices first.")
+            raise exceptions.CryBlendException(
+                "Please fix weightless vertices first.")
     cbPrint("Weights Corrected.")
 
 
@@ -356,7 +360,7 @@ def __get_geometry():
     allowed = {"MESH"}
     for object_ in get_type("nodes"):
         if object_.type in allowed and not is_fakebone(object_):
-           items.append(object_)
+            items.append(object_)
 
     return items
 
@@ -461,6 +465,7 @@ def get_texture_nodes_for_material(material):
 
     return cycles_nodes
 
+
 def get_texture_slots_for_material(material):
     texture_slots = []
     for texture_slot in material.texture_slots:
@@ -499,13 +504,15 @@ def raise_exception_if_textures_have_same_type(texture_types):
     ERROR_TEMPLATE = "There is more than one texture of type {!r}."
     error_messages = []
 
-    for type_name, type_count in  texture_types.items():
+    for type_name, type_count in texture_types.items():
         if type_count > 1:
             error_messages.append(ERROR_TEMPLATE.format(type_name.lower()))
 
     if error_messages:
-        raise exceptions.CryBlendException("\n".join(error_messages) + "\n"
-                                    + "Please correct that and try again.")
+        raise exceptions.CryBlendException(
+            "\n".join(error_messages) +
+            "\n" +
+            "Please correct that and try again.")
 
 
 def is_valid_image(image):
@@ -564,7 +571,9 @@ def extract_cryblend_properties(materialname):
     None if name is invalid.
     """
     if is_cryblend_material(materialname):
-        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
+        groups = re.findall(
+            "(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)",
+            materialname)
         properties = {}
         properties["ExportNode"] = groups[0][0]
         properties["Number"] = int(groups[0][1])
@@ -583,13 +592,13 @@ def get_material_props(materialname):
 
 def has__material_physics(materialname):
     if re.search('.*__phys[A-Za-z0-9]+', materialname):
-          return True
+        return True
     else:
         return False
 
 
 #------------------------------------------------------------------------------
-# ExportNodes:
+# Export Nodes:
 #------------------------------------------------------------------------------
 
 def is_export_node(nodename):
@@ -612,9 +621,9 @@ def are_duplicate_nodes():
 
 def get_node_name(groupname):
     node_type = get_node_type(groupname)
-    return groupname[:-(len(node_type)+1)]
+    return groupname[:-(len(node_type) + 1)]
 
-   
+
 def get_node_type(groupname):
     node_components = groupname.split(".")
     return node_components[-1]
@@ -647,10 +656,6 @@ def is_fakebone(object_):
     return fakebone
 
 
-#------------------------------------------------------------------------------
-# Fakebone Functions -> Skeleton and animation section
-#------------------------------------------------------------------------------
-
 def add_fakebones():
     '''Add helpers to track bone transforms.'''
     scene = bpy.context.scene
@@ -662,8 +667,9 @@ def add_fakebones():
     try:
         skeleton = bpy.data.armatures[armature.name]
     except:
-        raise TypeError("Armature object name and object data name must "
-            + "be same! You may set it in properties or outliner editor.")
+        raise TypeError(
+            "Armature object name and object data name must " +
+            "be same! You may set it in properties or outliner editor.")
 
     skeleton.pose_position = 'REST'
     time.sleep(0.5)
@@ -705,7 +711,7 @@ def remove_fakebones():
 
 
 #------------------------------------------------------------------------------
-# Animation and Keyframe Functions
+# Animation and Keyframing:
 #------------------------------------------------------------------------------
 
 def process_animation(armature, skeleton):
@@ -725,7 +731,9 @@ def get_keyframes(armature):
     location_list = []
     rotation_list = []
 
-    for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end + 1):
+    for frame in range(
+            bpy.context.scene.frame_start,
+            bpy.context.scene.frame_end + 1):
         bpy.context.scene.frame_set(frame)
 
         locations = {}
@@ -735,7 +743,8 @@ def get_keyframes(armature):
             fakeBone = bpy.context.scene.objects[bone.name]
 
             if bone.parent and bone.parent.parent:
-                parentMatrix = bpy.context.scene.objects[bone.parent.name].matrix_world
+                parentMatrix = bpy.context.scene.objects[
+                    bone.parent.name].matrix_world
 
                 animatrix = parentMatrix.inverted() * fakeBone.matrix_world
                 lm, rm, sm = animatrix.decompose()
@@ -763,7 +772,9 @@ def set_keyframes(armature, location_list, rotation_list):
 
     bpy.context.scene.frame_set(bpy.context.scene.frame_start)
 
-    for frame in range(bpy.context.scene.frame_start, bpy.context.scene.frame_end + 1):
+    for frame in range(
+            bpy.context.scene.frame_start,
+            bpy.context.scene.frame_end + 1):
         set_keyframe(armature, frame, location_list, rotation_list)
 
     bpy.context.scene.frame_set(bpy.context.scene.frame_start)
@@ -814,19 +825,29 @@ def apply_animation_scale():
         empty.name = pose_bone.name
 
         bpy.ops.object.constraint_add(type='CHILD_OF')
-        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_x = False
-        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_y = False
-        bpy.data.objects[empty.name].constraints['Child Of'].use_scale_z = False
+        bpy.data.objects[empty.name].constraints[
+            'Child Of'].use_scale_x = False
+        bpy.data.objects[empty.name].constraints[
+            'Child Of'].use_scale_y = False
+        bpy.data.objects[empty.name].constraints[
+            'Child Of'].use_scale_z = False
 
         bpy.data.objects[empty.name].constraints['Child Of'].target = armature
-        bpy.data.objects[empty.name].constraints['Child Of'].subtarget = pose_bone.name
+        bpy.data.objects[empty.name].constraints[
+            'Child Of'].subtarget = pose_bone.name
 
         cbPrint("Baking animation on " + empty.name + "...")
-        bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end,
-            step=1, only_selected=True, visual_keying=True, clear_constraints=True,
-            clear_parents=False, bake_types={'OBJECT'})
+        bpy.ops.nla.bake(
+            frame_start=scene.frame_start,
+            frame_end=scene.frame_end,
+            step=1,
+            only_selected=True,
+            visual_keying=True,
+            clear_constraints=True,
+            clear_parents=False,
+            bake_types={'OBJECT'})
 
-        empties.append (empty)
+        empties.append(empty)
 
     for empty in empties:
         empty.select = True
@@ -856,9 +877,15 @@ def apply_animation_scale():
         pose_bone.bone.select = True
 
     cbPrint("Baking Animation on skeleton...")
-    bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end,
-        step=1, only_selected=True, visual_keying=True, clear_constraints=True,
-        clear_parents=False, bake_types={'POSE'})
+    bpy.ops.nla.bake(
+        frame_start=scene.frame_start,
+        frame_end=scene.frame_end,
+        step=1,
+        only_selected=True,
+        visual_keying=True,
+        clear_constraints=True,
+        clear_parents=False,
+        bake_types={'POSE'})
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -874,7 +901,7 @@ def apply_animation_scale():
 
 
 #------------------------------------------------------------------------------
-# BoneGeometry:
+# Bone Geometry:
 #------------------------------------------------------------------------------
 
 def find_bone_geometry(bonename):
@@ -1109,36 +1136,6 @@ def write_input(name, offset, type_, semantic):
     input.setAttribute("source", "#{!s}".format(id_))
 
     return input
-
-
-# The following function is from:
-# http://ronrothman.com/
-#    public/leftbrained/xml-dom-minidom-toprettyxml-and-silly-whitespace/
-# modified to use the current version of shipped python
-def fix_write_xml(self, writer, indent="", addindent="", newl=""):
-    # indent = current indentation
-    # addindent = indentation to add to higher levels
-    # newl = newline string
-        writer.write(indent + "<" + self.tagName)
-        attrs = self._get_attributes()
-        for a_name in sorted(attrs.keys()):
-            writer.write(" %s=\"" % a_name)
-            xml.dom.minidom._write_data(writer, attrs[a_name].value)
-            writer.write("\"")
-        if self.childNodes:
-            if (len(self.childNodes) == 1
-                and self.childNodes[0].nodeType
-                    == xml.dom.minidom.Node.TEXT_NODE):
-                writer.write(">")
-                self.childNodes[0].writexml(writer, "", "", "")
-                writer.write("</%s>%s" % (self.tagName, newl))
-                return
-            writer.write(">%s" % (newl))
-            for node in self.childNodes:
-                node.writexml(writer, indent + addindent, addindent, newl)
-            writer.write("%s</%s>%s" % (indent, self.tagName, newl))
-        else:
-            writer.write("/>%s" % (newl))
 
 
 # this is needed if you want to access more than the first def

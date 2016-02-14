@@ -15,13 +15,14 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
-
+#
 #------------------------------------------------------------------------------
 # Name:        __init__.py
 # Purpose:     Primary python file for CryBlend add-on
 #
-# Author:      Angelo J. Miner
-# Extended by: Duo Oratar, Mikołaj Milej, stardidi, Daniel White, Özkan Afacan
+# Author:      Angelo J. Miner,
+#              Daniel White, David Marcelis, Duo Oratar, Mikołaj Milej,
+#              Oscar Martin Garcia, Özkan Afacan
 #
 # Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012
@@ -31,7 +32,7 @@
 
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
-    "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, stardidi, " \
+    "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, stardidi, "
               "Daniel White, Özkan Afacan",
     "blender": (2, 70, 0),
     "version": (5, 1, 0),
@@ -78,11 +79,11 @@ import subprocess
 import math
 
 
-# for help
-new = 2  # open in a new tab, if possible
+new = 2  # For help -> Open in a new tab, if possible.
+
 
 #------------------------------------------------------------------------------
-# Configurations
+# Configurations:
 #------------------------------------------------------------------------------
 
 class PathSelectTemplate(ExportHelper):
@@ -126,8 +127,8 @@ to be able to export your textures as dds files.'''
     def process(self, filepath):
         Configuration.texture_rc_path = "%s" % filepath
         cbPrint("Found RC at {!r}.".format(
-                        Configuration.texture_rc_path),
-                'debug')
+            Configuration.texture_rc_path),
+            'debug')
 
     def invoke(self, context, event):
         self.filepath = Configuration.texture_rc_path
@@ -147,8 +148,8 @@ for textures in .mtl file.'''
     def process(self, filepath):
         Configuration.texture_dir = "%s" % os.path.dirname(filepath)
         cbPrint("Textures directory: {!r}.".format(
-                                            Configuration.texture_dir),
-                'debug')
+            Configuration.texture_dir),
+            'debug')
 
     def invoke(self, context, event):
         self.filepath = Configuration.texture_dir
@@ -170,8 +171,9 @@ class SaveCryBlendConfiguration(bpy.types.Operator):
         Configuration.save()
         return {'FINISHED'}
 
+
 #------------------------------------------------------------------------------
-# Export Tools
+# Export Tools:
 #------------------------------------------------------------------------------
 
 class AddCryExportNode(bpy.types.Operator):
@@ -261,14 +263,16 @@ class ApplyTransforms(bpy.types.Operator):
         selected = bpy.context.selected_objects
         if selected:
             message = "Applying object transforms."
-            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+            bpy.ops.object.transform_apply(
+                location=True, rotation=True, scale=True)
         else:
             message = "No Object Selected."
         self.report({'INFO'}, message)
         return {'FINISHED'}
 
+
 #------------------------------------------------------------------------------
-# Material Tools
+# Material Tools:
 #------------------------------------------------------------------------------
 
 class SetMaterialNames(bpy.types.Operator):
@@ -293,7 +297,8 @@ class SetMaterialNames(bpy.types.Operator):
         ),
         default="physDefault")
 
-    just_rephysic = BoolProperty(name="Only Physic",
+    just_rephysic = BoolProperty(
+        name="Only Physic",
         description="Only change physic of selected material.")
 
     object_ = None
@@ -345,7 +350,8 @@ class SetMaterialNames(bpy.types.Operator):
                             materialCounter[group.name] += 1
                             materialOldName = slot.material.name
 
-                            # Load stored Physics if available for that material.
+                            # Load stored Physics if available for that
+                            # material.
                             if physicsProperties.get(slot.material.name):
                                 physics = physicsProperties[slot.material.name]
                             else:
@@ -353,13 +359,13 @@ class SetMaterialNames(bpy.types.Operator):
 
                             # Rename.
                             slot.material.name = "{}__{:02d}__{}__{}".format(
-                                    self.material_name,
-                                    materialCounter[group.name],
-                                    utils.replace_invalid_rc_characters(materialOldName),
-                                    physics)
+                                self.material_name,
+                                materialCounter[group.name],
+                                utils.replace_invalid_rc_characters(materialOldName),
+                                physics)
                             message = "Renamed {} to {}".format(
-                                    materialOldName,
-                                    slot.material.name)
+                                materialOldName,
+                                slot.material.name)
                             self.report({'INFO'}, message)
                             cbPrint(message)
         return {'FINISHED'}
@@ -411,8 +417,9 @@ def getMaterialPhysics():
             physicsProperties[properties["Name"]] = properties["Physics"]
     return physicsProperties
 
+
 #------------------------------------------------------------------------------
-# CryEngine-Related Tools
+# CryEngine-Related Tools:
 #------------------------------------------------------------------------------
 
 class AddProxy(bpy.types.Operator):
@@ -449,7 +456,8 @@ be converted to the selected shape in CryEngine.'''
         bpy.ops.object.select_all(action="DESELECT")
         bpy.ops.mesh.primitive_cube_add()
         bound_box = bpy.context.active_object
-        bound_box.name = "{}_{}-proxy".format(object_.name, getattr(self, "type_"))
+        bound_box.name = "{}_{}-proxy".format(object_.name,
+                                              getattr(self, "type_"))
         bound_box.draw_type = "WIRE"
         bound_box.dimensions = object_.dimensions
         bound_box.location = object_.location
@@ -495,7 +503,14 @@ class AddBranch(bpy.types.Operator):
         selected_vert_coordinates = get_vertex_data()
         if (selected_vert_coordinates):
             selected_vert = selected_vert_coordinates[0]
-            bpy.ops.object.add(type='EMPTY', view_align=False, enter_editmode=False, location=(selected_vert[0], selected_vert[1], selected_vert[2]))
+            bpy.ops.object.add(
+                type='EMPTY',
+                view_align=False,
+                enter_editmode=False,
+                location=(
+                    selected_vert[0],
+                    selected_vert[1],
+                    selected_vert[2]))
             empty_object = bpy.context.active_object
             empty_object.name = name_branch(True)
             bpy.context.scene.objects.active = active_object
@@ -518,7 +533,14 @@ class AddBranchJoint(bpy.types.Operator):
         selected_vert_coordinates = get_vertex_data()
         if (selected_vert_coordinates):
             selected_vert = selected_vert_coordinates[0]
-            bpy.ops.object.add(type='EMPTY', view_align=False, enter_editmode=False, location=(selected_vert[0], selected_vert[1], selected_vert[2]))
+            bpy.ops.object.add(
+                type='EMPTY',
+                view_align=False,
+                enter_editmode=False,
+                location=(
+                    selected_vert[0],
+                    selected_vert[1],
+                    selected_vert[2]))
             empty_object = bpy.context.active_object
             empty_object.name = name_branch(False)
             bpy.context.scene.objects.active = active_object
@@ -531,7 +553,8 @@ class AddBranchJoint(bpy.types.Operator):
 
 
 def get_vertex_data():
-    selected_vert_coordinates = [i.co for i in bpy.context.active_object.data.vertices if i.select]
+    selected_vert_coordinates = [
+        i.co for i in bpy.context.active_object.data.vertices if i.select]
     return selected_vert_coordinates
 
 
@@ -553,15 +576,17 @@ def name_branch(is_new_branch):
         if (is_new_branch):
             return ("branch%s_1" % (highest_branch_number + 1))
         else:
-            return ("branch%s_%s" % (highest_branch_number, highest_joint_number + 1))
+            return (
+                "branch%s_%s" %
+                (highest_branch_number, highest_joint_number + 1))
     else:
         return "branch1_1"
 
+
 #------------------------------------------------------------------------------
-# CryEngine User-Defined Properties
+# (UDP) Inverse Kinematics:
 #------------------------------------------------------------------------------
 
-# Inverse Kinematics:
 class EditInverseKinematics(bpy.types.Operator):
     '''Edit inverse kinematics properties for selected bone.'''
     bl_label = "Edit Inverse Kinematics of Selected Bone"
@@ -579,34 +604,59 @@ class EditInverseKinematics(bpy.types.Operator):
         ),
         default="capsule")
 
-    is_rotation_lock = BoolVectorProperty(name="Rotation Lock  [X, Y, Z]:",
+    is_rotation_lock = BoolVectorProperty(
+        name="Rotation Lock  [X, Y, Z]:",
         description="Bone Rotation Lock X, Y, Z")
 
-    rotation_min = bpy.props.IntVectorProperty(name="Rot Limit Min:",
-        description="Bone Rotation Minimum Limit X, Y, Z",
-        default=(-180, -180, -180), min=-180, max=0)
-    rotation_max = bpy.props.IntVectorProperty(name="Rot Limit Max:",
+    rotation_min = bpy.props.IntVectorProperty(
+        name="Rot Limit Min:", description="Bone Rotation Minimum Limit X, Y, Z", default=(
+            -180, -180, -180), min=-180, max=0)
+    rotation_max = bpy.props.IntVectorProperty(
+        name="Rot Limit Max:",
         description="Bone Rotation Maximum Limit X, Y, Z",
-        default=(180, 180, 180), min=0, max=180)
+        default=(
+            180,
+            180,
+            180),
+        min=0,
+        max=180)
 
-    bone_spring = FloatVectorProperty(name="Spring  [X, Y, Z]:",
+    bone_spring = FloatVectorProperty(
+        name="Spring  [X, Y, Z]:",
         description=desc.list['spring'],
-        default=(0.0, 0.0, 0.0), min=0.0, max=1.0)
+        default=(
+            0.0,
+            0.0,
+            0.0),
+        min=0.0,
+        max=1.0)
 
-    bone_spring_tension = FloatVectorProperty(name="Spring Tension  [X, Y, Z]:",
+    bone_spring_tension = FloatVectorProperty(
+        name="Spring Tension  [X, Y, Z]:",
         description=desc.list['spring'],
-        default=(1.0, 1.0, 1.0), min=-3.14159, max=3.14159)
+        default=(
+            1.0,
+            1.0,
+            1.0),
+        min=-3.14159,
+        max=3.14159)
 
-    bone_damping = FloatVectorProperty(name="Damping  [X, Y, Z]:",
+    bone_damping = FloatVectorProperty(
+        name="Damping  [X, Y, Z]:",
         description=desc.list['damping'],
-        default=(1.0, 1.0, 1.0), min=0.0, max=1.0)
+        default=(
+            1.0,
+            1.0,
+            1.0),
+        min=0.0,
+        max=1.0)
 
     bone = None
 
     def __init__(self):
         armature = utils.get_armature()
 
-        if armature == None:
+        if armature is None:
             return None
 
         for temp_bone in armature.pose.bones:
@@ -614,7 +664,7 @@ class EditInverseKinematics(bpy.types.Operator):
                 self.bone = temp_bone
                 break
 
-        if self.bone == None:
+        if self.bone is None:
             return None
 
         try:
@@ -644,8 +694,8 @@ class EditInverseKinematics(bpy.types.Operator):
         return None
 
     def execute(self, context):
-        if self.bone == None:
-            cbPrint ("Please select a bone in pose mode!")
+        if self.bone is None:
+            cbPrint("Please select a bone in pose mode!")
             return {'FINISHED'}
 
         self.bone['phys_proxy'] = self.proxy_type
@@ -671,11 +721,15 @@ class EditInverseKinematics(bpy.types.Operator):
     def invoke(self, context, event):
         if self.bone is None:
             return self.report({'ERROR'}, "Please select a bone in pose"
-                                        + "mode to use this property!")
+                               + "mode to use this property!")
 
         return context.window_manager.invoke_props_dialog(self)
 
-# Physic Proxy
+
+#------------------------------------------------------------------------------
+# (UDP) Physics Proxy:
+#------------------------------------------------------------------------------
+
 class EditPhysicProxy(bpy.types.Operator):
     '''Edit Physic Proxy Properties for selected object.'''
     bl_label = "Edit physic proxy properties of active object."
@@ -683,7 +737,8 @@ class EditPhysicProxy(bpy.types.Operator):
 
     ''' "phys_proxy", "colltype_player", "no_explosion_occlusion", "wheel" '''
 
-    is_proxy = BoolProperty(name="Use Physic Proxy",
+    is_proxy = BoolProperty(
+        name="Use Physic Proxy",
         description="If you want to use physic proxy properties. Please enable this.")
 
     info = "Force this proxy to be a {} primitive in the engine."
@@ -700,9 +755,9 @@ class EditPhysicProxy(bpy.types.Operator):
         default="box")
 
     no_exp_occlusion = BoolProperty(name="No Explosion Occlusion",
-        description=desc.list['no_exp_occlusion'])
+                                    description=desc.list['no_exp_occlusion'])
     colltype_player = BoolProperty(name="Colltype Player",
-        description=desc.list['colltpye_player'])
+                                   description=desc.list['colltpye_player'])
     wheel = BoolProperty(name="Wheel", description="Wheel for vehicles.")
 
     object_ = None
@@ -710,38 +765,56 @@ class EditPhysicProxy(bpy.types.Operator):
     def __init__(self):
         self.object_ = bpy.context.scene.objects.active
 
-        if self.object_ == None:
+        if self.object_ is None:
             return None
 
-        self.proxy_type, self.is_proxy = add.get_udp (self.object_,
-            "phys_proxy", self.proxy_type, self.is_proxy)
-        self.no_exp_occlusion = add.get_udp (self.object_,
-            "no_explosion_occlusion", self.no_exp_occlusion)
-        self.colltype_player = add.get_udp (self.object_,
-            "colltype_player", self.colltype_player)
-        self.wheel = add.get_udp (self.object_, "wheel", self.wheel)
+        self.proxy_type, self.is_proxy = add.get_udp(
+            self.object_, "phys_proxy", self.proxy_type, self.is_proxy)
+        self.no_exp_occlusion = add.get_udp(
+            self.object_,
+            "no_explosion_occlusion",
+            self.no_exp_occlusion)
+        self.colltype_player = add.get_udp(
+            self.object_, "colltype_player", self.colltype_player)
+        self.wheel = add.get_udp(self.object_, "wheel", self.wheel)
 
         return None
 
     def execute(self, context):
-        if self.object_ == None:
-            cbPrint ("Please select a object.")
+        if self.object_ is None:
+            cbPrint("Please select a object.")
             return {'FINISHED'}
 
-        add.edit_udp (self.object_, "phys_proxy", self.proxy_type, self.is_proxy)
-        add.edit_udp (self.object_, "no_explosion_occlusion", "no_explosion_occlusion", self.no_exp_occlusion)
-        add.edit_udp (self.object_, "colltype_player", "colltype_player", self.colltype_player)
-        add.edit_udp (self.object_, "wheel", "wheel", self.wheel)
+        add.edit_udp(
+            self.object_,
+            "phys_proxy",
+            self.proxy_type,
+            self.is_proxy)
+        add.edit_udp(
+            self.object_,
+            "no_explosion_occlusion",
+            "no_explosion_occlusion",
+            self.no_exp_occlusion)
+        add.edit_udp(
+            self.object_,
+            "colltype_player",
+            "colltype_player",
+            self.colltype_player)
+        add.edit_udp(self.object_, "wheel", "wheel", self.wheel)
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        if self.object_ != None:
+        if self.object_ is not None:
             return context.window_manager.invoke_props_dialog(self)
 
         return None
 
-# Render Mesh
+
+#------------------------------------------------------------------------------
+# (UDP) Render Mesh:
+#------------------------------------------------------------------------------
+
 class EditRenderMesh(bpy.types.Operator):
     '''Edit Render Mesh Properties for selected object.'''
     bl_label = "Edit render mesh properties of active object."
@@ -754,68 +827,87 @@ class EditRenderMesh(bpy.types.Operator):
     info = "If you want to use {} property. Please enable this."
 
     is_mass = BoolProperty(name="Use Mass", description=info.format('mass'))
-    mass = FloatProperty (name="Mass", description=desc.list['mass'])
+    mass = FloatProperty(name="Mass", description=desc.list['mass'])
 
-    is_density = BoolProperty(name="Use Density", description=info.format('density'))
+    is_density = BoolProperty(
+        name="Use Density",
+        description=info.format('density'))
     density = FloatProperty(name="Density", description=desc.list['density'])
 
-    is_pieces = BoolProperty(name="Use Pieces", description=info.format('pieces'))
+    is_pieces = BoolProperty(
+        name="Use Pieces",
+        description=info.format('pieces'))
     pieces = FloatProperty(name="Pieces", description=desc.list['pieces'])
 
-    is_dynamic = BoolProperty(name="Dynamic", description=desc.list['is_dynamic'])
+    is_dynamic = BoolProperty(
+        name="Dynamic",
+        description=desc.list['is_dynamic'])
 
-    no_hit_refinement = BoolProperty(name="No Hit Refinement",
+    no_hit_refinement = BoolProperty(
+        name="No Hit Refinement",
         description=desc.list['no_hit_refinement'])
 
     other_rendermesh = BoolProperty(name="Other Rendermesh",
-        description=desc.list['other_rendermesh'])
+                                    description=desc.list['other_rendermesh'])
 
     object_ = None
 
     def __init__(self):
         self.object_ = bpy.context.scene.objects.active
 
-        if self.object_ == None:
+        if self.object_ is None:
             return None
 
-        self.mass, self.is_mass = add.get_udp (self.object_,
-            "mass", self.mass, self.is_mass)
-        self.density, self.is_density = add.get_udp (self.object_,
-            "density", self.density, self.is_density)
-        self.pieces, self.is_pieces = add.get_udp (self.object_,
-            "pieces", self.pieces, self.is_pieces)
-        self.no_hit_refinement = add.get_udp (self.object_,
-            "no_hit_refinement", self.no_hit_refinement)
-        self.other_rendermesh = add.get_udp (self.object_,
-            "other_rendermesh", self.other_rendermesh)
+        self.mass, self.is_mass = add.get_udp(self.object_,
+                                              "mass", self.mass, self.is_mass)
+        self.density, self.is_density = add.get_udp(
+            self.object_, "density", self.density, self.is_density)
+        self.pieces, self.is_pieces = add.get_udp(
+            self.object_, "pieces", self.pieces, self.is_pieces)
+        self.no_hit_refinement = add.get_udp(
+            self.object_, "no_hit_refinement", self.no_hit_refinement)
+        self.other_rendermesh = add.get_udp(
+            self.object_, "other_rendermesh", self.other_rendermesh)
 
-        self.is_entity = add.get_udp (self.object_, "entity", self.is_entity)
-        self.is_dynamic = add.get_udp (self.object_, "dynamic", self.is_dynamic)
+        self.is_entity = add.get_udp(self.object_, "entity", self.is_entity)
+        self.is_dynamic = add.get_udp(self.object_, "dynamic", self.is_dynamic)
 
         return None
 
     def execute(self, context):
-        if self.object_ == None:
-            cbPrint ("Please select a object.")
+        if self.object_ is None:
+            cbPrint("Please select a object.")
             return {'FINISHED'}
 
-        add.edit_udp (self.object_, "entity", "entity", self.is_entity)
-        add.edit_udp (self.object_, "mass", self.mass, self.is_mass)
-        add.edit_udp (self.object_, "density", self.density, self.is_density)
-        add.edit_udp (self.object_, "pieces", self.pieces, self.is_pieces)
-        add.edit_udp (self.object_, "dynamic", "dynamic", self.is_dynamic)
-        add.edit_udp (self.object_, "no_hit_refinement", "no_hit_refinement", self.no_hit_refinement)
-        add.edit_udp (self.object_, "other_rendermesh", "other_rendermesh", self.other_rendermesh)
+        add.edit_udp(self.object_, "entity", "entity", self.is_entity)
+        add.edit_udp(self.object_, "mass", self.mass, self.is_mass)
+        add.edit_udp(self.object_, "density", self.density, self.is_density)
+        add.edit_udp(self.object_, "pieces", self.pieces, self.is_pieces)
+        add.edit_udp(self.object_, "dynamic", "dynamic", self.is_dynamic)
+        add.edit_udp(
+            self.object_,
+            "no_hit_refinement",
+            "no_hit_refinement",
+            self.no_hit_refinement)
+        add.edit_udp(
+            self.object_,
+            "other_rendermesh",
+            "other_rendermesh",
+            self.other_rendermesh)
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        if self.object_ != None:
+        if self.object_ is not None:
             return context.window_manager.invoke_props_dialog(self)
 
         return None
 
-# Joint Node
+
+#------------------------------------------------------------------------------
+# (UDP) Joint Node:
+#------------------------------------------------------------------------------
+
 class EditJointNode(bpy.types.Operator):
     '''Edit Joint Node Properties for selected joint.'''
     bl_label = "Edit joint node properties of active object."
@@ -827,33 +919,34 @@ class EditJointNode(bpy.types.Operator):
     info = "If you want to use {} joint property. Please enable this."
 
     is_limit = BoolProperty(name="Use Limit Property",
-        description=info.format('limit'))
-    limit = FloatProperty (name="Limit", description=desc.list['limit'])
+                            description=info.format('limit'))
+    limit = FloatProperty(name="Limit", description=desc.list['limit'])
 
     is_bend = BoolProperty(name="Use Bend Property",
-        description=info.format('bend'))
-    bend = FloatProperty (name="Bend", description=desc.list['bend'])
+                           description=info.format('bend'))
+    bend = FloatProperty(name="Bend", description=desc.list['bend'])
 
     is_twist = BoolProperty(name="Use Twist Property",
-        description=info.format('twist'))
-    twist = FloatProperty (name="Twist", description=desc.list['twist'])
+                            description=info.format('twist'))
+    twist = FloatProperty(name="Twist", description=desc.list['twist'])
 
     is_pull = BoolProperty(name="Use Pull Property",
-        description=info.format('pull'))
-    pull = FloatProperty (name="Pull", description=desc.list['pull'])
+                           description=info.format('pull'))
+    pull = FloatProperty(name="Pull", description=desc.list['pull'])
 
     is_push = BoolProperty(name="Use Psuh Property",
-        description=info.format('push'))
-    push = FloatProperty (name="Push", description=desc.list['push'])
+                           description=info.format('push'))
+    push = FloatProperty(name="Push", description=desc.list['push'])
 
     is_shift = BoolProperty(name="Use Shift Property",
-        description=info.format('shift'))
-    shift = FloatProperty (name="Shift", description=desc.list['shift'])
+                            description=info.format('shift'))
+    shift = FloatProperty(name="Shift", description=desc.list['shift'])
 
     player_can_break = BoolProperty(name="Player can break",
-        description=desc.list['player_can_break'])
+                                    description=desc.list['player_can_break'])
 
-    gameplay_critical = BoolProperty(name="Gameplay critical",
+    gameplay_critical = BoolProperty(
+        name="Gameplay critical",
         description=desc.list['gameplay_critical'])
 
     object_ = None
@@ -861,43 +954,63 @@ class EditJointNode(bpy.types.Operator):
     def __init__(self):
         self.object_ = bpy.context.scene.objects.active
 
-        if self.object_ == None:
+        if self.object_ is None:
             return None
 
-        self.limit, self.is_limit = add.get_udp (self.object_, "limit", self.limit, self.is_limit)
-        self.bend, self.is_bend = add.get_udp (self.object_, "bend", self.bend, self.is_bend)
-        self.twist, self.is_twist = add.get_udp (self.object_, "twist", self.twist, self.is_twist)
-        self.pull, self.is_pull = add.get_udp (self.object_, "pull", self.pull, self.is_pull)
-        self.push, self.is_push = add.get_udp (self.object_, "push", self.push, self.is_push)
-        self.shift, self.is_shift = add.get_udp (self.object_, "shift", self.shift, self.is_shift)
-        self.player_can_break = add.get_udp (self.object_, "player_can_break", self.player_can_break)
-        self.gameplay_critical = add.get_udp (self.object_, "gameplay_critical", self.gameplay_critical)
+        self.limit, self.is_limit = add.get_udp(
+            self.object_, "limit", self.limit, self.is_limit)
+        self.bend, self.is_bend = add.get_udp(
+            self.object_, "bend", self.bend, self.is_bend)
+        self.twist, self.is_twist = add.get_udp(
+            self.object_, "twist", self.twist, self.is_twist)
+        self.pull, self.is_pull = add.get_udp(
+            self.object_, "pull", self.pull, self.is_pull)
+        self.push, self.is_push = add.get_udp(
+            self.object_, "push", self.push, self.is_push)
+        self.shift, self.is_shift = add.get_udp(
+            self.object_, "shift", self.shift, self.is_shift)
+        self.player_can_break = add.get_udp(
+            self.object_, "player_can_break", self.player_can_break)
+        self.gameplay_critical = add.get_udp(
+            self.object_, "gameplay_critical", self.gameplay_critical)
 
         return None
 
     def execute(self, context):
-        if self.object_ == None:
-            cbPrint ("Please select a object.")
+        if self.object_ is None:
+            cbPrint("Please select a object.")
             return {'FINISHED'}
 
-        add.edit_udp (self.object_, "limit", self.limit, self.is_limit)
-        add.edit_udp (self.object_, "bend", self.bend, self.is_bend)
-        add.edit_udp (self.object_, "twist", self.twist, self.is_twist)
-        add.edit_udp (self.object_, "pull", self.pull, self.is_pull)
-        add.edit_udp (self.object_, "push", self.push, self.is_push)
-        add.edit_udp (self.object_, "shift", self.shift, self.is_shift)
-        add.edit_udp (self.object_, "player_can_break", "player_can_break", self.player_can_break)
-        add.edit_udp (self.object_, "gameplay_critical", "gameplay_critical", self.gameplay_critical)
+        add.edit_udp(self.object_, "limit", self.limit, self.is_limit)
+        add.edit_udp(self.object_, "bend", self.bend, self.is_bend)
+        add.edit_udp(self.object_, "twist", self.twist, self.is_twist)
+        add.edit_udp(self.object_, "pull", self.pull, self.is_pull)
+        add.edit_udp(self.object_, "push", self.push, self.is_push)
+        add.edit_udp(self.object_, "shift", self.shift, self.is_shift)
+        add.edit_udp(
+            self.object_,
+            "player_can_break",
+            "player_can_break",
+            self.player_can_break)
+        add.edit_udp(
+            self.object_,
+            "gameplay_critical",
+            "gameplay_critical",
+            self.gameplay_critical)
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        if self.object_ != None:
+        if self.object_ is not None:
             return context.window_manager.invoke_props_dialog(self)
 
         return None
 
-# Deformable
+
+#------------------------------------------------------------------------------
+# (UDP) Deformable:
+#------------------------------------------------------------------------------
+
 class EditDeformable(bpy.types.Operator):
     '''Edit Deformable Properties for selected skeleton mesh.'''
     bl_label = "Edit deformable properties of active skeleton mesh."
@@ -909,93 +1022,124 @@ class EditDeformable(bpy.types.Operator):
     info = "If you want to use {} deform property. Please enable this."
 
     is_stiffness = BoolProperty(name="Use Stiffness",
-        description=info.format('stiffness'))
-    stiffness = FloatProperty (name="Stiffness",
-        description=desc.list['stiffness'], default=10.0)
+                                description=info.format('stiffness'))
+    stiffness = FloatProperty(name="Stiffness",
+                              description=desc.list['stiffness'], default=10.0)
 
     is_hardness = BoolProperty(name="Use Hardness",
-        description=info.format('hardness'))
-    hardness = FloatProperty (name="Hardness",
-        description=desc.list['hardness'], default=10.0)
+                               description=info.format('hardness'))
+    hardness = FloatProperty(name="Hardness",
+                             description=desc.list['hardness'], default=10.0)
 
     is_max_stretch = BoolProperty(name="Use Max Stretch",
-        description=info.format('max stretch'))
-    max_stretch = FloatProperty (name="Max Stretch",
-        description=desc.list['max_stretch'], default=0.01)
+                                  description=info.format('max stretch'))
+    max_stretch = FloatProperty(
+        name="Max Stretch",
+        description=desc.list['max_stretch'],
+        default=0.01)
 
     is_max_impulse = BoolProperty(name="Use Max Impulse",
-        description=info.format('max impulse'))
-    max_impulse = FloatProperty (name="Max Impulse",
-        description=desc.list['max_impulse'])
+                                  description=info.format('max impulse'))
+    max_impulse = FloatProperty(name="Max Impulse",
+                                description=desc.list['max_impulse'])
 
     is_skin_dist = BoolProperty(name="Use Skin Dist",
-        description=info.format('skin dist'))
-    skin_dist = FloatProperty (name="Skin Dist",
-        description=desc.list['skin_dist'])
+                                description=info.format('skin dist'))
+    skin_dist = FloatProperty(name="Skin Dist",
+                              description=desc.list['skin_dist'])
 
     is_thickness = BoolProperty(name="Use Thickness",
-        description=info.format('thickness'))
-    thickness = FloatProperty (name="Thickness",
-        description=desc.list['thickness'])
+                                description=info.format('thickness'))
+    thickness = FloatProperty(name="Thickness",
+                              description=desc.list['thickness'])
 
-    is_explosion_scale = BoolProperty(name="Use Explosion Scale",
+    is_explosion_scale = BoolProperty(
+        name="Use Explosion Scale",
         description=info.format('explosion scale'))
-    explosion_scale = FloatProperty (name="Explosion Scale",
-        description=desc.list['explosion_scale'])
+    explosion_scale = FloatProperty(name="Explosion Scale",
+                                    description=desc.list['explosion_scale'])
 
     notaprim = BoolProperty(name="Is not a primitive",
-        description=desc.list['notaprim'])
+                            description=desc.list['notaprim'])
 
     object_ = None
 
     def __init__(self):
         self.object_ = bpy.context.scene.objects.active
 
-        if self.object_ == None:
+        if self.object_ is None:
             return None
 
-        self.stiffness, self.is_stiffness = add.get_udp (self.object_,
-            "stiffness", self.stiffness, self.is_stiffness)
-        self.hardness, self.is_hardness = add.get_udp (self.object_,
-            "hardness", self.hardness, self.is_hardness)
-        self.max_stretch, self.is_max_stretch = add.get_udp (self.object_,
-            "max_stretch", self.max_stretch, self.is_max_stretch)
-        self.max_impulse, self.is_max_impulse = add.get_udp (self.object_,
-            "max_impulse", self.max_impulse, self.is_max_impulse)
-        self.skin_dist, self.is_skin_dist = add.get_udp (self.object_,
-            "skin_dist", self.skin_dist, self.is_skin_dist)
-        self.thickness, self.is_thickness = add.get_udp (self.object_,
-            "thickness", self.thickness, self.is_thickness)
-        self.explosion_scale, self.is_explosion_scale = add.get_udp (self.object_,
-            "explosion_scale", self.explosion_scale, self.is_explosion_scale)
+        self.stiffness, self.is_stiffness = add.get_udp(
+            self.object_, "stiffness", self.stiffness, self.is_stiffness)
+        self.hardness, self.is_hardness = add.get_udp(
+            self.object_, "hardness", self.hardness, self.is_hardness)
+        self.max_stretch, self.is_max_stretch = add.get_udp(
+            self.object_, "max_stretch", self.max_stretch, self.is_max_stretch)
+        self.max_impulse, self.is_max_impulse = add.get_udp(
+            self.object_, "max_impulse", self.max_impulse, self.is_max_impulse)
+        self.skin_dist, self.is_skin_dist = add.get_udp(
+            self.object_, "skin_dist", self.skin_dist, self.is_skin_dist)
+        self.thickness, self.is_thickness = add.get_udp(
+            self.object_, "thickness", self.thickness, self.is_thickness)
+        self.explosion_scale, self.is_explosion_scale = add.get_udp(
+            self.object_, "explosion_scale", self.explosion_scale, self.is_explosion_scale)
 
-        self.notaprim = add.get_udp (self.object_, "notaprim", self.notaprim)
+        self.notaprim = add.get_udp(self.object_, "notaprim", self.notaprim)
 
         return None
 
     def execute(self, context):
-        if self.object_ == None:
-            cbPrint ("Please select a object.")
+        if self.object_ is None:
+            cbPrint("Please select a object.")
             return {'FINISHED'}
 
-        add.edit_udp (self.object_, "stiffness", self.stiffness, self.is_stiffness)
-        add.edit_udp (self.object_, "hardness", self.hardness, self.is_hardness)
-        add.edit_udp (self.object_, "max_stretch", self.max_stretch, self.is_max_stretch)
-        add.edit_udp (self.object_, "max_impulse", self.max_impulse, self.is_max_impulse)
-        add.edit_udp (self.object_, "skin_dist", self.skin_dist, self.is_skin_dist)
-        add.edit_udp (self.object_, "thickness", self.thickness, self.is_thickness)
-        add.edit_udp (self.object_, "explosion_scale", self.explosion_scale, self.is_explosion_scale)
-        add.edit_udp (self.object_, "notaprim", "notaprim", self.notaprim)
+        add.edit_udp(
+            self.object_,
+            "stiffness",
+            self.stiffness,
+            self.is_stiffness)
+        add.edit_udp(self.object_, "hardness", self.hardness, self.is_hardness)
+        add.edit_udp(
+            self.object_,
+            "max_stretch",
+            self.max_stretch,
+            self.is_max_stretch)
+        add.edit_udp(
+            self.object_,
+            "max_impulse",
+            self.max_impulse,
+            self.is_max_impulse)
+        add.edit_udp(
+            self.object_,
+            "skin_dist",
+            self.skin_dist,
+            self.is_skin_dist)
+        add.edit_udp(
+            self.object_,
+            "thickness",
+            self.thickness,
+            self.is_thickness)
+        add.edit_udp(
+            self.object_,
+            "explosion_scale",
+            self.explosion_scale,
+            self.is_explosion_scale)
+        add.edit_udp(self.object_, "notaprim", "notaprim", self.notaprim)
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        if self.object_ != None:
+        if self.object_ is not None:
             return context.window_manager.invoke_props_dialog(self)
 
         return None
 
-# Vehicles:
+
+#------------------------------------------------------------------------------
+# (UDP) Vehicle:
+#------------------------------------------------------------------------------
+
 class FixWheelTransforms(bpy.types.Operator):
     bl_label = "Fix Wheel Transforms"
     bl_idname = "object.fix_wheel_transforms"
@@ -1008,8 +1152,9 @@ class FixWheelTransforms(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
 #------------------------------------------------------------------------------
-# Material Physics
+# Material Physics:
 #------------------------------------------------------------------------------
 
 class AddMaterialPhysDefault(bpy.types.Operator):
@@ -1068,8 +1213,9 @@ class AddMaterialPhysNoCollide(bpy.types.Operator):
         cbPrint(message)
         return add.add_phys_material(self, context, self.bl_label)
 
+
 #------------------------------------------------------------------------------
-# Mesh Repair Tools
+# Mesh Repair Tools:
 #------------------------------------------------------------------------------
 
 class FindDegenerateFaces(bpy.types.Operator):
@@ -1085,7 +1231,7 @@ it's mesh before running this.'''
         # Deselect any vertices prevously selected in Edit mode
         saved_mode = bpy.context.object.mode
         bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action = 'DESELECT')
+        bpy.ops.mesh.select_all(action='DESELECT')
 
         ''' Vertices data should be actually manipulated in Object mode
             to be displayed in Edit mode correctly.'''
@@ -1096,8 +1242,6 @@ it's mesh before running this.'''
         context.tool_settings.mesh_select_mode = (True, False, False)
         cbPrint("Locating degenerate faces.")
         degenerate_count = 0
-
-
 
         for poly in me.data.polygons:
             if poly.area < self.area_epsilon:
@@ -1120,7 +1264,6 @@ it's mesh before running this.'''
         return {'FINISHED'}
 
 
-# Duo Oratar
 class FindMultifaceLines(bpy.types.Operator):
     '''Select the object to test in object mode with nothing selected in \
 it's mesh before running this.'''
@@ -1137,7 +1280,7 @@ it's mesh before running this.'''
             counter = 0
             for polygon in me.data.polygons:
                 if (i.vertices[0] in polygon.vertices
-                    and i.vertices[1] in polygon.vertices):
+                        and i.vertices[1] in polygon.vertices):
                     counter += 1
             if counter > 2:
                 cbPrint('Found a multi-face line')
@@ -1157,7 +1300,8 @@ before running this'''
     # Minimum net weight to be considered non-weightless
     weight_epsilon = 0.0001
 
-    # Weightless: a vertex not belonging to any groups or with a net weight of 0
+    # Weightless: a vertex not belonging to any groups or with a net weight of
+    # 0
     def execute(self, context):
         obj = bpy.context.active_object
         bpy.ops.object.mode_set(mode="EDIT")
@@ -1179,67 +1323,68 @@ before running this'''
 
 
 class RemoveAllWeight(bpy.types.Operator):
-        '''Select vertices from which to remove weight in edit mode.'''
-        bl_label = "Remove All Weight from Selected Vertices"
-        bl_idname = "mesh.remove_weight"
+    '''Select vertices from which to remove weight in edit mode.'''
+    bl_label = "Remove All Weight from Selected Vertices"
+    bl_idname = "mesh.remove_weight"
 
-        def execute(self, context):
-            obj = bpy.context.active_object
-            if obj.type == 'MESH':
-                verts = []
-                for v in obj.data.vertices:
-                    if v.select:
-                        verts.append(v)
-                for v in verts:
-                    for g in v.groups:
-                        g.weight = 0
-            return {'FINISHED'}
+    def execute(self, context):
+        obj = bpy.context.active_object
+        if obj.type == 'MESH':
+            verts = []
+            for v in obj.data.vertices:
+                if v.select:
+                    verts.append(v)
+            for v in verts:
+                for g in v.groups:
+                    g.weight = 0
+        return {'FINISHED'}
 
 
 class FindNoUVs(bpy.types.Operator):
-        '''Use this with no objects selected in object mode \
+    '''Use this with no objects selected in object mode \
 to find all items without UVs.'''
-        bl_label = "Find All Objects with No UV's"
-        bl_idname = "scene.find_no_uvs"
+    bl_label = "Find All Objects with No UV's"
+    bl_idname = "scene.find_no_uvs"
 
-        def execute(self, context):
-            for obj in bpy.data.objects:
-                obj.select = False
+    def execute(self, context):
+        for obj in bpy.data.objects:
+            obj.select = False
 
-            for obj in bpy.context.selectable_objects:
-                if obj.type == 'MESH':
-                    a = False
-                    # TODO: WTF?
-                    for i in obj.data.uv_textures:
-                        a = True
-                        break
-                    if not a:
-                        obj.select = True
-            return {'FINISHED'}
+        for obj in bpy.context.selectable_objects:
+            if obj.type == 'MESH':
+                a = False
+                # TODO: WTF?
+                for i in obj.data.uv_textures:
+                    a = True
+                    break
+                if not a:
+                    obj.select = True
+        return {'FINISHED'}
 
 
 class AddUVTexture(bpy.types.Operator):
-        '''Add UVs to all meshes without UVs.'''
-        bl_label = "Add UV's to Objects"
-        bl_idname = "mesh.add_uv_texture"
+    '''Add UVs to all meshes without UVs.'''
+    bl_label = "Add UV's to Objects"
+    bl_idname = "mesh.add_uv_texture"
 
-        def execute(self, context):
-            for obj in bpy.data.objects:
-                if obj.type == 'MESH':
-                    uv = False
-                    for i in obj.data.uv_textures:
-                        uv = True
-                        break
-                    if not uv:
-                        bpy.context.scene.objects.active = obj
-                        bpy.ops.mesh.uv_texture_add()
-                        message = "Added UV map to {}".format(obj.name)
-                        self.report({'INFO'}, message)
-                        cbPrint(message)
-            return {'FINISHED'}
+    def execute(self, context):
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH':
+                uv = False
+                for i in obj.data.uv_textures:
+                    uv = True
+                    break
+                if not uv:
+                    bpy.context.scene.objects.active = obj
+                    bpy.ops.mesh.uv_texture_add()
+                    message = "Added UV map to {}".format(obj.name)
+                    self.report({'INFO'}, message)
+                    cbPrint(message)
+        return {'FINISHED'}
+
 
 #------------------------------------------------------------------------------
-# Bone Utilities
+# Bone Utilities:
 #------------------------------------------------------------------------------
 
 class AddRootBone(bpy.types.Operator):
@@ -1284,17 +1429,17 @@ class AddBoneGeometry(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     view_align = BoolProperty(
-            name="Align to View",
-            default=False,
-            )
+        name="Align to View",
+        default=False,
+    )
     location = FloatVectorProperty(
-            name="Location",
-            subtype='TRANSLATION',
-            )
+        name="Location",
+        subtype='TRANSLATION',
+    )
     rotation = FloatVectorProperty(
-            name="Rotation",
-            subtype='EULER',
-            )
+        name="Rotation",
+        subtype='EULER',
+    )
 
     def draw(self, context):
         col = self.col
@@ -1312,18 +1457,19 @@ class AddBoneGeometry(bpy.types.Operator):
 
                 physBonesList = []
                 if "%s_Phys" % obj.name in nameList:
-                    for bone in bpy.data.objects["%s_Phys" % obj.name].data.bones:
+                    for bone in bpy.data.objects[
+                            "%s_Phys" % obj.name].data.bones:
                         physBonesList.append(bone.name)
 
                 for bone in obj.data.bones:
                     if ((not "%s_boneGeometry" % bone.name in nameList
-                            and not "%s_Phys" % obj.name in nameList)
-                        or ("%s_Phys" % obj.name in nameList
-                            and "%s_Phys" % bone.name in physBonesList
-                            and not "%s_boneGeometry" % bone.name in nameList)
+                         and not "%s_Phys" % obj.name in nameList)
+                            or ("%s_Phys" % obj.name in nameList
+                                and "%s_Phys" % bone.name in physBonesList
+                                and not "%s_boneGeometry" % bone.name in nameList)
                         ):
                         mesh = bpy.data.meshes.new(
-                                    "%s_boneGeometry" % bone.name
+                            "%s_boneGeometry" % bone.name
                         )
                         bm = bmesh.new()
 
@@ -1373,7 +1519,7 @@ def add_bone_geometry():
              (1, 5, 6, 2),
              (2, 6, 7, 3),
              (4, 0, 3, 7),
-            ]
+             ]
 
     return verts, faces
 
@@ -1385,17 +1531,17 @@ class RemoveBoneGeometry(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     view_align = BoolProperty(
-            name="Align to View",
-            default=False,
-            )
+        name="Align to View",
+        default=False,
+    )
     location = FloatVectorProperty(
-            name="Location",
-            subtype='TRANSLATION',
-            )
+        name="Location",
+        subtype='TRANSLATION',
+    )
     rotation = FloatVectorProperty(
-            name="Rotation",
-            subtype='EULER',
-            )
+        name="Rotation",
+        subtype='EULER',
+    )
 
     def draw(self, context):
         col = self.col
@@ -1424,14 +1570,15 @@ class RemoveBoneGeometry(bpy.types.Operator):
 
             for bone in obj.data.bones:  # For each bone
                 if "%s_boneGeometry" % bone.name in nameList:
-                    bpy.data.objects["%s_boneGeometry" % bone.name].select = True
+                    bpy.data.objects[
+                        "%s_boneGeometry" %
+                        bone.name].select = True
 
             bpy.ops.object.delete()
 
         return {'FINISHED'}
 
 
-# Duo Oratar
 class RenamePhysBones(bpy.types.Operator):
     '''Renames bones with _Phys extension.'''
     bl_label = "Rename Phys Bones"
@@ -1441,11 +1588,12 @@ class RenamePhysBones(bpy.types.Operator):
     def execute(self, context):
         for obj in bpy.context.scene.objects:
             if ('_Phys' == obj.name[-5:]
-                and obj.type == 'ARMATURE'):
+                    and obj.type == 'ARMATURE'):
                 for bone in obj.data.bones:
                     bone.name = "%s_Phys" % bone.name
 
         return {'FINISHED'}
+
 
 class ApplyAnimationScale(bpy.types.Operator):
     '''Select to apply animation skeleton scaling and rotation'''
@@ -1456,17 +1604,19 @@ class ApplyAnimationScale(bpy.types.Operator):
         utils.apply_animation_scale()
         return {'FINISHED'}
 
-class RemoveFakeBones(bpy.types.Operator):
-        '''(Deprecated) Remove all fakebones for backward compatibility'''
-        bl_label = "Remove All FakeBones"
-        bl_idname = "scene.remove_fake_bones"
 
-        def execute(self, context):
-            utils.remove_fakebones()
-            return {'FINISHED'}
+class RemoveFakeBones(bpy.types.Operator):
+    '''(Deprecated) Remove all fakebones for backward compatibility'''
+    bl_label = "Remove All FakeBones"
+    bl_idname = "scene.remove_fake_bones"
+
+    def execute(self, context):
+        utils.remove_fakebones()
+        return {'FINISHED'}
+
 
 #------------------------------------------------------------------------------
-# Scripting Module
+# Scripting Module:
 #------------------------------------------------------------------------------
 
 class SelectScriptEditor(bpy.types.Operator, PathSelectTemplate):
@@ -1536,7 +1686,8 @@ class GenerateScript(bpy.types.Operator, PathSelectTemplate):
         script = parseString(contents)
 
         animation_list = script.getElementsByTagName("AnimationList")[0]
-        animation = parseString("""<Animation name="???" path="???.caf"/>""").getElementsByTagName("Animation")[0]
+        animation = parseString(
+            """<Animation name="???" path="???.caf"/>""").getElementsByTagName("Animation")[0]
         for index in range(0, entries):
             animation_list.appendChild(animation.cloneNode(deep=False))
         contents = script.toprettyxml(indent="\t")
@@ -1582,7 +1733,7 @@ class GenerateScript(bpy.types.Operator, PathSelectTemplate):
         file.write(contents)
         file.close()
 
-        message="Please select a text editor .exe such as Notepad or Notepad++.\n\
+        message = "Please select a text editor .exe such as Notepad or Notepad++.\n\
 This will be used as the default program for opening scripts."
         if (len(Configuration.script_editor) == 0):
             try:
@@ -1591,12 +1742,14 @@ This will be used as the default program for opening scripts."
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
         else:
             try:
-                process = subprocess.Popen([Configuration.script_editor, filepath])
+                process = subprocess.Popen(
+                    [Configuration.script_editor, filepath])
             except:
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
 
+
 #------------------------------------------------------------------------------
-# Export Handler
+# Export Handler:
 #------------------------------------------------------------------------------
 
 class Export(bpy.types.Operator, ExportHelper):
@@ -1607,82 +1760,83 @@ class Export(bpy.types.Operator, ExportHelper):
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
     apply_modifiers = BoolProperty(
-            name="Apply Modifiers",
-            description="Apply all modifiers before exporting.",
-            default=True,
-            )
+        name="Apply Modifiers",
+        description="Apply all modifiers before exporting.",
+        default=True,
+    )
     do_not_merge = BoolProperty(
-            name="Do Not Merge Nodes",
-            description="Generally a good idea.",
-            default=True,
-            )
+        name="Do Not Merge Nodes",
+        description="Generally a good idea.",
+        default=True,
+    )
     do_materials = BoolProperty(
-            name="Do Materials",
-            description="Create MTL files for materials.",
-            default=False,
-            )
+        name="Do Materials",
+        description="Create MTL files for materials.",
+        default=False,
+    )
     do_textures = BoolProperty(
-            name="Do Textures",
-            description="Converts source textures to DDS while exporting materials.",
-            default=False,
-            )
+        name="Do Textures",
+        description="Converts source textures to DDS while exporting materials.",
+        default=False,
+    )
     make_chrparams = BoolProperty(
-            name="Make CHRPARAMS File",
-            description="Create a base CHRPARAMS file for character animations.",
-            default=False,
-            )
+        name="Make CHRPARAMS File",
+        description="Create a base CHRPARAMS file for character animations.",
+        default=False,
+    )
     make_cdf = BoolProperty(
-            name="Make CDF File",
-            description="Create a base CDF file for character attachments.",
-            default=False,
-            )
+        name="Make CDF File",
+        description="Create a base CDF file for character attachments.",
+        default=False,
+    )
     include_ik = BoolProperty(
-            name="Include IK in Character",
-            description="Add IK to the physics skeleton upon export.",
-            default=False,
-            )
+        name="Include IK in Character",
+        description="Add IK to the physics skeleton upon export.",
+        default=False,
+    )
     convert_space = BoolProperty(
-            name="Convert to Whitespaces",
-            description="Convert double underscores to whitespaces in skeleton.",
-            default=False,
-            )
+        name="Convert to Whitespaces",
+        description="Convert double underscores to whitespaces in skeleton.",
+        default=False,
+    )
     fix_weights = BoolProperty(
-            name="Fix Weights",
-            description="For use with .chr files. Generally a good idea.",
-            default=False,
-            )
+        name="Fix Weights",
+        description="For use with .chr files. Generally a good idea.",
+        default=False,
+    )
     average_planar = BoolProperty(
-            name="Average Planar Face Normals",
-            description="Align face normals within 1 degree of each other.",
-            default=False,
-            )
+        name="Average Planar Face Normals",
+        description="Align face normals within 1 degree of each other.",
+        default=False,
+    )
     make_layer = BoolProperty(
-            name="Make LYR File",
-            description="Makes a LYR to reassemble your scene in CryEngine.",
-            default=False,
-            )
+        name="Make LYR File",
+        description="Makes a LYR to reassemble your scene in CryEngine.",
+        default=False,
+    )
     disable_rc = BoolProperty(
-            name="Disable RC",
-            description="Do not run the resource compiler.",
-            default=False,
-            )
+        name="Disable RC",
+        description="Do not run the resource compiler.",
+        default=False,
+    )
     save_dae = BoolProperty(
-            name="Save DAE File",
-            description="Save the DAE file for developing purposes.",
-            default=False,
-            )
+        name="Save DAE File",
+        description="Save the DAE file for developing purposes.",
+        default=False,
+    )
     save_tiffs = BoolProperty(
-            name="Save TIFFs",
-            description="Saves TIFF images that are generated during conversion to DDS.",
-            default=False,
-            )
+        name="Save TIFFs",
+        description="Saves TIFF images that are generated during conversion to DDS.",
+        default=False,
+    )
     run_in_profiler = BoolProperty(
-            name="Profile CryBlend",
-            description="Select only if you want to profile CryBlend.",
-            default=False,
-            )
+        name="Profile CryBlend",
+        description="Select only if you want to profile CryBlend.",
+        default=False,
+    )
 
     class Config:
+
         def __init__(self, config):
             attributes = (
                 'filepath',
@@ -1727,7 +1881,8 @@ class Export(bpy.types.Operator, ExportHelper):
 
         except exceptions.CryBlendException as exception:
             cbPrint(exception.what(), 'error')
-            bpy.ops.screen.display_error('INVOKE_DEFAULT', message=exception.what())
+            bpy.ops.screen.display_error(
+                'INVOKE_DEFAULT', message=exception.what())
 
         return {'FINISHED'}
 
@@ -1796,8 +1951,9 @@ def multiline_label(col, text):
         row = col.split()
         row.label(line)
 
+
 #------------------------------------------------------------------------------
-# CryBlend Tab
+# CryBlend Tab:
 #------------------------------------------------------------------------------
 
 class PropPanel():
@@ -1829,7 +1985,9 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         col.separator()
         row = col.row(align=True)
         row.operator("object.add_cry_export_node", text="Add ExportNode")
-        col.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
+        col.operator(
+            "object.selected_to_cry_export_nodes",
+            text="ExportNodes from Objects")
         col.separator()
         col.operator("object.apply_transforms", text="Apply All Transforms")
 
@@ -1843,8 +2001,12 @@ class CryUtilitiesPanel(View3DPanel, Panel):
 
         col.label("Materials", icon="MATERIAL")
         col.separator()
-        col.operator("material.set_material_names", text="Do Material Convention")
-        col.operator("material.remove_cry_blend_properties", text="Undo Material Convention")
+        col.operator(
+            "material.set_material_names",
+            text="Do Material Convention")
+        col.operator(
+            "material.remove_cry_blend_properties",
+            text="Undo Material Convention")
         col.separator()
 
         col.label("Add Physics Proxy", icon="ROTATE")
@@ -1883,19 +2045,26 @@ class BoneUtilitiesPanel(View3DPanel, Panel):
         col.label("Skeleton", icon="BONE_DATA")
         col.separator()
         col.operator("armature.add_root_bone", text="Add Root Bone")
-        col.operator("ops.apply_animation_scaling", text="Apply Animation Scaling")
+        col.operator(
+            "ops.apply_animation_scaling",
+            text="Apply Animation Scaling")
         col.operator("scene.remove_fake_bones", text="Remove Old Fakebones")
 
         col.separator()
         col.label(text="Bone")
         col.separator()
-        col.operator("object.edit_inverse_kinematics", text=" Edit Inverse Kinematics", icon="CONSTRAINT")
+        col.operator(
+            "object.edit_inverse_kinematics",
+            text=" Edit Inverse Kinematics",
+            icon="CONSTRAINT")
 
         col.separator()
         col.label("Physics", icon="PHYSICS")
         col.separator()
         col.operator("armature.add_bone_geometry", text="Add BoneGeometry")
-        col.operator("armature.remove_bone_geometry", text="Remove BoneGeometry")
+        col.operator(
+            "armature.remove_bone_geometry",
+            text="Remove BoneGeometry")
         col.operator("armature.rename_phys_bones", text="Rename Phys Bones")
 
 
@@ -1944,12 +2113,15 @@ class ConfigurationsPanel(View3DPanel, Panel):
         col.label("Configure", icon="NEWFOLDER")
         col.separator()
         col.operator("file.find_rc", text="Find RC")
-        col.operator("file.find_rc_for_texture_conversion", text="Find Texture RC")
+        col.operator(
+            "file.find_rc_for_texture_conversion",
+            text="Find Texture RC")
         col.separator()
         col.operator("file.select_texture_dir", text="Select Textures Folder")
 
+
 #------------------------------------------------------------------------------
-# CryBlend Menus
+# CryBlend Menu:
 #------------------------------------------------------------------------------
 
 class CryBlendMainMenu(bpy.types.Menu):
@@ -1962,13 +2134,26 @@ class CryBlendMainMenu(bpy.types.Menu):
         # version number
         layout.label(text='v%s' % VERSION)
         # layout.operator("open_donate.wp", icon='FORCE_DRAG')
-        layout.operator("object.add_cry_export_node", text="Add ExportNode", icon="GROUP")
-        layout.operator("object.selected_to_cry_export_nodes", text="ExportNodes from Objects")
+        layout.operator(
+            "object.add_cry_export_node",
+            text="Add ExportNode",
+            icon="GROUP")
+        layout.operator(
+            "object.selected_to_cry_export_nodes",
+            text="ExportNodes from Objects")
         layout.separator()
-        layout.operator("material.set_material_names", text="Do Material Convention", icon="MATERIAL")
-        layout.operator("material.remove_cry_blend_properties", text="Undo Material Convention")
+        layout.operator(
+            "material.set_material_names",
+            text="Do Material Convention",
+            icon="MATERIAL")
+        layout.operator(
+            "material.remove_cry_blend_properties",
+            text="Undo Material Convention")
         layout.separator()
-        layout.operator("object.apply_transforms", text="Apply All Transforms", icon="MESH_DATA")
+        layout.operator(
+            "object.apply_transforms",
+            text="Apply All Transforms",
+            icon="MESH_DATA")
         layout.separator()
 
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
@@ -2000,13 +2185,17 @@ class AddPhysicsProxyMenu(bpy.types.Menu):
         layout = self.layout
 
         layout.label("Proxies")
-        add_box_proxy = layout.operator("object.add_proxy", text="Box", icon="META_CUBE")
+        add_box_proxy = layout.operator(
+            "object.add_proxy", text="Box", icon="META_CUBE")
         add_box_proxy.type_ = "box"
-        add_capsule_proxy = layout.operator("object.add_proxy", text="Capsule", icon="META_ELLIPSOID")
+        add_capsule_proxy = layout.operator(
+            "object.add_proxy", text="Capsule", icon="META_ELLIPSOID")
         add_capsule_proxy.type_ = "capsule"
-        add_cylinder_proxy = layout.operator("object.add_proxy", text="Cylinder", icon="META_CAPSULE")
+        add_cylinder_proxy = layout.operator(
+            "object.add_proxy", text="Cylinder", icon="META_CAPSULE")
         add_cylinder_proxy.type_ = "cylinder"
-        add_sphere_proxy = layout.operator("object.add_proxy", text="Sphere", icon="META_BALL")
+        add_sphere_proxy = layout.operator(
+            "object.add_proxy", text="Sphere", icon="META_BALL")
         add_sphere_proxy.type_ = "sphere"
 
 
@@ -2018,19 +2207,40 @@ class BoneUtilitiesMenu(bpy.types.Menu):
         layout = self.layout
 
         layout.label(text="Skeleton")
-        layout.operator("armature.add_root_bone", text="Add Root Bone", icon="BONE_DATA")
-        layout.operator("ops.apply_animation_scaling", text="Apply Animation Scaling", icon='BONE_DATA')
-        layout.operator("scene.remove_fake_bones", text="Remove Old Fakebones", icon='BONE_DATA')
+        layout.operator(
+            "armature.add_root_bone",
+            text="Add Root Bone",
+            icon="BONE_DATA")
+        layout.operator(
+            "ops.apply_animation_scaling",
+            text="Apply Animation Scaling",
+            icon='BONE_DATA')
+        layout.operator(
+            "scene.remove_fake_bones",
+            text="Remove Old Fakebones",
+            icon='BONE_DATA')
         layout.separator()
 
         layout.label(text="Bone")
-        layout.operator("object.edit_inverse_kinematics", text=" Edit Inverse Kinematics", icon="CONSTRAINT")
+        layout.operator(
+            "object.edit_inverse_kinematics",
+            text=" Edit Inverse Kinematics",
+            icon="CONSTRAINT")
         layout.separator()
 
         layout.label(text="Physics")
-        layout.operator("armature.add_bone_geometry", text="Add BoneGeometry", icon="PHYSICS")
-        layout.operator("armature.remove_bone_geometry", text="Remove BoneGeometry", icon="PHYSICS")
-        layout.operator("armature.rename_phys_bones", text="Rename Phys Bones", icon="PHYSICS")
+        layout.operator(
+            "armature.add_bone_geometry",
+            text="Add BoneGeometry",
+            icon="PHYSICS")
+        layout.operator(
+            "armature.remove_bone_geometry",
+            text="Remove BoneGeometry",
+            icon="PHYSICS")
+        layout.operator(
+            "armature.rename_phys_bones",
+            text="Rename Phys Bones",
+            icon="PHYSICS")
 
 
 class BreakablesMenu(bpy.types.Menu):
@@ -2052,8 +2262,14 @@ class TouchBendingMenu(bpy.types.Menu):
         layout = self.layout
 
         layout.label(text="Touch Bending")
-        layout.operator("mesh.add_branch", text="Add Branch", icon='MOD_SIMPLEDEFORM')
-        layout.operator("mesh.add_branch_joint", text="Add Branch Joint", icon='EMPTY_DATA')
+        layout.operator(
+            "mesh.add_branch",
+            text="Add Branch",
+            icon='MOD_SIMPLEDEFORM')
+        layout.operator(
+            "mesh.add_branch_joint",
+            text="Add Branch Joint",
+            icon='EMPTY_DATA')
 
 
 class MeshUtilitiesMenu(bpy.types.Menu):
@@ -2064,18 +2280,36 @@ class MeshUtilitiesMenu(bpy.types.Menu):
         layout = self.layout
 
         layout.label(text="Weight Repair")
-        layout.operator("mesh.find_weightless", text="Find Weightless", icon="WPAINT_HLT")
-        layout.operator("mesh.remove_weight", text="Remove Weight", icon="WPAINT_HLT")
+        layout.operator(
+            "mesh.find_weightless",
+            text="Find Weightless",
+            icon="WPAINT_HLT")
+        layout.operator(
+            "mesh.remove_weight",
+            text="Remove Weight",
+            icon="WPAINT_HLT")
         layout.separator()
 
         layout.label(text="Mesh Repair")
-        layout.operator("object.find_degenerate_faces", text="Find Degenerate", icon='ZOOM_ALL')
-        layout.operator("mesh.find_multiface_lines", text="Find Multi-face", icon='ZOOM_ALL')
+        layout.operator(
+            "object.find_degenerate_faces",
+            text="Find Degenerate",
+            icon='ZOOM_ALL')
+        layout.operator(
+            "mesh.find_multiface_lines",
+            text="Find Multi-face",
+            icon='ZOOM_ALL')
         layout.separator()
 
         layout.label(text="UV Repair")
-        layout.operator("scene.find_no_uvs", text="Find All Objects with No UV's", icon="UV_FACESEL")
-        layout.operator("mesh.add_uv_texture", text="Add UV's to Objects", icon="UV_FACESEL")
+        layout.operator(
+            "scene.find_no_uvs",
+            text="Find All Objects with No UV's",
+            icon="UV_FACESEL")
+        layout.operator(
+            "mesh.add_uv_texture",
+            text="Add UV's to Objects",
+            icon="UV_FACESEL")
 
 
 class CustomPropertiesMenu(bpy.types.Menu):
@@ -2085,13 +2319,25 @@ class CustomPropertiesMenu(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.operator("object.edit_render_mesh", text="Edit Render Mesh", icon="FORCE_LENNARDJONES")
+        layout.operator(
+            "object.edit_render_mesh",
+            text="Edit Render Mesh",
+            icon="FORCE_LENNARDJONES")
         layout.separator()
-        layout.operator("object.edit_physic_proxy", text="Edit Physic Proxy", icon="META_CUBE")
+        layout.operator(
+            "object.edit_physic_proxy",
+            text="Edit Physic Proxy",
+            icon="META_CUBE")
         layout.separator()
-        layout.operator("object.edit_joint_node", text="Edit Joint Node", icon="MOD_SCREW")
+        layout.operator(
+            "object.edit_joint_node",
+            text="Edit Joint Node",
+            icon="MOD_SCREW")
         layout.separator()
-        layout.operator("object.edit_deformable", text="Edit Deformable", icon="MOD_SIMPLEDEFORM")
+        layout.operator(
+            "object.edit_deformable",
+            text="Edit Deformable",
+            icon="MOD_SIMPLEDEFORM")
 
 
 class GenerateScriptMenu(bpy.types.Menu):
@@ -2102,13 +2348,17 @@ class GenerateScriptMenu(bpy.types.Menu):
         layout = self.layout
         layout.label(text="Generate")
         layout.separator()
-        chrparams_generator = layout.operator("wm.generate_script", text="CHRPARAMS", icon="SPACE2")
+        chrparams_generator = layout.operator(
+            "wm.generate_script", text="CHRPARAMS", icon="SPACE2")
         chrparams_generator.type_ = "CHRPARAMS"
-        cdf_generator = layout.operator("wm.generate_script", text="CDF", icon="SPACE2")
+        cdf_generator = layout.operator(
+            "wm.generate_script", text="CDF", icon="SPACE2")
         cdf_generator.type_ = "CDF"
-        ent_generator = layout.operator("wm.generate_script", text="ENT", icon="SPACE2")
+        ent_generator = layout.operator(
+            "wm.generate_script", text="ENT", icon="SPACE2")
         ent_generator.type_ = "ENT"
-        lua_generator = layout.operator("wm.generate_script", text="LUA", icon="SPACE2")
+        lua_generator = layout.operator(
+            "wm.generate_script", text="LUA", icon="SPACE2")
         lua_generator.type_ = "LUA"
         layout.separator()
         layout.operator("file.select_script_editor", icon="TEXT")
@@ -2123,9 +2373,15 @@ class ConfigurationsMenu(bpy.types.Menu):
 
         layout.label("Configure")
         layout.operator("file.find_rc", text="Find RC", icon="SPACE2")
-        layout.operator("file.find_rc_for_texture_conversion", text="Find Texture RC", icon="SPACE2")
+        layout.operator(
+            "file.find_rc_for_texture_conversion",
+            text="Find Texture RC",
+            icon="SPACE2")
         layout.separator()
-        layout.operator("file.select_texture_dir", text="Select Textures Folder", icon="FILE_FOLDER")
+        layout.operator(
+            "file.select_texture_dir",
+            text="Select Textures Folder",
+            icon="FILE_FOLDER")
 
 
 class AddMaterialPhysicsMenu(bpy.types.Menu):
@@ -2137,11 +2393,26 @@ class AddMaterialPhysicsMenu(bpy.types.Menu):
 
         layout.label(text="Add Material Physics")
         layout.separator()
-        layout.operator("material.add_phys_default", text="__physDefault", icon='PHYSICS')
-        layout.operator("material.add_phys_proxy_no_draw", text="__physProxyNoDraw", icon='PHYSICS')
-        layout.operator("material.add_phys_none", text="__physNone", icon='PHYSICS')
-        layout.operator("material.add_phys_obstruct", text="__physObstruct", icon='PHYSICS')
-        layout.operator("material.add_phys_no_collide", text="__physNoCollide", icon='PHYSICS')
+        layout.operator(
+            "material.add_phys_default",
+            text="__physDefault",
+            icon='PHYSICS')
+        layout.operator(
+            "material.add_phys_proxy_no_draw",
+            text="__physProxyNoDraw",
+            icon='PHYSICS')
+        layout.operator(
+            "material.add_phys_none",
+            text="__physNone",
+            icon='PHYSICS')
+        layout.operator(
+            "material.add_phys_obstruct",
+            text="__physObstruct",
+            icon='PHYSICS')
+        layout.operator(
+            "material.add_phys_no_collide",
+            text="__physNoCollide",
+            icon='PHYSICS')
 
 
 class CryBlendReducedMenu(bpy.types.Menu):
@@ -2151,7 +2422,10 @@ class CryBlendReducedMenu(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
 
-        layout.operator("object.apply_transforms", text="Apply All Transforms", icon="MESH_DATA")
+        layout.operator(
+            "object.apply_transforms",
+            text="Apply All Transforms",
+            icon="MESH_DATA")
         layout.separator()
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
         layout.separator()
@@ -2166,8 +2440,9 @@ class CryBlendReducedMenu(bpy.types.Menu):
         layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
         layout.separator()
 
+
 #------------------------------------------------------------------------------
-# Registration
+# Registration:
 #------------------------------------------------------------------------------
 
 def get_classes_to_register():
@@ -2266,7 +2541,12 @@ def register():
     kc = wm.keyconfigs.addon
     if kc:
         km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
-        kmi = km.keymap_items.new('wm.call_menu', 'Q', 'PRESS', ctrl = False, shift = True)
+        kmi = km.keymap_items.new(
+            'wm.call_menu',
+            'Q',
+            'PRESS',
+            ctrl=False,
+            shift=True)
         kmi.properties.name = "view3d.cryblend_reduced_menu"
 
     bpy.types.INFO_HT_header.append(draw_item)
@@ -2274,9 +2554,7 @@ def register():
 
 
 def unregister():
-    # you guys already know this but for my reference,
-    # unregister your classes or when you do new scene
-    # your script wont import other modules properly.
+    # Be sure to unregister operators.
     for classToRegister in get_classes_to_register():
         bpy.utils.unregister_class(classToRegister)
         wm = bpy.context.window_manager

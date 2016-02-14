@@ -2,7 +2,9 @@
 # Name:        add.py
 # Purpose:     Holds functions for adding various UDP properties/helper items
 #
-# Author:      Angelo J. Miner, Özkan Afacan
+# Author:      Angelo J. Miner,
+#              Daniel White, David Marcelis, Duo Oratar, Mikołaj Milej,
+#              Oscar Martin Garcia, Özkan Afacan
 #
 # Created:     23/02/2012
 # Copyright:   (c) Angelo J. Miner 2012
@@ -19,10 +21,13 @@ import bpy.ops
 import bpy_extras
 import re
 import math
-# from add_utils import AddObjectHelper, add_object_data
 
-# mesh user defined property
-def get_udp (object_, udp_name, udp_value, is_checked=None):
+
+#------------------------------------------------------------------------------
+# User Defined Properties:
+#------------------------------------------------------------------------------
+
+def get_udp(object_, udp_name, udp_value, is_checked=None):
     '''Get User Defined Property -- Overloaded function that have two variation'''
 
     if is_checked is None:
@@ -43,8 +48,10 @@ def get_udp (object_, udp_name, udp_value, is_checked=None):
 
         return udp_value, is_checked
 
-def edit_udp (object_, udp_name, udp_value, is_checked=True):
+
+def edit_udp(object_, udp_name, udp_value, is_checked=True):
     '''Edit User Defined Property'''
+
     if is_checked:
         object_[udp_name] = udp_value
     else:
@@ -53,21 +60,49 @@ def edit_udp (object_, udp_name, udp_value, is_checked=True):
         except:
             pass
 
-def is_user_defined_property (property_name):
-    prop_list = ["phys_proxy", "colltype_player", "no_explosion_occlusion",
-        "entity", "mass", "density", "pieces", "dynamic", "no_hit_refinement",
-        "limit", "bend", "twist", "pull", "push", "shift",
-        "player_can_break", "gameplay_critical",
-        "constraint_limit", "constraint_minang", "consrtaint_maxang",
-        "constraint_damping", "constraint_collides",
-        "stiffness", "hardness", "max_stretch", "max_impulse", "skin_dist",
-        "thickness", "explosion_scale", "notaprim",
+
+def is_user_defined_property(property_name):
+    prop_list = [
+        "phys_proxy",
+        "colltype_player",
+        "no_explosion_occlusion",
+        "entity",
+        "mass",
+        "density",
+        "pieces",
+        "dynamic",
+        "no_hit_refinement",
+        "limit",
+        "bend",
+        "twist",
+        "pull",
+        "push",
+        "shift",
+        "player_can_break",
+        "gameplay_critical",
+        "constraint_limit",
+        "constraint_minang",
+        "consrtaint_maxang",
+        "constraint_damping",
+        "constraint_collides",
+        "stiffness",
+        "hardness",
+        "max_stretch",
+        "max_impulse",
+        "skin_dist",
+        "thickness",
+        "explosion_scale",
+        "notaprim",
         "wheel"]
 
     return property_name in prop_list
 
-# bone inverse kinematics
-def get_bone_ik_max_min (pose_bone):
+
+#------------------------------------------------------------------------------
+# Bone Inverse Kinematics:
+#------------------------------------------------------------------------------
+
+def get_bone_ik_max_min(pose_bone):
     xIK = yIK = zIK = ""
 
     if pose_bone.lock_ik_x:
@@ -90,7 +125,8 @@ def get_bone_ik_max_min (pose_bone):
 
     return xIK, yIK, zIK
 
-def get_bone_ik_properties (pose_bone):
+
+def get_bone_ik_properties(pose_bone):
     damping = [1.0, 1.0, 1.0]
     spring = [0.0, 0.0, 0.0]
     spring_tension = [1.0, 1.0, 1.0]
@@ -112,8 +148,11 @@ def get_bone_ik_properties (pose_bone):
 
     return damping, spring, spring_tension
 
-# jointed breakables
-# joint
+
+#------------------------------------------------------------------------------
+# Jointed Breakable:
+#------------------------------------------------------------------------------
+
 def add_joint(self, context):
     bpy.ops.mesh.primitive_cube_add()
     ob = bpy.context.active_object
@@ -145,14 +184,18 @@ def add_joint(self, context):
     return {'FINISHED'}
 
 
-# material physics
+#------------------------------------------------------------------------------
+# Material Physics:
+#------------------------------------------------------------------------------
+
 def add_phys_material(self, context, physName):
     if not physName.startswith("__"):
         physName = "__" + physName
 
     me = bpy.context.active_object
     if me.active_material:
-        me.active_material.name = replacePhysMaterial(me.active_material.name, physName)
+        me.active_material.name = replacePhysMaterial(
+            me.active_material.name, physName)
 
     return {'FINISHED'}
 
@@ -164,6 +207,6 @@ def replacePhysMaterial(materialname, phys):
         return "{}{}".format(materialname, phys)
 
 
-# this is needed if you want to access more than the first def
+# This is needed if you want to access more than the first def
 if __name__ == "__main__":
     register()

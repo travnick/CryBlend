@@ -1,10 +1,12 @@
 #------------------------------------------------------------------------------
 # Name:        rc.py
-# Purpose:     Resource Compiler Transactions
+# Purpose:     Resource compiler transactions
 #
-# Author:      Daniel White
+# Author:      Daniel White,
+#              Angelo J. Miner, David Marcelis, Duo Oratar, Mikołaj Milej,
+#              Oscar Martin Garcia, Özkan Afacan
 #
-# Created:     2/12/15
+# Created:     2/12/2016
 # Copyright:   (c) Daniel White 2016
 # Licence:     GPLv2+
 #------------------------------------------------------------------------------
@@ -28,6 +30,7 @@ import tempfile
 
 
 class RCInstance:
+
     def __init__(self, config):
         self.__config = config
 
@@ -43,6 +46,7 @@ class RCInstance:
 
 
 class _DAEConverter:
+
     def __init__(self, config, source):
         self.__config = config
         self.__doc = source
@@ -90,8 +94,12 @@ class _DAEConverter:
             allowed = ["cgf", "cga", "chr", "skin"]
             if node_type in allowed:
                 out_file = "{0}{1}".format(output_path,
-                                            group.name)
-                args = [self.__config.rc_path, "/refresh", "/vertexindexformat=u16", out_file]
+                                           group.name)
+                args = [
+                    self.__config.rc_path,
+                    "/refresh",
+                    "/vertexindexformat=u16",
+                    out_file]
                 rc_second_pass = subprocess.Popen(args)
 
     def __fix_normalmap_in_mtls(self, rc_process, dae_file):
@@ -143,17 +151,17 @@ class _DAEConverter:
         layer_name = "ExportedLayer"
         layer = createAttributes(
             'Layer',
-            { 'name': layer_name,
-               'GUID': utils.get_guid(),
-               'FullName': layer_name,
-               'External': '0',
-               'Exportable': '1',
-               'ExportLayerPak': '1',
-               'DefaultLoaded': '0',
-               'HavePhysics': '1',
-               'Expanded': '0',
-               'IsDefaultColor': '1'
-            }
+            {'name': layer_name,
+             'GUID': utils.get_guid(),
+             'FullName': layer_name,
+             'External': '0',
+             'Exportable': '1',
+             'ExportLayerPak': '1',
+             'DefaultLoaded': '0',
+             'HavePhysics': '1',
+             'Expanded': '0',
+             'IsDefaultColor': '1'
+             }
         )
 
         layer_objects = layer_doc.createElement("LayerObjects")
@@ -167,66 +175,66 @@ class _DAEConverter:
 
             object = createAttributes(
                 'Object',
-                { 'name': group.name[14:],
-                  'Type': 'Entity',
-                  'Id': utils.get_guid(),
-                  'LayerGUID': layer.getAttribute('GUID'),
-                  'Layer': layer_name,
-                  'Pos': "%s, %s, %s" % origin[:],
-                  'Rotate': "%s, %s, %s, %s" % rotation[:],
-                  'EntityClass': 'BasicEntity',
-                  'FloorNumber': '-1',
-                  'RenderNearest': '0',
-                  'NoStaticDecals': '0',
-                  'CreatedThroughPool': '0',
-                  'MatLayersMask': '0',
-                  'OutdoorOnly': '0',
-                  'CastShadow': '1',
-                  'MotionBlurMultiplier': '1',
-                  'LodRatio': '100',
-                  'ViewDistRatio': '100',
-                  'HiddenInGame': '0',
-                }
+                {'name': group.name[14:],
+                 'Type': 'Entity',
+                 'Id': utils.get_guid(),
+                 'LayerGUID': layer.getAttribute('GUID'),
+                 'Layer': layer_name,
+                 'Pos': "%s, %s, %s" % origin[:],
+                 'Rotate': "%s, %s, %s, %s" % rotation[:],
+                 'EntityClass': 'BasicEntity',
+                 'FloorNumber': '-1',
+                 'RenderNearest': '0',
+                 'NoStaticDecals': '0',
+                 'CreatedThroughPool': '0',
+                 'MatLayersMask': '0',
+                 'OutdoorOnly': '0',
+                 'CastShadow': '1',
+                 'MotionBlurMultiplier': '1',
+                 'LodRatio': '100',
+                 'ViewDistRatio': '100',
+                 'HiddenInGame': '0',
+                 }
             )
             properties = createAttributes(
                 'Properties',
-                { 'object_Model': '/Objects/%s.cgf' % group.name[14:],
-                  'bCanTriggerAreas': '0',
-                  'bExcludeCover': '0',
-                  'DmgFactorWhenCollidingAI': '1',
-                  'esFaction': '',
-                  'bHeavyObject': '0',
-                  'bInteractLargeObject': '0',
-                  'bMissionCritical': '0',
-                  'bPickable': '0',
-                  'soclasses_SmartObjectClass': '',
-                  'bUsable': '0',
-                  'UseMessage': '0',
-                }
+                {'object_Model': '/Objects/%s.cgf' % group.name[14:],
+                 'bCanTriggerAreas': '0',
+                 'bExcludeCover': '0',
+                 'DmgFactorWhenCollidingAI': '1',
+                 'esFaction': '',
+                 'bHeavyObject': '0',
+                 'bInteractLargeObject': '0',
+                 'bMissionCritical': '0',
+                 'bPickable': '0',
+                 'soclasses_SmartObjectClass': '',
+                 'bUsable': '0',
+                 'UseMessage': '0',
+                 }
             )
             health = createAttributes(
                 'Health',
-                { 'bInvulnerable': '1',
-                  'MaxHealth': '500',
-                  'bOnlyEnemyFire': '1',
-                }
+                {'bInvulnerable': '1',
+                 'MaxHealth': '500',
+                 'bOnlyEnemyFire': '1',
+                 }
             )
             interest = createAttributes(
                 'Interest',
-                { 'soaction_Action': '',
-                  'bInteresting': '0',
-                  'InterestLevel': '1',
-                  'Pause': '15',
-                  'Radius': '20',
-                  'bShared': '0',
-                }
+                {'soaction_Action': '',
+                 'bInteresting': '0',
+                 'InterestLevel': '1',
+                 'Pause': '15',
+                 'Radius': '20',
+                 'bShared': '0',
+                 }
             )
             vOffset = createAttributes(
                 'vOffset',
-                { 'x': '0',
-                  'y': '0',
-                  'z': '0',
-                }
+                {'x': '0',
+                 'y': '0',
+                 'z': '0',
+                 }
             )
 
             interest.appendChild(vOffset)
@@ -249,7 +257,9 @@ class _DAEConverter:
 
             return node
 
+
 class _TIFConverter:
+
     def __init__(self, config, source):
         self.__config = config
         self.__images_to_convert = source
@@ -270,8 +280,8 @@ class _TIFConverter:
                 cbPrint("Failed to invert green channel")
 
             rc_process = run_rc(self.__config.texture_rc_path,
-                                      tiff_image_for_rc,
-                                      rc_params)
+                                tiff_image_for_rc,
+                                rc_params)
 
             # re-save the original image after running the RC to
             # prevent the original one from getting lost
@@ -294,7 +304,10 @@ class _TIFConverter:
             temp_normal_image = image.copy()
             self.__invert_green_channel(temp_normal_image)
             # save to file and delete the temporary image
-            new_normal_image_path = "%s_cb_normal.%s" % (os.path.splitext(temp_normal_image.filepath_raw)[0], os.path.splitext(temp_normal_image.filepath_raw)[1])
+            new_normal_image_path = "%s_cb_normal.%s" % (os.path.splitext(
+                temp_normal_image.filepath_raw)[0],
+                os.path.splitext(
+                temp_normal_image.filepath_raw)[1])
             temp_normal_image.save_render(filepath=new_normal_image_path)
             bpy.data.images.remove(temp_normal_image)
 
@@ -302,7 +315,7 @@ class _TIFConverter:
         rc_params = ["/verbose", "/threads=cores", "/userdialog=1", "/refresh"]
 
         image_directory = os.path.dirname(utils.get_absolute_path_for_rc(
-                destination_path))
+            destination_path))
 
         rc_params.append("/targetroot={!s}".format(image_directory))
 
@@ -319,7 +332,9 @@ class _TIFConverter:
         cbPrint(image_extension)
 
         if ".tif" == image_extension:
-            cbPrint("Image {!r} is already a tif, not converting".format(image.name), 'debug')
+            cbPrint(
+                "Image {!r} is already a tif, not converting".format(
+                    image.name), 'debug')
             return image.filepath
 
         tiff_image_path = utils.get_path_with_new_extension(image.filepath,
