@@ -78,15 +78,15 @@ class __Configuration:
                     pickle.dump(self.__CONFIG, f, -1)
                     cbPrint("Configuration file saved.")
 
-                cbPrint('Saved %s' % self.__CONFIG_FILEPATH)
+                cbPrint('Saved {}'.format(self.__CONFIG_FILEPATH))
 
             except:
-                cbPrint("[IO] can not write: %s" % self.__CONFIG_FILEPATH,
+                cbPrint("[IO] can not write: {}".format(self.__CONFIG_FILEPATH),
                         'error')
 
         else:
-            cbPrint("Configuration file path is missing %s"
-                    % self.__CONFIG_PATH,
+            cbPrint("Configuration file path is missing {}".format(
+                    self.__CONFIG_PATH),
                     'error')
 
     def __load(self, current_configuration):
@@ -100,7 +100,7 @@ class __Configuration:
                     new_configuration.update(pickle.load(f))
                     cbPrint('Configuration file loaded.')
             except:
-                cbPrint("[IO] can not read: %s" % self.__CONFIG_FILEPATH,
+                cbPrint("[IO] can not read: {}".format(self.__CONFIG_FILEPATH),
                         'error')
 
         return new_configuration

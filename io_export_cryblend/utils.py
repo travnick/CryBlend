@@ -61,7 +61,7 @@ def frame_to_time(frame):
 def matrix_to_string(matrix):
     rows = []
     for row in matrix:
-        rows.append(" ".join("%s" % column for column in row))
+        rows.append(" ".join("{}".format(column) for column in row))
 
     return " ".join(rows)
 
@@ -114,7 +114,7 @@ def get_absolute_path(file_path):
 
     if is_relative:
         blend_file_path = os.path.dirname(bpy.data.filepath)
-        file_path = '%s/%s' % (blend_file_path, file_path)
+        file_path = '{}/{}'.format(blend_file_path, file_path)
 
     return os.path.abspath(file_path)
 
@@ -127,7 +127,7 @@ def get_absolute_path_for_rc(file_path):
     file_path = get_absolute_path(file_path)
 
     if sys.platform != 'win32':
-        file_path = '%s%s' % (WINE_DEFAULT_DRIVE_LETTER, file_path)
+        file_path = '{}{}'.format(WINE_DEFAULT_DRIVE_LETTER, file_path)
 
     return file_path
 
@@ -177,7 +177,7 @@ def make_relative_path(filepath, start):
 
 
 def get_path_with_new_extension(path, extension):
-    return '%s.%s' % (os.path.splitext(path)[0], extension)
+    return '{}.{}'.format(os.path.splitext(path)[0], extension)
 
 
 def strip_extension_from_path(path):
@@ -559,33 +559,11 @@ def get_material_attribute(material, type_):
     return str(float)
 
 
-def is_cryblend_material(materialname):
-    if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
-        return True
-    else:
-        return False
-
-
-def extract_cryblend_properties(materialname):
-    """Returns the CryBlend properties of a materialname as dict or
-    None if name is invalid.
-    """
-    if is_cryblend_material(materialname):
-        groups = re.findall(
-            "(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)",
-            materialname)
-        properties = {}
-        properties["ExportNode"] = groups[0][0]
-        properties["Number"] = int(groups[0][1])
-        properties["Name"] = groups[0][2]
-        properties["Physics"] = groups[0][3]
-        return properties
-    return None
-
-
 def get_material_props(materialname):
     if has__material_physics(materialname):
-        groups = re.findall('(.*)__(phys[A-Za-z0-9]+)', materialname)
+        groups = re.findall('.+__[0-9]+__(.*)__(phys[A-Za-z0-9]+)', materialname)
+        if not groups:
+            groups = re.findall('(.*)__(phys[A-Za-z0-9]+)', materialname)
         return replace_invalid_rc_characters(groups[0][0]), groups[0][1]
     return replace_invalid_rc_characters(materialname), "physDefault"
 
@@ -1015,16 +993,16 @@ def get_3d_context(object_):
 #------------------------------------------------------------------------------
 
 def get_guid():
-    GUID = "{%s-%s-%s-%s-%s}" % (random_hex_sector(8),
-                                 random_hex_sector(4),
-                                 random_hex_sector(4),
-                                 random_hex_sector(4),
-                                 random_hex_sector(12))
+    GUID = "{{}-{}-{}-{}-{}}".format(random_hex_sector(8),
+                                     random_hex_sector(4),
+                                     random_hex_sector(4),
+                                     random_hex_sector(4),
+                                     random_hex_sector(12))
     return GUID
 
 
 def random_hex_sector(length):
-    fixed_length_hex_format = "%0" + str(length) + "x"
+    fixed_length_hex_format = "%0{}x".format(length)
     return fixed_length_hex_format % random.randrange(16 ** length)
 
 
