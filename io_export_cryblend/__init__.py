@@ -315,11 +315,12 @@ be converted to the selected shape in CryEngine.'''
         bound_box.dimensions = object_.dimensions
         bound_box.location = object_.location
         bound_box.rotation_euler = object_.rotation_euler
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
         for group in object_.users_group:
             bpy.ops.object.group_link(group=group.name)
 
-        name = "{}__physProxyNone".format(bound_box.name)
+        name = "{}__physProxyNoDraw".format(bound_box.name)
         proxy_material = bpy.data.materials.new(name)
         bound_box.data.materials.append(proxy_material)
 
