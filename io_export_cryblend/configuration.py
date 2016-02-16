@@ -16,6 +16,7 @@
 
 import bpy
 from io_export_cryblend.outpipe import cbPrint
+from io_export_cryblend.utils import get_filename
 import os
 import pickle
 
@@ -28,8 +29,7 @@ class __Configuration:
     __CONFIG_FILEPATH = os.path.join(__CONFIG_PATH, __CONFIG_FILENAME)
     __DEFAULT_CONFIGURATION = {'RC_PATH': r'',
                                'TEXTURE_RC_PATH': r'',
-                               'TEXTURE_DIR': r'',
-                               'SCRIPT_EDITOR': r''}
+                               'TEXTURE_DIR': r''}
 
     def __init__(self):
         self.__CONFIG = self.__load({})
@@ -61,13 +61,12 @@ class __Configuration:
     def texture_dir(self, value):
         self.__CONFIG['TEXTURE_DIR'] = value
 
-    @property
-    def script_editor(self):
-        return self.__CONFIG['SCRIPT_EDITOR']
+    def configured(self):
+        path = self.__CONFIG['RC_PATH']
+        if len(path) > 0 and get_filename(path) == "rc":
+            return True
 
-    @script_editor.setter
-    def script_editor(self, value):
-        self.__CONFIG['SCRIPT_EDITOR'] = value
+        return False
 
     def save(self):
         cbPrint("Saving configuration file.", 'debug')

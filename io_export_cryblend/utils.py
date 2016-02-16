@@ -775,23 +775,15 @@ def set_keyframe(armature, frame, location_list, rotation_list):
         fakeBone.keyframe_insert(data_path="rotation_euler")
 
 
-def apply_animation_scale():
+def apply_animation_scale(armature):
     '''Apply Animation Scale.'''
     scene = bpy.context.scene
     remove_unused_meshes()
 
-    armature = None
-    for object_ in scene.objects:
-        if object_.type == 'ARMATURE':
-            armature = object_
-            break
-
-    if armature is None:
-        cbPrint("There is no armature in scene!")
+    if armature is None or armature.type != "ARMATURE":
         return
 
-    skeleton = bpy.data.armatures[armature.name]
-
+    skeleton = armature.data
     empties = []
 
     deselect_all()
