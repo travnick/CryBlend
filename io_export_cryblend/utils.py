@@ -1029,13 +1029,13 @@ def generate_file(filepath, contents, overwrite=False):
 
 
 def generate_xml(filepath, contents, overwrite=False):
-    if not os.path.exists(filepath):
+    if not os.path.exists(filepath) or overwrite:
         if isinstance(contents, str):
             script = parseString(contents)
         else:
             script = contents
         contents = script.toprettyxml(indent="    ")
-        generate_file(filepath, contents, overwrite=False)
+        generate_file(filepath, contents, overwrite)
 
 
 def remove_file(filepath):
