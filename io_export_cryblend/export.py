@@ -810,20 +810,38 @@ class CrytekDaeExporter:
                         utils.frame_to_time(
                             scene.frame_end)))
                 is_animation = False
+
+                armature = ""
+                for object_ in bpy.data.groups[group.name].objects:
+                    if object_.type == 'ARMATURE':
+                        armature = "%{!s}%".format(object_.name)
+                        break
+                
                 for object_ in bpy.context.selected_objects:
                     if (object_.type != 'ARMATURE' and object_.animation_data and
                             object_.animation_data.action):
 
                         is_animation = True
+
+                        bone_name = ""
+                        if "__" in object_.name:
+                            bone_extended = object_.name.replace("__", "*")
+                            bone_name = "{!s}{!s}".format("--PRprops_name=",
+                                                          bone_extended)
+    
+                        bone = "{!s}{!s}{!s}".format(object_.name,
+                                                     armature,
+                                                     bone_name)
+        
                         for axis in iter(AXES):
                             animation = self.__get_animation_location(
-                                object_, axis)
+                                object_, bone, axis)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
                         for axis in iter(AXES):
                             animation = self.__get_animation_rotation(
-                                object_, axis)
+                                object_, bone, axis)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
@@ -860,10 +878,10 @@ class CrytekDaeExporter:
                     object_.name, parameter, axis))
             animation_clip.appendChild(inst)
 
-    def __get_animation_location(self, object_, axis):
+    def __get_animation_location(self, object_, bone, axis):
         attribute_type = "location"
         multiplier = 1
-        target = "{!s}{!s}{!s}".format(object_.name, "/translation.", axis)
+        target = "{!s}{!s}{!s}".format(bone, "/translation.", axis)
 
         animation_element = self.__get_animation_attribute(object_,
                                                            axis,
@@ -872,10 +890,10 @@ class CrytekDaeExporter:
                                                            target)
         return animation_element
 
-    def __get_animation_rotation(self, object_, axis):
+    def __get_animation_rotation(self, object_, bone, axis):
         attribute_type = "rotation_euler"
         multiplier = utils.to_degrees
-        target = "{!s}{!s}{!s}{!s}".format(object_.name,
+        target = "{!s}{!s}{!s}{!s}".format(bone,
                                            "/rotation_",
                                            axis,
                                            ".ANGLE")
