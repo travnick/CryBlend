@@ -181,6 +181,7 @@ def add_joint(self, context):
     ob["dampingY"] = "dampingY=1"
     ob["dampingZ"] = "dampingZ=1"
     ob["limit"] = "limit=100"
+
     return {'FINISHED'}
 
 

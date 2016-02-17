@@ -1381,58 +1381,41 @@ class AddBoneGeometry(bpy.types.Operator):
         subtype='EULER',
     )
 
-    def draw(self, context):
-        col = self.col
-        col.label(text="Add boneGeometry")
-
     def execute(self, context):
         verts_loc, faces = add_bone_geometry()
 
-        nameList = []
-        for obj in bpy.context.scene.objects:
-            nameList.append(obj.name)
+        for object_ in bpy.context.selected_objects:
+            if (object_.type == 'ARMATURE' and not object_.name.endswith("_Phys")):
+                for bone in object_.data.bones:
+                    mesh = bpy.data.meshes.new(
+                        "{}_boneGeometry".format(bone.name)
+                    )
+                    bm = bmesh.new()
 
-        for obj in bpy.context.scene.objects:
-            if obj.type == 'ARMATURE' and obj.select:
+                    for v_co in verts_loc:
+                        bm.verts.new(v_co)
 
-                physBonesList = []
-                if "{}_Phys".format(obj.name) in nameList:
-                    for bone in bpy.data.objects[
-                            "{}_Phys".format(obj.name)].data.bones:
-                        physBonesList.append(bone.name)
+                    if hasattr(bm.verts, "ensure_lookup_table"):
+                        bm.verts.ensure_lookup_table()
 
-                for bone in obj.data.bones:
-                    if ((not "{}_boneGeometry".format(bone.name) in nameList
-                         and not "{}_Phys".format(obj.name) in nameList)
-                            or ("{}_Phys".format(obj.name) in nameList
-                                and "{}_Phys".format(bone.name) in physBonesList
-                                and not "{}_boneGeometry".format(bone.name) in nameList)
-                        ):
-                        mesh = bpy.data.meshes.new(
-                            "{}_boneGeometry".format(bone.name)
-                        )
-                        bm = bmesh.new()
+                    for f_idx in faces:
+                        bm.faces.new([bm.verts[i] for i in f_idx])
 
-                        for v_co in verts_loc:
-                            bm.verts.new(v_co)
+                    bm.to_mesh(mesh)
+                    mesh.update()
 
-                        for f_idx in faces:
-                            bm.faces.new([bm.verts[i] for i in f_idx])
+                    bmatrix = bone.head_local
+                    self.location[0] = bmatrix[0]
+                    self.location[1] = bmatrix[1]
+                    self.location[2] = bmatrix[2]
 
-                        bm.to_mesh(mesh)
-                        mesh.update()
-                        bmatrix = bone.head_local
-                        # loc, rotation, scale = bmatrix.decompose()
-                        self.location[0] = bmatrix[0]
-                        self.location[1] = bmatrix[1]
-                        self.location[2] = bmatrix[2]
-                        # add the mesh as an object into the scene
-                        # with this utility module
-                        from bpy_extras import object_utils
-                        object_utils.object_data_add(
-                            context, mesh, operator=self
-                        )
-                        bpy.ops.mesh.uv_texture_add()
+                    # Add the mesh as an object into the scene
+                    # with this utility module
+                    from bpy_extras import object_utils
+                    object_utils.object_data_add(
+                        context, mesh, operator=self
+                    )
+                    bpy.ops.mesh.uv_texture_add()
 
         return {'FINISHED'}
 
@@ -1478,70 +1461,23 @@ def add_bone_geometry():
 
 
 class RemoveBoneGeometry(bpy.types.Operator):
-    '''Remove BoneGeometry for bones in selected armatures'''
+    '''Remove all bone geometry from the scene.'''
     bl_label = "Remove BoneGeometry"
     bl_idname = "armature.remove_bone_geometry"
     bl_options = {'REGISTER', 'UNDO'}
 
-    view_align = BoolProperty(
-        name="Align to View",
-        default=False,
-    )
-    location = FloatVectorProperty(
-        name="Location",
-        subtype='TRANSLATION',
-    )
-    rotation = FloatVectorProperty(
-        name="Rotation",
-        subtype='EULER',
-    )
-
-    def draw(self, context):
-        col = self.col
-        col.label(text="Remove boneGeometry")
-
     def execute(self, context):
         bpy.ops.object.mode_set(mode='OBJECT')
+        utils.deselect_all()
 
-        armatureList = []  # Get list of armatures requiring attention
-        for obj in bpy.context.scene.objects:
-            if obj.type == 'ARMATURE' and obj.select:  # Get selected armatures
-                armatureList.append(obj.name)
+        for object_ in bpy.context.scene.objects:
+            if (object_.type == "MESH" and
+                    object_.name.endswith("_boneGeometry")):
+                object_.select = True
 
-        nameList = []  # Get list of objects
-        for obj in bpy.context.scene.objects:
-            nameList.append(obj.name)
-            obj.select = False
-
-        for name in armatureList:
-            obj = bpy.context.scene.objects[name]
-            physBonesList = []
-            # Get list of phys bones in matching phys skel
-            if "{}_Phys".format(obj.name) in nameList:
-                for bone in bpy.data.objects["{}_Phys".format(obj.name)].data.bones:
-                    physBonesList.append(bone.name)
-
-            for bone in obj.data.bones:  # For each bone
-                if "{}_boneGeometry".format(bone.name) in nameList:
-                    bpy.data.objects[
-                        "{}_boneGeometry".format(bone.name)].select = True
-
-            bpy.ops.object.delete()
+        bpy.ops.object.delete()
 
         return {'FINISHED'}
-            
-    def invoke(self, context, event):
-        has_armature = False
-        for object_ in context.selected_objects:
-            if object_.type == "ARMATURE":
-                has_armature = True
-                break
-
-        if not has_armature:
-            self.report({'ERROR'}, "Select one or more armatures in OBJECT mode.")
-            return {'FINISHED'}
-
-        return self.execute(context)
 
 
 class RenamePhysBones(bpy.types.Operator):
@@ -1553,6 +1489,7 @@ class RenamePhysBones(bpy.types.Operator):
     def execute(self, context):
         for object_ in bpy.context.selected_objects:
             if (object_.type == 'ARMATURE'):
+                object_.name = "{}_Phys".format(object_.name)
                 for bone in object_.data.bones:
                     if not bone.name.endswith("_Phys"):
                         bone.name = "{}_Phys".format(bone.name)
