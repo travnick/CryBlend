@@ -3,7 +3,7 @@
 CryEngine3 Utilities and Exporter for Blender
 
 
-Original source: http://www.crydev.net/viewtopic.php?f=315&t=103136
+Original source: http://www.cryengine.com/community/viewtopic.php?f=315&t=103136
 
 Official documentation: https://github.com/travnick/CryBlend/wiki
 
