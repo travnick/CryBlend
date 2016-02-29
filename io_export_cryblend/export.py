@@ -1030,10 +1030,17 @@ class CrytekDaeExporter:
             pass  # TODO: Handle No Export Nodes Error
 
     def __write_export_node(self, group, visual_scene):
-        nodename = "CryExportNode_{}".format(utils.get_node_name(group.name))
-        node = self.__doc.createElement("node")
-        node.setAttribute("id", nodename)
-        node.setIdAttribute("id")
+        if not self.__config.export_for_lumberyard:
+            nodename = "CryExportNode_{}".format(utils.get_node_name(group.name))
+            node = self.__doc.createElement("node")
+            node.setAttribute("id", nodename)
+            node.setIdAttribute("id")
+        else:
+            nodename = "{}".format(utils.get_node_name(group.name))
+            node = self.__doc.createElement("node")
+            node.setAttribute("id", nodename)
+            node.setAttribute("LumberyardExportNode", "1")
+            node.setIdAttribute("id")
 
         bpy.ops.mesh.primitive_cube_add(location=(0, 0, 0))
         self.__write_transforms(bpy.context.active_object, node)

@@ -33,7 +33,7 @@
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, stardidi, "
-              "Daniel White, Özkan Afacan",
+              "Daniel White, Özkan Afacan, Oscar Martin Garcia",
     "blender": (2, 70, 0),
     "version": (5, 1, 0),
     "location": "CryBlend Menu",
@@ -1598,6 +1598,11 @@ class Export(bpy.types.Operator, ExportHelper):
         description="Align face normals within 1 degree of each other.",
         default=False,
     )
+    export_for_lumberyard = BoolProperty(
+        name="Export for LumberYard",
+        description="Export for LumberYard engine instead of CryEngine.",
+        default=False,
+    )
     make_layer = BoolProperty(
         name="Make LYR File",
         description="Makes a LYR to reassemble your scene in CryEngine.",
@@ -1639,6 +1644,7 @@ class Export(bpy.types.Operator, ExportHelper):
                 'convert_space',
                 'fix_weights',
                 'average_planar',
+                'export_for_lumberyard',
                 'make_layer',
                 'disable_rc',
                 'save_dae',
@@ -1711,6 +1717,10 @@ class Export(bpy.types.Operator, ExportHelper):
         box.label("Corrective", icon="BRUSH_DATA")
         box.prop(self, "fix_weights")
         box.prop(self, "average_planar")
+
+        box = col.box()
+        box.label("LumberYard", icon="GAME")
+        box.prop(self, "export_for_lumberyard")
 
         box = col.box()
         box.label("CryEngine Editor", icon="OOPS")
