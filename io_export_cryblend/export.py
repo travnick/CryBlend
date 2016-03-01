@@ -94,19 +94,26 @@ class CrytekDaeExporter:
     def __get_materials(self):
         materials = OrderedDict()
         material_counter = {}
-        for group in utils.get_export_nodes():
-            material_counter[group.name] = 0
 
         for group in utils.get_export_nodes():
+            material_counter[group.name] = 0
             for object in group.objects:
                 for slot in object.material_slots:
                     if slot.material is None:
                         continue
 
                     if slot.material not in materials:
-                        material_counter[group.name] += 1
+
                         nodename = utils.get_node_name(
                             group.name.replace("CryExportNode_", ""))
+
+                        if ("__" in slot.material.name):
+                            othernode = slot.material.name.split("__", 1)[0]
+                            if (othernode != nodename):
+                                materials[slot.material] = slot.material.name
+                                continue
+
+                        material_counter[group.name] += 1
                         name, physics = utils.get_material_props(
                             slot.material.name)
 
