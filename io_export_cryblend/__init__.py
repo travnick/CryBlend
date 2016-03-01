@@ -67,6 +67,7 @@ from bpy.types import Menu, Panel
 from bpy_extras.io_utils import ExportHelper
 from io_export_cryblend.configuration import Configuration
 from io_export_cryblend.outpipe import cbPrint
+from io_export_cryblend.desc import list
 from xml.dom.minidom import Document, Element, parse, parseString
 import bmesh
 import bpy.ops
@@ -487,6 +488,71 @@ def name_branch(is_new_branch):
     else:
         return "branch1_1"
 
+def get_materials_per_group(group):
+    materials = []
+    for _objtmp in bpy.data.groups[group].objects:
+        for material in _objtmp.data.materials:
+            if material is not None:
+                if material.name not in materials:
+                    materials.append(material.name)
+    return materials
+
+class AddMaterial(bpy.types.Operator):
+    '''Add material to node'''
+    bl_label = "Add Material to Node"
+    bl_idname = "object.add_cry_material"
+    bl_options = {"REGISTER", "UNDO"}
+
+    material_name = StringProperty(name="Material")
+
+    physics_type = EnumProperty(
+        name="Physics",
+        items=(
+            ("physDefault", "Default", list['physDefault']),
+            ("physProxyNoDraw", "Proxy", list['physProxyNoDraw']),
+            ("physNoCollide", "Collide", list['physNoCollide']),
+            ("physObstruct", "Obstruct", list['physObstruct']),
+            ("physNone", "None", list['physNone']),
+        ),
+        default="physDefault",
+    )
+
+    def execute(self, context):
+        if bpy.context.selected_objects:
+            materials = {}
+            for _object in bpy.context.selected_objects:
+                if (len(_object.users_group) > 0):
+                    # get cryexport group
+                    node_name = _object.users_group[0].name
+                    # get material for this group
+                    if node_name not in materials:
+                        index = len(get_materials_per_group(node_name)) + 1
+                        #generate new material
+                        material = bpy.data.materials.new(
+                            "{}__{}__{}__{}".format(
+                            node_name.split(".")[0],
+                            index, self.material_name, self.physics_type
+                            )
+                        )
+                        materials[node_name] = material
+                    _object.data.materials.append(material)
+                else:
+                    # ignoring object without group
+                    cbPrint("Object " + _object.name +
+                            " not assigned to any group")
+            message = "Assigned material"
+        else:
+            message = "No Objects Selected"
+
+        self.report({"INFO"}, message)
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        if len(context.selected_objects) == 0:
+            self.report({'ERROR'}, "Select one or more objects in OBJECT mode.")
+            return {'FINISHED'}
+
+        return context.window_manager.invoke_props_dialog(self)
 
 #------------------------------------------------------------------------------
 # (UDP) Inverse Kinematics:
@@ -1800,6 +1866,11 @@ class CryUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
         col = layout.column(align=True)
 
+        col.label("Material:", icon="MATERIAL_DATA")
+        col.separator()
+        col.operator("object.add_cry_material", text="Add Material")
+        col.separator()
+
         col.label("Add Physics Proxy", icon="ROTATE")
         col.separator()
         row = col.row(align=True)
@@ -1950,6 +2021,11 @@ class CryBlendMainMenu(bpy.types.Menu):
             "object.apply_transforms",
             text="Apply All Transforms",
             icon="MESH_DATA")
+        layout.separator()
+        layout.operator(
+            "object.add_cry_material",
+            text="Add Material",
+            icon="MATERIAL_DATA")
         layout.separator()
 
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
@@ -2213,6 +2289,7 @@ def get_classes_to_register():
 
         AddCryExportNode,
         SelectedToCryExportNodes,
+        AddMaterial,
         AddRootBone,
         ApplyTransforms,
         AddProxy,
