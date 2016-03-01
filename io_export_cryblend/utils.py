@@ -620,6 +620,28 @@ def get_material_parts(node, material):
     return group, index, name, physics
 
 
+def extract_cryblend_properties(materialname):
+    """Returns the CryBlend properties of a materialname as dict or
+    None if name is invalid.
+    """
+    if is_cryblend_material(materialname):
+        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
+        properties = {}
+        properties["ExportNode"] = groups[0][0]
+        properties["Number"] = int(groups[0][1])
+        properties["Name"] = groups[0][2]
+        properties["Physics"] = groups[0][3]
+        return properties
+    return None
+
+
+def is_cryblend_material(materialname):
+    if re.search(".+__[0-9]+__.*__phys[A-Za-z0-9]+", materialname):
+        return True
+    else:
+        return False
+
+
 #------------------------------------------------------------------------------
 # Export Nodes:
 #------------------------------------------------------------------------------
