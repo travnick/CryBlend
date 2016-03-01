@@ -33,7 +33,7 @@
 bl_info = {
     "name": "CryEngine3 Utilities and Exporter",
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, stardidi, "
-              "Daniel White, Özkan Afacan",
+              "Daniel White, Özkan Afacan, Oscar Martin Garcia",
     "blender": (2, 70, 0),
     "version": (5, 1, 0),
     "location": "CryBlend Menu",
@@ -56,6 +56,7 @@ if "bpy" in locals():
     imp.reload(export)
     imp.reload(exceptions)
     imp.reload(utils)
+    imp.reload(desc)
 else:
     import bpy
     from io_export_cryblend import add, export, exceptions, utils, desc
@@ -1908,6 +1909,16 @@ class ConfigurationsPanel(View3DPanel, Panel):
         col.separator()
         col.operator("file.select_texture_dir", text="Select Textures Folder")
 
+class ExportPanel(View3DPanel, Panel):
+    bl_label = "Export"
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column(align=True)
+
+        col.label("Export", icon="GAME")
+        col.separator()
+        col.operator("scene.export_to_game", text="Export to Game")
 
 #------------------------------------------------------------------------------
 # CryBlend Menu:
@@ -2246,6 +2257,7 @@ def get_classes_to_register():
         MeshUtilitiesPanel,
         CustomPropertiesPanel,
         ConfigurationsPanel,
+        ExportPanel,
 
         CryBlendMainMenu,
         AddPhysicsProxyMenu,
