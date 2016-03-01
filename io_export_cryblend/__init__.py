@@ -31,13 +31,13 @@
 
 
 bl_info = {
-    "name": "CryEngine3 Utilities and Exporter",
-    "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, stardidi, "
-              "Daniel White, Özkan Afacan, Oscar Martin Garcia",
+    "name": "CryBlend",
+    "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, Daniel White, "
+              "David Marcelis, Özkan Afacan, Oscar Martin Garcia",
     "blender": (2, 70, 0),
     "version": (5, 1, 0),
     "location": "CryBlend Menu",
-    "description": "CryEngine3 Utilities and Exporter",
+    "description": "Export assets from Blender to CryEngine 3",
     "warning": "",
     "wiki_url": "https://github.com/travnick/CryBlend/wiki",
     "tracker_url": "https://github.com/travnick/CryBlend/issues?state=open",
@@ -1980,6 +1980,16 @@ class ConfigurationsPanel(View3DPanel, Panel):
         col.separator()
         col.operator("file.select_texture_dir", text="Select Textures Folder")
 
+class ExportPanel(View3DPanel, Panel):
+    bl_label = "Export"
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column(align=True)
+
+        col.label("Export", icon="GAME")
+        col.separator()
+        col.operator("scene.export_to_game", text="Export to Game")
 
 #------------------------------------------------------------------------------
 # CryBlend Menu:
@@ -2324,6 +2334,7 @@ def get_classes_to_register():
         MeshUtilitiesPanel,
         CustomPropertiesPanel,
         ConfigurationsPanel,
+        ExportPanel,
 
         CryBlendMainMenu,
         AddPhysicsProxyMenu,
