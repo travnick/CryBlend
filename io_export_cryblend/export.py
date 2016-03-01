@@ -95,7 +95,7 @@ class CrytekDaeExporter:
         materials = OrderedDict()
         material_counter = {}
 
-        for group in utils.get_export_nodes():
+        for group in utils.get_export_nodes(self.__config.export_selected_nodes):
             material_counter[group.name] = 50
             for object in group.objects:
                 for slot in object.material_slots:
@@ -794,7 +794,7 @@ class CrytekDaeExporter:
         parent_element.appendChild(libanm)
 
         scene = bpy.context.scene
-        for group in utils.get_export_nodes():
+        for group in utils.get_export_nodes(self.__config.export_selected_nodes):
             node_type = utils.get_node_type(group.name)
             allowed = ["cga", "anm", "i_caf"]
             if node_type in allowed:
@@ -1020,12 +1020,12 @@ class CrytekDaeExporter:
         current_element.appendChild(visual_scene)
         parent_element.appendChild(current_element)
 
-        if utils.get_export_nodes():
+        if utils.get_export_nodes(self.__config.export_selected_nodes):
             if utils.are_duplicate_nodes():
                 message = "Duplicate Node Names"
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
 
-            for group in utils.get_export_nodes():
+            for group in utils.get_export_nodes(self.__config.export_selected_nodes):
                 self.__write_export_node(group, visual_scene)
         else:
             pass  # TODO: Handle No Export Nodes Error
@@ -1375,7 +1375,7 @@ def write_scripts(config):
     dae_path = utils.get_absolute_path_for_rc(filepath)
     output_path = os.path.dirname(dae_path)
     chr_names = []
-    for group in utils.get_export_nodes():
+    for group in utils.get_export_nodes(self.__config.export_selected_nodes):
         if utils.get_node_type(group.name) == "chr":
             chr_names.append(utils.get_node_name(group.name))
 

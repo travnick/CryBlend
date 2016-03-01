@@ -1625,6 +1625,11 @@ class Export(bpy.types.Operator, ExportHelper):
         description="Generally a good idea.",
         default=True,
     )
+    export_selected_nodes = BoolProperty(
+        name="Export Selected Nodes",
+        description="Just exports selected nodes.",
+        default=False,
+    )
     do_materials = BoolProperty(
         name="Do Materials",
         description="Create MTL files for materials.",
@@ -1703,6 +1708,7 @@ class Export(bpy.types.Operator, ExportHelper):
                 'filepath',
                 'apply_modifiers',
                 'do_not_merge',
+                'export_selected_nodes',
                 'do_materials',
                 'do_textures',
                 'make_chrparams',
@@ -1767,6 +1773,7 @@ class Export(bpy.types.Operator, ExportHelper):
         box.label("General", icon="WORLD")
         box.prop(self, "apply_modifiers")
         box.prop(self, "do_not_merge")
+        box.prop(self, "export_selected_nodes")
 
         box = col.box()
         box.label("Material & Texture", icon="TEXTURE")
