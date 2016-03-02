@@ -529,7 +529,7 @@ class AddMaterial(bpy.types.Operator):
                         index = len(get_materials_per_group(node_name)) + 1
                         #generate new material
                         material = bpy.data.materials.new(
-                            "{}__{}__{}__{}".format(
+                            "{}__{:03d}__{}__{}".format(
                             node_name.split(".")[0],
                             index, self.material_name, self.physics_type
                             )

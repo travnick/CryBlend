@@ -575,6 +575,51 @@ def has__material_physics(materialname):
         return False
 
 
+def get_material_parts(node, material):
+
+    VALID_PHYSICS = ("physDefault", "physProxyNoDraw", "physNoCollide",
+                     "physObstruct", "physNone")
+
+    parts = material.split("__")
+    count = len(parts)
+
+    group = node
+    index = 0
+    name = material
+    physics = "physDefault"
+
+    if count == 1:
+        # name
+        index = 0
+    elif count == 2:
+        # XXX__name or name__phys
+        if parts[1] not in VALID_PHYSICS:
+            # XXX__name
+            index = int(parts[0])
+            name = parts[1]
+        else:
+            # name__phys
+            name = parts[0]
+            physics = parts[1]
+    elif count == 3:
+        # XXX__name__phys
+        index = int(parts[0])
+        name = parts[1]
+        physics = parts[2]
+    elif count == 4:
+        # group__XXX__name__phys
+        group = parts[0]
+        index = int(parts[1])
+        name = parts[2]
+        physics = parts[3]
+
+    name = replace_invalid_rc_characters(name)
+    if physics not in VALID_PHYSICS:
+        physics = "physDefault"
+
+    return group, index, name, physics
+
+
 #------------------------------------------------------------------------------
 # Export Nodes:
 #------------------------------------------------------------------------------

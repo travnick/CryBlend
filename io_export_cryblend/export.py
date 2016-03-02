@@ -96,7 +96,7 @@ class CrytekDaeExporter:
         material_counter = {}
 
         for group in utils.get_export_nodes():
-            material_counter[group.name] = 0
+            material_counter[group.name] = 50
             for object in group.objects:
                 for slot in object.material_slots:
                     if slot.material is None:
@@ -104,26 +104,20 @@ class CrytekDaeExporter:
 
                     if slot.material not in materials:
 
+                        # backwards compatibility
                         nodename = utils.get_node_name(
                             group.name.replace("CryExportNode_", ""))
 
-                        if ("__" in slot.material.name):
-                            othernode = slot.material.name.split("__", 1)[0]
-                            if (othernode != nodename):
-                                materials[slot.material] = slot.material.name
-                                continue
+                        node, index, name, physics = utils.get_material_parts(
+                            nodename, slot.material.name)
 
-                        material_counter[group.name] += 1
-                        name, physics = utils.get_material_props(
-                            slot.material.name)
+                        # check if material has no position defined
+                        if index == 0:
+                            material_counter[group.name] += 1
+                            index = material_counter[group.name]
 
-                        materialname = "{}__{:03d}__{}__{}".format(
-                            nodename,
-                            material_counter[group.name],
-                            name,
-                            physics)
-
-                        materials[slot.material] = materialname
+                        materials[slot.material] = "{}__{:03d}__{}__{}".format(
+                            node, index, name, physics)
 
         return materials
 
