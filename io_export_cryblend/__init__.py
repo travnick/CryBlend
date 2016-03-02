@@ -488,6 +488,152 @@ def name_branch(is_new_branch):
     else:
         return "branch1_1"
 
+
+#------------------------------------------------------------------------------
+# Material Tools:
+#------------------------------------------------------------------------------
+
+class SetMaterialNames(bpy.types.Operator):
+    '''Materials will be named after the first CryExportNode the Object is in.'''
+    """Set Material Names by heeding the RC naming scheme:
+        - CryExportNode group name
+        - Strict number sequence beginning with 1 for each CryExportNode (max 999)
+        - Physics
+    """
+    bl_label = "Update material names in CryExportNodes"
+    bl_idname = "material.set_material_names"
+
+    material_name = StringProperty(name="Cry Material Name")
+    material_phys = EnumProperty(
+        name="Physic Proxy",
+        items=(
+            ("physDefault", "Default", desc.list['physDefault']),
+            ("physProxyNoDraw", "Physical Proxy", desc.list['physProxyNoDraw']),
+            ("physNoCollide", "No Collide", desc.list['physNoCollide']),
+            ("physObstruct", "Obstruct", desc.list['physObstruct']),
+            ("physNone", "None", desc.list['physNone'])
+        ),
+        default="physDefault")
+
+    just_rephysic = BoolProperty(name="Only Physic",
+        description="Only change physic of selected material.")
+
+    object_ = None
+    errorReport = None
+
+    def __init__(self):
+        cryNodeReport = "Please select a object that in a Cry Export node" \
+            + " for 'Do Material Convention'. If you have not created" \
+            + " it yet, please create it with 'Add ExportNode' tool."
+
+        self.object_ = bpy.context.active_object
+
+        if self.object_ is None or self.object_.users_group is None:
+            self.errorReport = cryNodeReport
+            return None
+
+        for group in self.object_.users_group:
+            if utils.is_export_node(group.name):
+                self.material_name = utils.get_node_name(group.name)
+                return None
+
+        self.errorReport = cryNodeReport
+
+        return None
+
+    def execute(self, context):
+        if self.errorReport is not None:
+            return {'FINISHED'}
+
+        if self.just_rephysic:
+            return add.add_phys_material(self, context, self.material_phys)
+
+        # Revert all materials to fetch also those that are no longer in a group
+        # and store their possible physics properties in a dictionary.
+        physicsProperties = getMaterialPhysics()
+        removeCryBlendProperties()
+
+        # Create a dictionary with all CryExportNodes to store the current number
+        # of materials in it.
+        materialCounter = getMaterialCounter()
+
+        for group in self.object_.users_group:
+            if utils.is_export_node(group.name):
+                for object in group.objects:
+                    for slot in object.material_slots:
+
+                        # Skip materials that have been renamed already.
+                        if not utils.is_cryblend_material(slot.material.name):
+                            materialCounter[group.name] += 1
+                            materialOldName = slot.material.name
+
+                            # Load stored Physics if available for that material.
+                            if physicsProperties.get(slot.material.name):
+                                physics = physicsProperties[slot.material.name]
+                            else:
+                                physics = self.material_phys
+
+                            # Rename.
+                            slot.material.name = "{}__{:02d}__{}__{}".format(
+                                    self.material_name,
+                                    materialCounter[group.name],
+                                    utils.replace_invalid_rc_characters(materialOldName),
+                                    physics)
+                            message = "Renamed {} to {}".format(
+                                    materialOldName,
+                                    slot.material.name)
+                            self.report({'INFO'}, message)
+                            cbPrint(message)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        if self.errorReport is not None:
+            return self.report({'ERROR'}, self.errorReport)
+
+        return context.window_manager.invoke_props_dialog(self)
+
+
+class RemoveMaterialNames(bpy.types.Operator):
+    '''Removes all CryBlend properties from material names. This includes \
+physics, so they get lost.'''
+    bl_label = "Remove CryBlend properties from material names"
+    bl_idname = "material.remove_material_names"
+
+    def execute(self, context):
+        removeCryBlendProperties()
+        message = "Removed CryBlend properties from material names"
+        self.report({'INFO'}, message)
+        cbPrint(message)
+        return {'FINISHED'}
+
+
+def getMaterialCounter():
+    """Returns a dictionary with all CryExportNodes."""
+    materialCounter = {}
+    for group in bpy.data.groups:
+        if utils.is_export_node(group.name):
+            materialCounter[group.name] = 0
+    return materialCounter
+
+
+def removeCryBlendProperties():
+    """Removes CryBlend properties from all material names."""
+    for material in bpy.data.materials:
+        properties = utils.extract_cryblend_properties(material.name)
+        if properties:
+            material.name = properties["Name"]
+
+
+def getMaterialPhysics():
+    """Returns a dictionary with the physics of all material names."""
+    physicsProperties = {}
+    for material in bpy.data.materials:
+        properties = utils.extract_cryblend_properties(material.name)
+        if properties:
+            physicsProperties[properties["Name"]] = properties["Physics"]
+    return physicsProperties
+
+
 def get_materials_per_group(group):
     materials = []
     for _objtmp in bpy.data.groups[group].objects:
@@ -500,7 +646,7 @@ def get_materials_per_group(group):
 class AddMaterial(bpy.types.Operator):
     '''Add material to node'''
     bl_label = "Add Material to Node"
-    bl_idname = "object.add_cry_material"
+    bl_idname = "material.add_cry_material"
     bl_options = {"REGISTER", "UNDO"}
 
     material_name = StringProperty(name="Material")
@@ -1625,6 +1771,11 @@ class Export(bpy.types.Operator, ExportHelper):
         description="Generally a good idea.",
         default=True,
     )
+    export_selected_nodes = BoolProperty(
+        name="Export Selected Nodes",
+        description="Just exports selected nodes.",
+        default=False,
+    )
     do_materials = BoolProperty(
         name="Do Materials",
         description="Create MTL files for materials.",
@@ -1703,6 +1854,7 @@ class Export(bpy.types.Operator, ExportHelper):
                 'filepath',
                 'apply_modifiers',
                 'do_not_merge',
+                'export_selected_nodes',
                 'do_materials',
                 'do_textures',
                 'make_chrparams',
@@ -1767,6 +1919,7 @@ class Export(bpy.types.Operator, ExportHelper):
         box.label("General", icon="WORLD")
         box.prop(self, "apply_modifiers")
         box.prop(self, "do_not_merge")
+        box.prop(self, "export_selected_nodes")
 
         box = col.box()
         box.label("Material & Texture", icon="TEXTURE")
@@ -2032,11 +2185,6 @@ class CryBlendMainMenu(bpy.types.Menu):
             text="Apply All Transforms",
             icon="MESH_DATA")
         layout.separator()
-        layout.operator(
-            "object.add_cry_material",
-            text="Add Material",
-            icon="MATERIAL_DATA")
-        layout.separator()
 
         layout.menu("menu.add_physics_proxy", icon="ROTATE")
         layout.separator()
@@ -2045,6 +2193,8 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.menu(BoneUtilitiesMenu.bl_idname, icon='BONE_DATA')
         layout.separator()
         layout.menu(MeshUtilitiesMenu.bl_idname, icon='MESH_CUBE')
+        layout.separator()
+        layout.menu(MaterialUtilitiesMenu.bl_idname, icon="MATERIAL")
         layout.separator()
         layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
         layout.separator()
@@ -2183,6 +2333,29 @@ class MeshUtilitiesMenu(bpy.types.Menu):
             icon="UV_FACESEL")
 
 
+class MaterialUtilitiesMenu(bpy.types.Menu):
+    bl_label = "Material Utilities"
+    bl_idname = "view3d.material_utilities"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator(
+            "material.set_material_names",
+            text="Do Material Convention",
+            icon="MATERIAL")
+        layout.operator(
+            "material.remove_material_names",
+            text="Undo Material Convention",
+            icon="MATERIAL")
+        layout.separator()
+
+        layout.operator(
+            "material.add_cry_material",
+            text="Add Material",
+            icon="MATERIAL_DATA")
+
+
 class CustomPropertiesMenu(bpy.types.Menu):
     bl_label = "User Defined Properties"
     bl_idname = "menu.UDP"
@@ -2300,6 +2473,8 @@ def get_classes_to_register():
         AddCryExportNode,
         SelectedToCryExportNodes,
         AddMaterial,
+        SetMaterialNames,
+        RemoveMaterialNames,
         AddRootBone,
         ApplyTransforms,
         AddProxy,
@@ -2351,6 +2526,7 @@ def get_classes_to_register():
         BoneUtilitiesMenu,
         CryUtilitiesMenu,
         MeshUtilitiesMenu,
+        MaterialUtilitiesMenu,
         CustomPropertiesMenu,
         ConfigurationsMenu,
 
