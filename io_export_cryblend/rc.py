@@ -87,21 +87,22 @@ class _DAEConverter:
             utils.remove_file(rcdone_path)
 
     def __recompile(self, dae_path):
-        components = dae_path.split("\\")
-        name = components[-1]
-        output_path = dae_path[:-len(name)]
+        name = os.path.basename(dae_path)
+        output_path = os.path.dirname(dae_path)
+        ALLOWED_NODE_TYPES = ("chr", "skin")
         for group in utils.get_export_nodes():
             node_type = utils.get_node_type(group.name)
-            allowed = ["cgf", "cga", "chr", "skin"]
-            if node_type in allowed:
-                out_file = "{0}{1}".format(output_path,
-                                           group.name)
-                args = [
-                    self.__config.rc_path,
-                    "/refresh",
-                    "/vertexindexformat=u16",
-                    out_file]
+            if node_type in ALLOWED_NODE_TYPES:
+                out_file = os.path.join(output_path, group.name)
+                args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
                 rc_second_pass = subprocess.Popen(args)
+            elif node_type == 'i_caf':
+                try:
+                    os.remove(os.path.join(output_path, ".animsettings"))
+                    os.remove(os.path.join(output_path, ".caf"))
+                    os.remove(os.path.join(output_path, ".$animsettings"))
+                except:
+                    pass
 
     def __fix_normalmap_in_mtls(self, rc_process, dae_file):
         SUCCESS = 0
