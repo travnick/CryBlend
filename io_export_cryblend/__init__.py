@@ -2029,11 +2029,6 @@ class CryUtilitiesPanel(View3DPanel, Panel):
         layout = self.layout
         col = layout.column(align=True)
 
-        col.label("Material:", icon="MATERIAL_DATA")
-        col.separator()
-        col.operator("object.add_cry_material", text="Add Material")
-        col.separator()
-
         col.label("Add Physics Proxy", icon="ROTATE")
         col.separator()
         row = col.row(align=True)
@@ -2115,6 +2110,21 @@ class MeshUtilitiesPanel(View3DPanel, Panel):
         col.separator()
         col.operator("scene.find_no_uvs", text="Find All Objects with No UV's")
         col.operator("mesh.add_uv_texture", text="Add UV's to Objects")
+
+
+class MaterialUtilitiesPanel(View3DPanel, Panel):
+    bl_label = "Material Utilities"
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column(align=True)
+
+        col.label(text="Material:", icon="MATERIAL_DATA")
+        col.separator()
+        col.operator("material.add_cry_material", text="Add Material")
+        col.separator()
+        col.operator("material.set_material_names", text="Do Material Convention")
+        col.operator("material.remove_material_names", text="Undo Material Convention")
 
 
 class CustomPropertiesPanel(View3DPanel, Panel):
@@ -2341,6 +2351,11 @@ class MaterialUtilitiesMenu(bpy.types.Menu):
         layout = self.layout
 
         layout.operator(
+            "material.add_cry_material",
+            text="Add Material",
+            icon="MATERIAL_DATA")
+        layout.separator()        
+        layout.operator(
             "material.set_material_names",
             text="Do Material Convention",
             icon="MATERIAL")
@@ -2348,12 +2363,6 @@ class MaterialUtilitiesMenu(bpy.types.Menu):
             "material.remove_material_names",
             text="Undo Material Convention",
             icon="MATERIAL")
-        layout.separator()
-
-        layout.operator(
-            "material.add_cry_material",
-            text="Add Material",
-            icon="MATERIAL_DATA")
 
 
 class CustomPropertiesMenu(bpy.types.Menu):
@@ -2455,8 +2464,9 @@ class CryBlendReducedMenu(bpy.types.Menu):
         layout.separator()
         layout.menu(MeshUtilitiesMenu.bl_idname, icon='MESH_CUBE')
         layout.separator()
-        layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
+        layout.menu(MaterialUtilitiesMenu.bl_idname, icon='MATERIAL_DATA')
         layout.separator()
+        layout.menu(CustomPropertiesMenu.bl_idname, icon='SCRIPT')
 
 
 #------------------------------------------------------------------------------
@@ -2517,6 +2527,7 @@ def get_classes_to_register():
         CryUtilitiesPanel,
         BoneUtilitiesPanel,
         MeshUtilitiesPanel,
+        MaterialUtilitiesPanel,
         CustomPropertiesPanel,
         ConfigurationsPanel,
         ExportPanel,
