@@ -301,23 +301,11 @@ be converted to the selected shape in CryEngine.'''
     type_ = StringProperty()
 
     def execute(self, context):
-        active = bpy.context.active_object
-
-        if (active.type == "MESH"):
-            already_exists = False
-            for object_ in bpy.data.objects:
-                if self.__is_proxy(object_.name):
-                    already_exists = True
-                    break
-            if (not already_exists):
-                self.__add_proxy(active)
-
-        message = "Adding {} proxy to active object".format(getattr(self, "type_"))
+        self.__add_proxy(bpy.context.active_object)
+        message = "Adding {} proxy to active object".format(
+            getattr(self, "type_"))
         self.report({'INFO'}, message)
         return {'FINISHED'}
-
-    def __is_proxy(self, object_name):
-        return object_name.endswith("-proxy")
 
     def __add_proxy(self, object_):
         old_origin = object_.location.copy()
@@ -333,12 +321,16 @@ be converted to the selected shape in CryEngine.'''
         bound_box.location = object_.location
         bound_box.rotation_euler = object_.rotation_euler
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        bpy.ops.mesh.uv_texture_add()
 
         for group in object_.users_group:
             bpy.ops.object.group_link(group=group.name)
 
-        name = "{}__physProxyNoDraw".format(bound_box.name)
-        proxy_material = bpy.data.materials.new(name)
+        name = "99__proxy__physProxyNoDraw"
+        if name in bpy.data.materials:
+            proxy_material = bpy.data.materials[name]
+        else:
+            proxy_material = bpy.data.materials.new(name)
         bound_box.data.materials.append(proxy_material)
 
         bound_box['phys_proxy'] = getattr(self, "type_")
