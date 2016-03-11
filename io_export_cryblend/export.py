@@ -606,6 +606,10 @@ class CrytekDaeExporter:
                 else:
                     normal += 1
 
+            if poly_count == 0:
+                matindex += 1
+                continue
+
             polylist = self.__doc.createElement('polylist')
             polylist.setAttribute('material', materialname)
             polylist.setAttribute('count', str(poly_count))
