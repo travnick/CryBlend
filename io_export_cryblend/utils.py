@@ -322,11 +322,25 @@ def apply_modifiers():
 # Collections:
 #------------------------------------------------------------------------------
 
-def get_export_nodes():
+def get_export_nodes(just_selected=False):
     export_nodes = []
+
+    if just_selected:
+        return get_selected_nodes()
+
     for group in bpy.context.blend_data.groups:
         if is_export_node(group.name) and len(group.objects) > 0:
             export_nodes.append(group)
+
+    return export_nodes
+
+def get_selected_nodes():
+    export_nodes = []
+
+    for object in bpy.context.selected_objects:
+        for group in object.users_group:
+            if is_export_node(group.name) and group not in export_nodes:
+                export_nodes.append(group)
 
     return export_nodes
 
