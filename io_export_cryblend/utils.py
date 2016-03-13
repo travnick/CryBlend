@@ -723,12 +723,7 @@ def add_fakebones():
     if armature is None:
         return
 
-    try:
-        skeleton = bpy.data.armatures[armature.name]
-    except:
-        raise TypeError(
-            "Armature object name and object data name must " +
-            "be same! You may set it in properties or outliner editor.")
+    skeleton = armature.data
 
     skeleton.pose_position = 'REST'
     time.sleep(0.5)
