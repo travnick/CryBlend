@@ -1695,7 +1695,7 @@ class RenamePhysBones(bpy.types.Operator):
             if (object_.type == 'ARMATURE'):
                 utils.physicalize(object_)
                 for bone in object_.data.bones:
-                    if not utils.is_physical(bone)
+                    if not utils.is_physical(bone):
                         utils.physicalize(bone)
 
         return {'FINISHED'}

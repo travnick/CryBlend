@@ -960,7 +960,7 @@ def find_bone_geometry(bonename):
 
 
 def is_bone_geometry(object_):
-    if object.type == "MESH" and object_.name.endswith("_boneGeometry")
+    if object.type == "MESH" and object_.name.endswith("_boneGeometry"):
         return True
     else:
         return False
