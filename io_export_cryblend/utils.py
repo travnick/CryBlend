@@ -382,7 +382,7 @@ def __get_geometry():
 def __get_controllers():
     items = []
     for object_ in get_type("nodes"):
-        if not ("_boneGeometry" in object_.name or
+        if not (is_bone_geometry(object_) or
                 is_fakebone(object_)):
             if object_.parent is not None:
                 if object_.parent.type == "ARMATURE":
@@ -396,7 +396,7 @@ def __get_skins():
     allowed = {"MESH"}
     for object_ in get_type("nodes"):
         if object_.type in allowed:
-            if not ("_boneGeometry" in object_.name or
+            if not (is_bone_geometry(object_) or
                     is_fakebone(object_)):
                 if object_.parent is not None:
                     if object_.parent.type == "ARMATURE":
@@ -417,10 +417,8 @@ def __get_fakebones():
 
 def __get_bone_geometry():
     items = []
-    allowed = {"MESH"}
     for object_ in get_type("nodes"):
-        if (object_.type in allowed and
-                "_boneGeometry" in object_.name):
+        if is_bone_geometry(object_):
             items.append(object_)
 
     return items
@@ -957,8 +955,26 @@ def apply_animation_scale(armature):
 
 def find_bone_geometry(bonename):
     for object_ in bpy.context.scene.objects:
-        if object_.name == "{!s}_boneGeometry".format(bonename):
+        if is_bone_geometry(object_):
             return object_
+
+
+def is_bone_geometry(object_):
+    if object.type == "MESH" and object_.name.endswith("_boneGeometry"):
+        return True
+    else:
+        return False
+
+
+def is_physical(object_):
+    if object_.name.endswith("_Phys"):
+        return True
+    else:
+        return False
+
+
+def physicalize(object_):
+    object_.name = "{}_Phys".format(object_.name)
 
 
 #------------------------------------------------------------------------------
