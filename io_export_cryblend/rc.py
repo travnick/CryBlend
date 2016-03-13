@@ -91,7 +91,7 @@ class _DAEConverter:
         output_path = os.path.dirname(dae_path)
         ALLOWED_NODE_TYPES = ("chr", "skin")
         for group in utils.get_export_nodes():
-            node_type = utils.get_node_type(group.name)
+            node_type = utils.get_node_type(group)
             if node_type in ALLOWED_NODE_TYPES:
                 out_file = os.path.join(output_path, group.name)
                 args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
@@ -251,9 +251,9 @@ class _DAEConverter:
 
         return layer_doc.toprettyxml(indent="    ")
 
-        def __createAttributes(self, nodename, attributes):
+        def __createAttributes(self, node_name, attributes):
             doc = Document()
-            node = doc.createElement(nodename)
+            node = doc.createElement(node_name)
             for name, value in attributes.items():
                 node.setAttribute(name, value)
 
