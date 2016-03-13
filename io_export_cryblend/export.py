@@ -676,7 +676,7 @@ class CrytekDaeExporter:
         library_node = self.__doc.createElement("library_controllers")
 
         for object_ in utils.get_type("geometry"):
-            if not "_boneGeometry" in object_.name:
+            if not utils.is_bone_geometry(object_):
                 armature = utils.get_armature_for_object(object_)
                 if armature is not None:
                     self.__process_bones(library_node,
@@ -1054,7 +1054,7 @@ class CrytekDaeExporter:
         root_objects = []
         for object_ in group.objects:
             if (object_.parent is None or object_.type == 'MESH') and \
-                    not object_.name.endswith("_boneGeometry"):
+                    not utils.is_bone_geometry(object_):
                 root_objects.append(object_)
         node = self.__write_visual_scene_node(root_objects, node, node)
 
@@ -1323,7 +1323,7 @@ class CrytekDaeExporter:
 
     def __create_ik_properties(self, bone, object_, skeleton_name):
         props = ""
-        if self.__config.include_ik and bone.name.endswith("_Phys"):
+        if self.__config.include_ik and utils.is_physical(bone):
             props_name = bone.name.replace("__", "*")
 
             armature_object = bpy.data.objects[object_.name[:-5]]

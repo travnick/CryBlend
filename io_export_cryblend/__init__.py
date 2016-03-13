@@ -1590,7 +1590,7 @@ class AddBoneGeometry(bpy.types.Operator):
         verts_loc, faces = add_bone_geometry()
 
         for object_ in bpy.context.selected_objects:
-            if (object_.type == 'ARMATURE' and not object_.name.endswith("_Phys")):
+            if object_.type == 'ARMATURE' and not utils.is_physical(object_):
                 for bone in object_.data.bones:
                     mesh = bpy.data.meshes.new(
                         "{}_boneGeometry".format(bone.name)
@@ -1676,8 +1676,7 @@ class RemoveBoneGeometry(bpy.types.Operator):
         utils.deselect_all()
 
         for object_ in bpy.context.scene.objects:
-            if (object_.type == "MESH" and
-                    object_.name.endswith("_boneGeometry")):
+            if utils.is_bone_geometry(object_):
                 object_.select = True
 
         bpy.ops.object.delete()
@@ -1694,10 +1693,10 @@ class RenamePhysBones(bpy.types.Operator):
     def execute(self, context):
         for object_ in bpy.context.selected_objects:
             if (object_.type == 'ARMATURE'):
-                object_.name = "{}_Phys".format(object_.name)
+                utils.physicalize(object_)
                 for bone in object_.data.bones:
-                    if not bone.name.endswith("_Phys"):
-                        bone.name = "{}_Phys".format(bone.name)
+                    if not utils.is_physical(bone)
+                        utils.physicalize(bone)
 
         return {'FINISHED'}
         
