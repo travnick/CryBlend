@@ -439,7 +439,7 @@ class CrytekDaeExporter:
         libgeo = self.__doc.createElement("library_geometries")
         parent_element.appendChild(libgeo)
         for object_ in utils.get_type("geometry"):
-            bpy.context.active_object = object_
+            utils.set_active(object_)
             if object_.mode != 'OBJECT':
                 bpy.ops.object.mode_set(mode='OBJECT')
             object_.data.update(calc_tessface=1)

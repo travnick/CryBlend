@@ -658,7 +658,7 @@ def get_node_name(node):
 
 
 def get_node_type(node):
-    node_components = node.split(".")
+    node_components = node.name.split(".")
     return node_components[-1]
 
 
@@ -686,7 +686,13 @@ def add_fakebones():
     if armature is None:
         return
 
-    skeleton = armature.data
+    try:
+        skeleton = bpy.data.armatures[armature.name]
+    except:
+        raise TypeError(
+            "Armature object name and object data name must " +
+            "be same! You may set it in properties or outliner editor.")
+
     skeleton.pose_position = 'REST'
     time.sleep(0.5)
 
@@ -856,7 +862,7 @@ def apply_animation_scale(armature):
     cbPrint("Baked Animation successfully on empties.")
     deselect_all()
 
-    bpy.context.active_object = armature
+    set_active(armature)
     armature.select = True
     bpy.ops.anim.keyframe_clear_v3d()
 
@@ -975,6 +981,10 @@ def select_all():
 def deselect_all():
     for object_ in bpy.data.objects:
         object_.select = False
+
+
+def set_active(object_):
+    bpy.context.scene.objects.active = object_
 
 
 def get_object_children(parent):

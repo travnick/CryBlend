@@ -341,7 +341,7 @@ be converted to the selected shape in CryEngine.'''
         bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
         object_.select = False
         bound_box.select = True
-        bpy.context.active_object = bound_box
+        utils.set_active(bound_box)
         bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
         bpy.context.scene.cursor_location = old_cursor
 
@@ -390,7 +390,7 @@ class AddBranch(bpy.types.Operator):
                     selected_vert[2]))
             empty_object = bpy.context.active_object
             empty_object.name = name_branch(True)
-            bpy.context.active_object = active_object
+            utils.set_active(active_object)
             bpy.ops.object.mode_set(mode='EDIT')
 
             message = "Adding Branch"
@@ -429,7 +429,7 @@ class AddBranchJoint(bpy.types.Operator):
                     selected_vert[2]))
             empty_object = bpy.context.active_object
             empty_object.name = name_branch(False)
-            bpy.context.active_object = active_object
+            utils.set_active(active_object)
             bpy.ops.object.mode_set(mode='EDIT')
 
             message = "Adding Branch Joint"
@@ -1511,7 +1511,7 @@ class AddUVTexture(bpy.types.Operator):
                     uv = True
                     break
                 if not uv:
-                    bpy.context.active_object = object_
+                    utils.set_active(object_)
                     bpy.ops.mesh.uv_texture_add()
                     message = "Added UV map to {}".format(object_.name)
                     self.report({'INFO'}, message)
