@@ -113,7 +113,7 @@ class CrytekDaeExporter:
                             material_counter[group.name] += 1
                             index = material_counter[group.name]
 
-                        materials[slot.material] = "{}__{:03d}__{}__{}".format(
+                        materials[slot.material] = "{}__{:02d}__{}__{}".format(
                             node, index, name, physics)
 
         return materials
@@ -713,10 +713,11 @@ class CrytekDaeExporter:
 
         bones = utils.get_bones(armature)
         id_ = "{!s}_{!s}-joints".format(armature.name, object_.name)
+        node_name = utils.get_armature_node_name(object_)
         bone_names = []
         for bone in bones:
-            props = self.__create_ik_properties(bone, armature, armature.name)
-            bone_name = bone.name + props
+            props_name = self.__create_props_bone_name(bone, node_name)
+            bone_name = "{!s}{!s}".format(bone.name, props_name)
             bone_names.append(bone_name)
         source = utils.write_source(id_, "IDREF", bone_names, [])
         skin_node.appendChild(source)
@@ -795,10 +796,11 @@ class CrytekDaeExporter:
         parent_element.appendChild(libanm)
 
         scene = bpy.context.scene
+
+        ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
         for group in utils.get_export_nodes(self.__config.export_selected_nodes):
             node_type = utils.get_node_type(group)
-            allowed = ["cga", "anm", "i_caf"]
-            if node_type in allowed:
+            if node_type in ALLOWED_NODE_TYPES:
                 animation_clip = self.__doc.createElement("animation_clip")
                 node_name = utils.get_node_name(group)
                 animation_clip.setAttribute(
@@ -813,37 +815,24 @@ class CrytekDaeExporter:
                             scene.frame_end)))
                 is_animation = False
 
-                armature = ""
-                for object_ in bpy.data.groups[group.name].objects:
-                    if object_.type == 'ARMATURE':
-                        armature = "%{!s}%".format(object_.name)
-                        break
-                
                 for object_ in bpy.context.selected_objects:
                     if (object_.type != 'ARMATURE' and object_.animation_data and
                             object_.animation_data.action):
 
                         is_animation = True
 
-                        bone_name = ""
-                        if "__" in object_.name:
-                            bone_extended = object_.name.replace("__", "*")
-                            bone_name = "{!s}{!s}".format("--PRprops_name=",
-                                                          bone_extended)
-    
-                        bone = "{!s}{!s}{!s}".format(object_.name,
-                                                     armature,
-                                                     bone_name)
-        
+                        props_name = self.__create_props_bone_name(object_, node_name)
+                        bone_name = "{!s}{!s}".format(object_.name, props_name)
+
                         for axis in iter(AXES):
                             animation = self.__get_animation_location(
-                                object_, bone, axis)
+                                object_, bone_name, axis)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
                         for axis in iter(AXES):
                             animation = self.__get_animation_rotation(
-                                object_, bone, axis)
+                                object_, bone_name, axis)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
@@ -880,10 +869,10 @@ class CrytekDaeExporter:
                     object_.name, parameter, axis))
             animation_clip.appendChild(inst)
 
-    def __get_animation_location(self, object_, bone, axis):
+    def __get_animation_location(self, object_, bone_name, axis):
         attribute_type = "location"
         multiplier = 1
-        target = "{!s}{!s}{!s}".format(bone, "/translation.", axis)
+        target = "{!s}{!s}{!s}".format(bone_name, "/translation.", axis)
 
         animation_element = self.__get_animation_attribute(object_,
                                                            axis,
@@ -892,10 +881,10 @@ class CrytekDaeExporter:
                                                            target)
         return animation_element
 
-    def __get_animation_rotation(self, object_, bone, axis):
+    def __get_animation_rotation(self, object_, bone_name, axis):
         attribute_type = "rotation_euler"
         multiplier = utils.to_degrees
-        target = "{!s}{!s}{!s}{!s}".format(bone,
+        target = "{!s}{!s}{!s}{!s}".format(bone_name,
                                            "/rotation_",
                                            axis,
                                            ".ANGLE")
@@ -1053,21 +1042,18 @@ class CrytekDaeExporter:
             if (object_.parent is None or object_.type == 'MESH') and \
                     not utils.is_bone_geometry(object_):
                 root_objects.append(object_)
-        node = self.__write_visual_scene_node(root_objects, node, node)
+        node = self.__write_visual_scene_node(root_objects, node)
 
         extra = self.__create_cryengine_extra(group)
         node.appendChild(extra)
         visual_scene.appendChild(node)
 
-    def __write_visual_scene_node(self, objects, nodeparent, root):
+    def __write_visual_scene_node(self, objects, parent_node):
         for object_ in objects:
-            if object_.type == "ARMATURE":
-                self.__write_bone_list(
-                    [utils.get_root_bone(object_)], object_, root, root)
-                node = root
-            elif not utils.is_fakebone(object_):
+            if object_.type == "MESH" and not utils.is_fakebone(object_):
                 node = self.__doc.createElement("node")
-                node.setAttribute("id", object_.name)
+                node_name = utils.get_armature_node_name(object_)
+                node.setAttribute("id", node_name)
                 node.setIdAttribute("id")
 
                 self.__write_transforms(object_, node)
@@ -1080,22 +1066,33 @@ class CrytekDaeExporter:
                 if extra is not None:
                     node.appendChild(extra)
 
-                nodeparent.appendChild(node)
+                parent_node.appendChild(node)
+                
+                if object_.parent is not None and object_.parent.type == "ARMATURE":
+                    self.__write_bone_list(
+                        [utils.get_root_bone(object_.parent)], object_, parent_node)
 
-        return root
+            elif object_.type == "ARMATURE" and utils.is_physical(object_):
+                self.__write_bone_list(
+                    [utils.get_root_bone(object_)], object_, parent_node)
 
-    def __write_bone_list(self, bones, object_, nodeparent, root):
+        return parent_node
+
+    def __write_bone_list(self, bones, object_, parent_node):
         scene = bpy.context.scene
         bone_names = []
 
+        node_name = utils.get_armature_node_name(object_)
+
         for bone in bones:
-            props = self.__create_ik_properties(bone, object_, object_.name)
-            node_name = join(bone.name, props)
-            bone_names.append(node_name)
+            props_name = self.__create_props_bone_name(bone, node_name)
+            props_ik = self.__create_ik_properties(bone, object_)
+            bone_name = join(bone.name, props_name, props_ik)
+            bone_names.append(bone_name)
 
             node = self.__doc.createElement("node")
-            node.setAttribute("id", node_name)
-            node.setAttribute("name", node_name)
+            node.setAttribute("id", bone_name)
+            node.setAttribute("name", bone_name)
             node.setIdAttribute("id")
 
             fakebone = utils.get_fakebone(bone.name)
@@ -1107,14 +1104,14 @@ class CrytekDaeExporter:
                 instance = self.__create_instance_for_bone(bone, bone_geometry)
                 node.appendChild(instance)
 
-            extra = self.__create_physic_proxy_for_bone(object_, bone)
-            if extra is not None:
-                node.appendChild(extra)
+                extra = self.__create_physic_proxy_for_bone(object_.parent, bone)
+                if extra is not None:
+                    node.appendChild(extra)
 
-            nodeparent.appendChild(node)
+            parent_node.appendChild(node)
 
             if bone.children:
-                self.__write_bone_list(bone.children, object_, node, root)
+                self.__write_bone_list(bone.children, object_, node)
 
     def __create_instance_for_bone(self, bone, bone_geometry):
         instance = None
@@ -1318,10 +1315,15 @@ class CrytekDaeExporter:
 
         return joint
 
-    def __create_ik_properties(self, bone, object_, skeleton_name):
+    def __create_props_bone_name(self, bone, node_name):
+        bone_name = bone.name.replace("__", "*")
+        props_name = '%{!s}%--PRprops_name={!s}'.format(node_name, bone_name)
+
+        return props_name
+
+    def __create_ik_properties(self, bone, object_):
         props = ""
-        if self.__config.include_ik and utils.is_physical(bone):
-            props_name = bone.name.replace("__", "*")
+        if utils.is_physical(bone):
 
             armature_object = bpy.data.objects[object_.name[:-5]]
             pose_bone = armature_object.pose.bones[bone.name[:-5]]
@@ -1332,30 +1334,21 @@ class CrytekDaeExporter:
                 pose_bone)
 
             props = join(
-                '%{}%'.format(skeleton_name),
-                '--PRprops_name={!s}_'.format(props_name),
-
                 xIK,
-                'xdamping={}_'.format(damping[0]),
-                'xspringangle={}_'.format(spring[0]),
-                'xspringtension={}_'.format(spring_tension[0]),
+                '_xdamping={}'.format(damping[0]),
+                '_xspringangle={}'.format(spring[0]),
+                '_xspringtension={}'.format(spring_tension[0]),
 
                 yIK,
-                'ydamping={}_'.format(damping[1]),
-                'yspringangle={}_'.format(spring[1]),
-                'yspringtension={}_'.format(spring_tension[1]),
+                '_ydamping={}'.format(damping[1]),
+                '_yspringangle={}'.format(spring[1]),
+                '_yspringtension={}'.format(spring_tension[1]),
 
                 zIK,
-                'zdamping={}_'.format(damping[2]),
-                'zspringangle={}_'.format(spring[2]),
-                'zspringtension={}_'.format(spring_tension[2])
+                '_zdamping={}'.format(damping[2]),
+                '_zspringangle={}'.format(spring[2]),
+                '_zspringtension={}'.format(spring_tension[2])
             )
-        elif self.__config.convert_space:
-            props = '%{}%'.format(skeleton_name)
-
-            if bone.parent is not None:
-                props_name = bone.name.replace("__", "*")
-                props += '--PRprops_name={}'.format(props_name)
 
         return props
 
