@@ -207,10 +207,10 @@ class AddCryExportNode(bpy.types.Operator):
     def execute(self, context):
         if bpy.context.selected_objects:
             scene = bpy.context.scene
-            nodename = "{}.{}".format(self.node_name, self.node_type)
-            group = bpy.data.groups.get(nodename)
+            node_name = "{}.{}".format(self.node_name, self.node_type)
+            group = bpy.data.groups.get(node_name)
             if group is None:
-                bpy.ops.group.create(name=nodename)
+                bpy.ops.group.create(name=node_name)
             else:
                 for object in bpy.context.selected_objects:
                     if object.name not in group.objects:
@@ -341,7 +341,7 @@ be converted to the selected shape in CryEngine.'''
         bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
         object_.select = False
         bound_box.select = True
-        bpy.context.scene.objects.active = bound_box
+        utils.set_active(bound_box)
         bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
         bpy.context.scene.cursor_location = old_cursor
 
@@ -375,7 +375,7 @@ class AddBranch(bpy.types.Operator):
     bl_idname = "mesh.add_branch"
 
     def execute(self, context):
-        active_object = bpy.context.scene.objects.active
+        active_object = bpy.context.active_object
         bpy.ops.object.mode_set(mode='OBJECT')
         selected_vert_coordinates = get_vertex_data()
         if (selected_vert_coordinates):
@@ -390,7 +390,7 @@ class AddBranch(bpy.types.Operator):
                     selected_vert[2]))
             empty_object = bpy.context.active_object
             empty_object.name = name_branch(True)
-            bpy.context.scene.objects.active = active_object
+            utils.set_active(active_object)
             bpy.ops.object.mode_set(mode='EDIT')
 
             message = "Adding Branch"
@@ -414,7 +414,7 @@ class AddBranchJoint(bpy.types.Operator):
     bl_idname = "mesh.add_branch_joint"
 
     def execute(self, context):
-        active_object = bpy.context.scene.objects.active
+        active_object = bpy.context.active_object
         bpy.ops.object.mode_set(mode='OBJECT')
         selected_vert_coordinates = get_vertex_data()
         if (selected_vert_coordinates):
@@ -429,7 +429,7 @@ class AddBranchJoint(bpy.types.Operator):
                     selected_vert[2]))
             empty_object = bpy.context.active_object
             empty_object.name = name_branch(False)
-            bpy.context.scene.objects.active = active_object
+            utils.set_active(active_object)
             bpy.ops.object.mode_set(mode='EDIT')
 
             message = "Adding Branch Joint"
@@ -448,7 +448,7 @@ class AddBranchJoint(bpy.types.Operator):
 
 
 def get_vertex_data():
-    old_mode = bpy.context.scene.objects.active.mode
+    old_mode = bpy.context.active_object.mode
     bpy.ops.object.mode_set(mode="OBJECT")
     selected_vert_coordinates = [
         i.co for i in bpy.context.active_object.data.vertices if i.select]
@@ -460,7 +460,7 @@ def get_vertex_data():
 def name_branch(is_new_branch):
     highest_branch_number = 0
     highest_joint_number = 0
-    for object in bpy.context.scene.objects:
+    for object in bpy.data.objects:
         if ((object.type == 'EMPTY') and ("branch" in object.name)):
             branch_components = object.name.split("_")
             if(branch_components):
@@ -525,8 +525,8 @@ class SetMaterialNames(bpy.types.Operator):
             return None
 
         for group in self.object_.users_group:
-            if utils.is_export_node(group.name):
-                self.material_name = utils.get_node_name(group.name)
+            if utils.is_export_node(group):
+                self.material_name = utils.get_node_name(group)
                 return None
 
         self.errorReport = cryNodeReport
@@ -550,7 +550,7 @@ class SetMaterialNames(bpy.types.Operator):
         materialCounter = getMaterialCounter()
 
         for group in self.object_.users_group:
-            if utils.is_export_node(group.name):
+            if utils.is_export_node(group):
                 for object in group.objects:
                     for slot in object.material_slots:
 
@@ -603,7 +603,7 @@ def getMaterialCounter():
     """Returns a dictionary with all CryExportNodes."""
     materialCounter = {}
     for group in bpy.data.groups:
-        if utils.is_export_node(group.name):
+        if utils.is_export_node(group):
             materialCounter[group.name] = 0
     return materialCounter
 
@@ -763,7 +763,7 @@ class EditInverseKinematics(bpy.types.Operator):
     bone = None
 
     def __init__(self):
-        armature = bpy.context.scene.objects.active
+        armature = bpy.context.active_object
         if armature is None or armature.type != "ARMATURE":
             return None
 
@@ -872,7 +872,7 @@ class EditPhysicProxy(bpy.types.Operator):
     object_ = None
 
     def __init__(self):
-        self.object_ = bpy.context.scene.objects.active
+        self.object_ = bpy.context.active_object
 
         if self.object_ is None:
             return None
@@ -963,7 +963,7 @@ class EditRenderMesh(bpy.types.Operator):
     object_ = None
 
     def __init__(self):
-        self.object_ = bpy.context.scene.objects.active
+        self.object_ = bpy.context.active_object
 
         if self.object_ is None:
             return None
@@ -1063,7 +1063,7 @@ class EditJointNode(bpy.types.Operator):
     object_ = None
 
     def __init__(self):
-        self.object_ = bpy.context.scene.objects.active
+        self.object_ = bpy.context.active_object
 
         if self.object_ is None:
             return None
@@ -1177,7 +1177,7 @@ class EditDeformable(bpy.types.Operator):
     object_ = None
 
     def __init__(self):
-        self.object_ = bpy.context.scene.objects.active
+        self.object_ = bpy.context.active_object
 
         if self.object_ is None:
             return None
@@ -1511,7 +1511,7 @@ class AddUVTexture(bpy.types.Operator):
                     uv = True
                     break
                 if not uv:
-                    bpy.context.scene.objects.active = object_
+                    utils.set_active(object_)
                     bpy.ops.mesh.uv_texture_add()
                     message = "Added UV map to {}".format(object_.name)
                     self.report({'INFO'}, message)
@@ -1675,7 +1675,7 @@ class RemoveBoneGeometry(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='OBJECT')
         utils.deselect_all()
 
-        for object_ in bpy.context.scene.objects:
+        for object_ in bpy.data.objects:
             if utils.is_bone_geometry(object_):
                 object_.select = True
 
@@ -1720,7 +1720,7 @@ class ApplyAnimationScale(bpy.types.Operator):
     bl_idname = "ops.apply_animation_scaling"
 
     def execute(self, context):
-        utils.apply_animation_scale(bpy.context.scene.objects.active)
+        utils.apply_animation_scale(bpy.context.active_object)
         return {'FINISHED'}
 
     def invoke(self, context, event):

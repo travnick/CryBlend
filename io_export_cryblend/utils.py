@@ -37,7 +37,7 @@ import xml.dom.minidom
 import time
 
 
-# globals
+# Globals:
 to_degrees = 180.0 / math.pi
 
 
@@ -55,15 +55,11 @@ def color_to_string(color, a):
 def frame_to_time(frame):
     fps_base = bpy.context.scene.render.fps_base
     fps = bpy.context.scene.render.fps
-    return (fps_base * frame) / fps
+    return fps_base * frame / fps
 
 
 def matrix_to_string(matrix):
-    rows = []
-    for row in matrix:
-        rows.append(" ".join("{}".format(column) for column in row))
-
-    return " ".join(rows)
+    return str(matrix_to_array(matrix))
 
 
 def floats_to_string(floats, separator=" ", precision="%.6f"):
@@ -244,7 +240,7 @@ def clean_file():
             pass
     for material in get_type("materials"):
         material.name = replace_invalid_rc_characters(material.name)
-    for node in get_type("nodes"):
+    for node in get_type("objects"):
         node.name = replace_invalid_rc_characters(node.name)
         try:
             node.data.name = replace_invalid_rc_characters(node.data.name)
@@ -254,10 +250,10 @@ def clean_file():
             for bone in node.data.bones:
                 bone.name = replace_invalid_rc_characters(bone.name)
     for node in get_export_nodes():
-        nodename = get_node_name(node.name)
-        nodetype = get_node_type(node.name)
-        nodename = replace_invalid_rc_characters(nodename)
-        node.name = "{}.{}".format(nodename, nodetype)
+        node_name = get_node_name(node)
+        nodetype = get_node_type(node)
+        node_name = replace_invalid_rc_characters(node_name)
+        node.name = "{}.{}".format(node_name, nodetype)
 
 
 def replace_invalid_rc_characters(string):
@@ -326,20 +322,20 @@ def get_export_nodes(just_selected=False):
     export_nodes = []
 
     if just_selected:
-        return get_selected_nodes()
+        return __get_selected_nodes()
 
     for group in bpy.context.blend_data.groups:
-        if is_export_node(group.name) and len(group.objects) > 0:
+        if is_export_node(group) and len(group.objects) > 0:
             export_nodes.append(group)
 
     return export_nodes
 
-def get_selected_nodes():
+def __get_selected_nodes():
     export_nodes = []
 
     for object in bpy.context.selected_objects:
         for group in object.users_group:
-            if is_export_node(group.name) and group not in export_nodes:
+            if is_export_node(group) and group not in export_nodes:
                 export_nodes.append(group)
 
     return export_nodes
@@ -347,7 +343,7 @@ def get_selected_nodes():
 
 def get_type(type_):
     dispatch = {
-        "nodes": __get_nodes,
+        "objects": __get_objects,
         "geometry": __get_geometry,
         "controllers": __get_controllers,
         "skins": __get_skins,
@@ -361,7 +357,7 @@ def get_type(type_):
     return list(set(dispatch[type_]()))
 
 
-def __get_nodes():
+def __get_objects():
     items = []
     for group in get_export_nodes():
         items.extend(group.objects)
@@ -371,9 +367,8 @@ def __get_nodes():
 
 def __get_geometry():
     items = []
-    allowed = {"MESH"}
-    for object_ in get_type("nodes"):
-        if object_.type in allowed and not is_fakebone(object_):
+    for object_ in get_type("objects"):
+        if object_.type == "MESH" and not is_fakebone(object_):
             items.append(object_)
 
     return items
@@ -381,7 +376,7 @@ def __get_geometry():
 
 def __get_controllers():
     items = []
-    for object_ in get_type("nodes"):
+    for object_ in get_type("objects"):
         if not (is_bone_geometry(object_) or
                 is_fakebone(object_)):
             if object_.parent is not None:
@@ -393,9 +388,8 @@ def __get_controllers():
 
 def __get_skins():
     items = []
-    allowed = {"MESH"}
-    for object_ in get_type("nodes"):
-        if object_.type in allowed:
+    for object_ in get_type("objects"):
+        if object_.type == "MESH":
             if not (is_bone_geometry(object_) or
                     is_fakebone(object_)):
                 if object_.parent is not None:
@@ -407,7 +401,6 @@ def __get_skins():
 
 def __get_fakebones():
     items = []
-    allowed = {"MESH"}
     for object_ in bpy.data.objects:
         if is_fakebone(object_):
             items.append(object_)
@@ -417,7 +410,7 @@ def __get_fakebones():
 
 def __get_bone_geometry():
     items = []
-    for object_ in get_type("nodes"):
+    for object_ in get_type("objects"):
         if is_bone_geometry(object_):
             items.append(object_)
 
@@ -439,7 +432,7 @@ def __get_texture_nodes_for_cycles():
 def __get_materials():
     items = []
     allowed = {"MESH"}
-    for object_ in get_type("nodes"):
+    for object_ in get_type("objects"):
         if object_.type in allowed:
             for material_slot in object_.material_slots:
                 items.append(material_slot.material)
@@ -571,24 +564,7 @@ def get_material_attribute(material, type_):
     return str(float)
 
 
-def get_material_props(materialname):
-    if has__material_physics(materialname):
-        groups = re.findall('.+__[0-9]+__(.*)__(phys[A-Za-z0-9]+)', materialname)
-        if not groups:
-            groups = re.findall('(.*)__(phys[A-Za-z0-9]+)', materialname)
-        return replace_invalid_rc_characters(groups[0][0]), groups[0][1]
-    return replace_invalid_rc_characters(materialname), "physDefault"
-
-
-def has__material_physics(materialname):
-    if re.search('.*__phys[A-Za-z0-9]+', materialname):
-        return True
-    else:
-        return False
-
-
 def get_material_parts(node, material):
-
     VALID_PHYSICS = ("physDefault", "physProxyNoDraw", "physNoCollide",
                      "physObstruct", "physNone")
 
@@ -658,31 +634,31 @@ def is_cryblend_material(materialname):
 # Export Nodes:
 #------------------------------------------------------------------------------
 
-def is_export_node(nodename):
+def is_export_node(node):
     extensions = [".cgf", ".cga", ".chr", ".skin", ".anm", ".i_caf"]
     for extension in extensions:
-        if nodename.endswith(extension):
+        if node.name.endswith(extension):
             return True
 
     return False
 
 
 def are_duplicate_nodes():
-    nodenames = []
+    node_names = []
     for group in get_export_nodes():
-        nodenames.append(get_node_name(group.name))
-    unique_nodenames = set(nodenames)
-    if len(unique_nodenames) < len(nodenames):
+        node_names.append(get_node_name(group))
+    unique_node_names = set(node_names)
+    if len(unique_node_names) < len(node_names):
         return True
 
 
-def get_node_name(groupname):
-    node_type = get_node_type(groupname)
-    return groupname[:-(len(node_type) + 1)]
+def get_node_name(node):
+    node_type = get_node_type(node)
+    return node.name[:-(len(node_type) + 1)]
 
 
-def get_node_type(groupname):
-    node_components = groupname.split(".")
+def get_node_type(node):
+    node_components = node.name.split(".")
     return node_components[-1]
 
 
@@ -690,27 +666,16 @@ def get_node_type(groupname):
 # Fakebones:
 #------------------------------------------------------------------------------
 
-def find_fakebone(bonename):
-    for object_ in bpy.context.scene.objects:
-        if object_.name == bonename:
-            return object_
-        else:
-            physBoneName = object_.name + "_Phys"
-            parentFrame = object_.name + "_Phys_ParentFrame"
-
-            if bonename == physBoneName or bonename == parentFrame:
-                return object_
+def get_fakebone(bone_name):
+    return next((fakebone for fakebone in get_type("fakebones")
+                if fakebone.name == bone_name), None)
 
 
 def is_fakebone(object_):
-    fakebone = 0
-    for prop in object_.rna_type.id_data.items():
-        if prop:
-            if prop[1] == "fakebone":
-                fakebone = 1
-                break
-
-    return fakebone
+    if object_.get("fakebone") is not None:
+        return True
+    else:
+        return False
 
 
 def add_fakebones():
@@ -741,7 +706,7 @@ def add_fakebones():
     ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
 
     for group in armature.users_group:
-        node_type = get_node_type(group.name)
+        node_type = get_node_type(group)
 
         if node_type in ALLOWED_NODE_TYPES:
             process_animation(armature, skeleton)
@@ -750,16 +715,9 @@ def add_fakebones():
 def remove_fakebones():
     '''Select to remove all fakebones from the scene.'''
     deselect_all()
-    for object_ in bpy.context.scene.objects:
-        is_fakebone = False
-        try:
-            throwaway = object_['fakebone']
-            is_fakebone = True
-        except:
-            pass
-        if (is_fakebone):
-            object_.select = True
-            bpy.ops.object.delete(use_global=False)
+    for fakebone in get_type("fakebones"):
+        fakebone.select = True
+        bpy.ops.object.delete(use_global=False)
 
 
 #------------------------------------------------------------------------------
@@ -792,10 +750,10 @@ def get_keyframes(armature):
         rotations = {}
 
         for bone in armature.pose.bones:
-            fakeBone = bpy.context.scene.objects[bone.name]
+            fakeBone = bpy.data.objects[bone.name]
 
             if bone.parent and bone.parent.parent:
-                parentMatrix = bpy.context.scene.objects[
+                parentMatrix = bpy.data.objects[
                     bone.parent.name].matrix_world
 
                 animatrix = parentMatrix.inverted() * fakeBone.matrix_world
@@ -840,7 +798,7 @@ def set_keyframe(armature, frame, location_list, rotation_list):
     for bone in armature.pose.bones:
         index = frame - bpy.context.scene.frame_start
 
-        fakeBone = bpy.context.scene.objects[bone.name]
+        fakeBone = bpy.data.objects[bone.name]
 
         fakeBone.location = location_list[index][bone.name]
         fakeBone.rotation_euler = rotation_list[index][bone.name]
@@ -899,7 +857,7 @@ def apply_animation_scale(armature):
     cbPrint("Baked Animation successfully on empties.")
     deselect_all()
 
-    bpy.context.scene.objects.active = armature
+    set_active(armature)
     armature.select = True
     bpy.ops.anim.keyframe_clear_v3d()
 
@@ -948,8 +906,8 @@ def apply_animation_scale(armature):
 # Bone Geometry:
 #------------------------------------------------------------------------------
 
-def find_bone_geometry(bonename):
-    for object_ in bpy.context.scene.objects:
+def get_bone_geometry(bone_name):
+    for object_ in bpy.data.objects:
         if is_bone_geometry(object_):
             return object_
 
@@ -976,15 +934,15 @@ def physicalize(object_):
 # Skeleton:
 #------------------------------------------------------------------------------
 
-def get_root_bone(armature_object):
-    for bone in get_bones(armature_object):
+def get_root_bone(armature):
+    for bone in get_bones(armature):
         if bone.parent is None:
             return bone
 
 
-def count_root_bones(armature_object):
+def count_root_bones(armature):
     count = 0
-    for bone in get_bones(armature_object):
+    for bone in get_bones(armature):
         if bone.parent is None:
             count += 1
 
@@ -1011,18 +969,22 @@ def get_bones(armature):
 #------------------------------------------------------------------------------
 
 def select_all():
-    for object_ in bpy.context.scene.objects:
+    for object_ in bpy.data.objects:
         object_.select = True
 
 
 def deselect_all():
-    for object_ in bpy.context.scene.objects:
+    for object_ in bpy.data.objects:
         object_.select = False
 
 
+def set_active(object_):
+    bpy.context.scene.objects.active = object_
+
+
 def get_object_children(parent):
-    return [object_ for object_ in parent.children
-            if object_.type in {'ARMATURE', 'EMPTY', 'MESH'}]
+    return [child for child in parent.children
+            if child.type in {'ARMATURE', 'EMPTY', 'MESH'}]
 
 
 def parent(children, parent):

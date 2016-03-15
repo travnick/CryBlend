@@ -103,13 +103,10 @@ class CrytekDaeExporter:
                         continue
 
                     if slot.material not in materials:
-
-                        # backwards compatibility
-                        nodename = utils.get_node_name(
-                            group.name.replace("CryExportNode_", ""))
+                        node_name = utils.get_node_name(group)
 
                         node, index, name, physics = utils.get_material_parts(
-                            nodename, slot.material.name)
+                            node_name, slot.material.name)
 
                         # check if material has no position defined
                         if index == 0:
@@ -442,7 +439,7 @@ class CrytekDaeExporter:
         libgeo = self.__doc.createElement("library_geometries")
         parent_element.appendChild(libgeo)
         for object_ in utils.get_type("geometry"):
-            bpy.context.scene.objects.active = object_
+            utils.set_active(object_)
             if object_.mode != 'OBJECT':
                 bpy.ops.object.mode_set(mode='OBJECT')
             object_.data.update(calc_tessface=1)
@@ -729,7 +726,7 @@ class CrytekDaeExporter:
         bones = utils.get_bones(armature)
         bone_matrices = []
         for bone in bones:
-            fakebone = utils.find_fakebone(bone.name)
+            fakebone = utils.get_fakebone(bone.name)
             if fakebone is None:
                 return
             matrix_local = copy.deepcopy(fakebone.matrix_local)
@@ -799,11 +796,11 @@ class CrytekDaeExporter:
 
         scene = bpy.context.scene
         for group in utils.get_export_nodes(self.__config.export_selected_nodes):
-            node_type = utils.get_node_type(group.name)
+            node_type = utils.get_node_type(group)
             allowed = ["cga", "anm", "i_caf"]
             if node_type in allowed:
                 animation_clip = self.__doc.createElement("animation_clip")
-                node_name = utils.get_node_name(group.name)
+                node_name = utils.get_node_name(group)
                 animation_clip.setAttribute(
                     "id", "{!s}-{!s}".format(node_name, node_name))
                 animation_clip.setAttribute(
@@ -1036,14 +1033,14 @@ class CrytekDaeExporter:
 
     def __write_export_node(self, group, visual_scene):
         if not self.__config.export_for_lumberyard:
-            nodename = "CryExportNode_{}".format(utils.get_node_name(group.name))
+            node_name = "CryExportNode_{}".format(utils.get_node_name(group))
             node = self.__doc.createElement("node")
-            node.setAttribute("id", nodename)
+            node.setAttribute("id", node_name)
             node.setIdAttribute("id")
         else:
-            nodename = "{}".format(utils.get_node_name(group.name))
+            node_name = "{}".format(utils.get_node_name(group))
             node = self.__doc.createElement("node")
-            node.setAttribute("id", nodename)
+            node.setAttribute("id", node_name)
             node.setAttribute("LumberyardExportNode", "1")
             node.setIdAttribute("id")
 
@@ -1089,23 +1086,23 @@ class CrytekDaeExporter:
 
     def __write_bone_list(self, bones, object_, nodeparent, root):
         scene = bpy.context.scene
-        bonenames = []
+        bone_names = []
 
         for bone in bones:
             props = self.__create_ik_properties(bone, object_, object_.name)
-            nodename = join(bone.name, props)
-            bonenames.append(nodename)
+            node_name = join(bone.name, props)
+            bone_names.append(node_name)
 
             node = self.__doc.createElement("node")
-            node.setAttribute("id", nodename)
-            node.setAttribute("name", nodename)
+            node.setAttribute("id", node_name)
+            node.setAttribute("name", node_name)
             node.setIdAttribute("id")
 
-            fakebone = utils.find_fakebone(bone.name)
+            fakebone = utils.get_fakebone(bone.name)
             if fakebone is not None:
                 self.__write_transforms(fakebone, node)
 
-            bone_geometry = utils.find_bone_geometry(bone.name)
+            bone_geometry = utils.get_bone_geometry(bone.name)
             if bone_geometry is not None:
                 instance = self.__create_instance_for_bone(bone, bone_geometry)
                 node.appendChild(instance)
@@ -1262,8 +1259,8 @@ class CrytekDaeExporter:
 
         ALLOWED_NODE_TYPES = ("cgf", "cga", "chr", "skin", "anm", "i_caf")
 
-        if utils.is_export_node(node.name):
-            node_type = utils.get_node_type(node.name)
+        if utils.is_export_node(node):
+            node_type = utils.get_node_type(node)
             if node_type in ALLOWED_NODE_TYPES:
                 prop = self.__doc.createTextNode(
                     "fileType={}".format(node_type))
@@ -1380,8 +1377,8 @@ def write_scripts(config):
     output_path = os.path.dirname(dae_path)
     chr_names = []
     for group in utils.get_export_nodes(self.__config.export_selected_nodes):
-        if utils.get_node_type(group.name) == "chr":
-            chr_names.append(utils.get_node_name(group.name))
+        if utils.get_node_type(group) == "chr":
+            chr_names.append(utils.get_node_name(group))
 
     for chr_name in chr_names:
         if config.make_chrparams:
