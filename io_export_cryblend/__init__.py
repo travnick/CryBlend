@@ -1787,16 +1787,6 @@ class Export(bpy.types.Operator, ExportHelper):
         description="Create a base CDF file for character attachments.",
         default=False,
     )
-    include_ik = BoolProperty(
-        name="Include IK in Character",
-        description="Add IK to the physics skeleton upon export.",
-        default=False,
-    )
-    convert_space = BoolProperty(
-        name="Convert to Whitespaces",
-        description="Convert double underscores to whitespaces in skeleton.",
-        default=False,
-    )
     fix_weights = BoolProperty(
         name="Fix Weights",
         description="For use with .chr files. Generally a good idea.",
@@ -1850,8 +1840,6 @@ class Export(bpy.types.Operator, ExportHelper):
                 'do_textures',
                 'make_chrparams',
                 'make_cdf',
-                'include_ik',
-                'convert_space',
                 'fix_weights',
                 'average_planar',
                 'export_for_lumberyard',
@@ -1921,8 +1909,6 @@ class Export(bpy.types.Operator, ExportHelper):
         box.label("Character", icon="ARMATURE_DATA")
         box.prop(self, "make_chrparams")
         box.prop(self, "make_cdf")
-        box.prop(self, "include_ik")
-        box.prop(self, "convert_space")
 
         box = col.box()
         box.label("Corrective", icon="BRUSH_DATA")
