@@ -324,7 +324,7 @@ def get_export_nodes(just_selected=False):
     if just_selected:
         return __get_selected_nodes()
 
-    for group in bpy.context.blend_data.groups:
+    for group in bpy.data.groups:
         if is_export_node(group) and len(group.objects) > 0:
             export_nodes.append(group)
 
