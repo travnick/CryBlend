@@ -721,10 +721,17 @@ def add_fakebones():
 
 def remove_fakebones():
     '''Select to remove all fakebones from the scene.'''
+    if len(get_type("fakebones")) == 0:
+        return        
+    old_mode = bpy.context.mode
+    if old_mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
     deselect_all()
     for fakebone in get_type("fakebones"):
         fakebone.select = True
         bpy.ops.object.delete(use_global=False)
+    if old_mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode=old_mode)
 
 
 #------------------------------------------------------------------------------
