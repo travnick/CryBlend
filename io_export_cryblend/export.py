@@ -745,20 +745,29 @@ class CrytekDaeExporter:
         vw = ""
         vertex_groups_lengths = ""
         vertex_count = 0
+        bone_list = {}
+
+        for bone_id, bone in enumerate(bones):
+            bone_list[bone.name] = bone_id;
 
         for vertex in object_.data.vertices:
+            vertex_group_count = 0
             for group in vertex.groups:
+                group_name = object_.vertex_groups[group.group].name
+                if (group.weight == 0 or
+                    group_name not in bone_list):
+                    continue
+                if vertex_group_count == 8:
+                    cbPrint("Too many bone references in {}:{} vertex group"
+                            .format(object_.name, group_name))
+                    continue  
                 group_weights.append(group.weight)
-                for vertex_group in object_.vertex_groups:
-                    if vertex_group.index == group.group:
-                        for bone_id, bone in enumerate(bones):
-                            if bone.name == vertex_group.name:
-                                vw += "{} ".format(bone_id)
-
-                vw += "{} ".format(vertex_count)
+                vw = "{}{} {} ".format(vw, bone_list[group_name], vertex_count)
                 vertex_count += 1
+                vertex_group_count += 1
 
-            vertex_groups_lengths += "{} ".format(len(vertex.groups))
+            vertex_groups_lengths = "{}{} ".format(vertex_groups_lengths,
+                                                   vertex_group_count)
 
         id_ = "{!s}_{!s}-weights".format(armature.name, object_.name)
         source = utils.write_source(id_, "float", group_weights, [])
