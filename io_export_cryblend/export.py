@@ -1061,8 +1061,7 @@ class CrytekDaeExporter:
         for object_ in objects:
             if object_.type == "MESH" and not utils.is_fakebone(object_):
                 node = self.__doc.createElement("node")
-                node_name = utils.get_armature_node_name(object_)
-                node.setAttribute("id", node_name)
+                node.setAttribute("id", object_.name)
                 node.setIdAttribute("id")
 
                 self.__write_transforms(object_, node)
