@@ -182,7 +182,10 @@ class CrytekDaeExporter:
         library_images = self.__doc.createElement('library_images')
         parent_element.appendChild(library_images)
 
-        images = self.__get_image_textures_in_export_nodes()
+        if bpy.context.scene.render.engine == 'CYCLES':
+            images = self.__get_nodes_images_in_export_nodes()
+        else:
+            images = self.__get_image_textures_in_export_nodes()
 
         for image in images:
             image_element = self.__export_library_image(image)
