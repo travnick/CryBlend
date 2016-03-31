@@ -459,7 +459,7 @@ def get_vertex_data():
 
 def name_branch(is_new_branch):
     highest_branch_number = 0
-    highest_joint_number = 0
+    highest_joint_number = {}
     for object in bpy.data.objects:
         if ((object.type == 'EMPTY') and ("branch" in object.name)):
             branch_components = object.name.split("_")
@@ -469,14 +469,15 @@ def name_branch(is_new_branch):
                 joint_number = int(branch_components[1])
                 if (branch_number > highest_branch_number):
                     highest_branch_number = branch_number
-                    if (joint_number > highest_joint_number):
-                        highest_joint_number = joint_number
+                    highest_joint_number[branch_number] = joint_number
+                if (joint_number > highest_joint_number[branch_number]):
+                    highest_joint_number[branch_number] = joint_number
     if (highest_branch_number != 0):
         if (is_new_branch):
             return "branch{}_1".format(highest_branch_number + 1)
         else:
             return "branch{}_{}".format(
-                    highest_branch_number, highest_joint_number + 1)
+                    highest_branch_number, highest_joint_number[highest_branch_number] + 1)
     else:
         return "branch1_1"
 
