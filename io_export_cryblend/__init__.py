@@ -138,23 +138,26 @@ to be able to export your textures as dds files.'''
         return ExportHelper.invoke(self, context, event)
 
 
-class SelectTexturesDirectory(bpy.types.Operator, PathSelectTemplate):
+class SelectGameDirectory(bpy.types.Operator, PathSelectTemplate):
     '''This path will be used to create relative path \
 for textures in .mtl file.'''
 
-    bl_label = "Select Textures Directory"
-    bl_idname = "file.select_texture_dir"
+    bl_label = "Select Game Directory"
+    bl_idname = "file.select_game_dir"
 
     filename_ext = ""
 
     def process(self, filepath):
-        Configuration.texture_dir = os.path.dirname(filepath)
-        cbPrint("Textures directory: {!r}.".format(
-            Configuration.texture_dir),
+        if not os.path.isdir(filepath):
+            raise exceptions.NoGameDirectorySelected
+
+        Configuration.game_dir = filepath
+        cbPrint("Game directory: {!r}.".format(
+            Configuration.game_dir),
             'debug')
 
     def invoke(self, context, event):
-        self.filepath = Configuration.texture_dir
+        self.filepath = Configuration.game_dir
 
         return ExportHelper.invoke(self, context, event)
 
@@ -1857,7 +1860,7 @@ class Export(bpy.types.Operator, ExportHelper):
             setattr(self, 'cryblend_version', VERSION)
             setattr(self, 'rc_path', Configuration.rc_path)
             setattr(self, 'texture_rc_path', Configuration.texture_rc_path)
-            setattr(self, 'texture_dir', Configuration.texture_dir)
+            setattr(self, 'game_dir', Configuration.game_dir)
 
     def execute(self, context):
         cbPrint(Configuration.rc_path, 'debug')
@@ -2129,7 +2132,7 @@ class ConfigurationsPanel(View3DPanel, Panel):
             "file.find_rc_for_texture_conversion",
             text="Find Texture RC")
         col.separator()
-        col.operator("file.select_texture_dir", text="Select Textures Folder")
+        col.operator("file.select_game_dir", text="Select Game Directory")
 
 class ExportPanel(View3DPanel, Panel):
     bl_label = "Export"
@@ -2386,8 +2389,8 @@ class ConfigurationsMenu(bpy.types.Menu):
             icon="SPACE2")
         layout.separator()
         layout.operator(
-            "file.select_texture_dir",
-            text="Select Textures Folder",
+            "file.select_game_dir",
+            text="Select Game Directory",
             icon="FILE_FOLDER")
 
 
@@ -2455,7 +2458,7 @@ def get_classes_to_register():
     classes = (
         FindRC,
         FindRCForTextureConversion,
-        SelectTexturesDirectory,
+        SelectGameDirectory,
         SaveCryBlendConfiguration,
 
         AddCryExportNode,

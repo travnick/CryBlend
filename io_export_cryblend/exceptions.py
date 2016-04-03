@@ -55,3 +55,11 @@ Usually located in 'CryEngine\\Bin32\\rc\\rc.exe'
 """
 
         CryBlendException.__init__(self, message)
+
+
+class NoGameDirectorySelected(CryBlendException):
+
+    def __init__(self):
+        message = "Please select a Game Directory!"
+
+        CryBlendException.__init__(self, message)
