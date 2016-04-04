@@ -116,7 +116,17 @@ class CrytekDaeExporter:
                         materials[slot.material] = "{}__{:02d}__{}__{}".format(
                             node, index, name, physics)
 
-        return materials
+        materials_reorderer = {}
+        counter = {}
+        for key in materials.keys():
+            parts = materials[key].split("__")
+            if parts[0] not in counter:
+                counter[parts[0]] = 0
+            counter[parts[0]] += 1
+            materials_reorderer[key] = "{}__{:02d}__{}__{}".format(
+                parts[0], counter[parts[0]], parts[2], parts[3])
+
+        return materials_reorderer
 
     def __get_materials_for_object(self, object_):
         materials = OrderedDict()
