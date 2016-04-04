@@ -2422,6 +2422,39 @@ class AddMaterialPhysicsMenu(bpy.types.Menu):
             icon='PHYSICS')
 
 
+class RemoveUnusedVertexGroups(bpy.types.Operator):
+    bl_label = "Remove Unused Vertex Groups"
+    bl_idname = "ops.remove_unused_vertex_groups"
+
+    def execute(self, context):
+        old_mode = bpy.context.mode
+        if old_mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        object_ = bpy.context.active_object
+
+        used_indices = []
+
+        for vertex in object_.data.vertices:
+            for group in vertex.groups:
+                index = group.group
+                if not index in used_indices:
+                    used_indices.append(index)
+
+        used_vertex_groups = []
+        for index in used_indices:
+            used_vertex_groups.append(object_.vertex_groups[index])
+
+        for vertex_group in object_.vertex_groups:
+            if not vertex_group in used_vertex_groups:
+                object_.vertex_groups.remove(vertex_group)
+
+        if old_mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode=old_mode)
+
+        return {'FINISHED'}
+
+
 class CryBlendReducedMenu(bpy.types.Menu):
     bl_label = 'CryBlend'
     bl_idname = 'view3d.cryblend_reduced_menu'
@@ -2520,6 +2553,7 @@ def get_classes_to_register():
         ConfigurationsMenu,
 
         AddMaterialPhysicsMenu,
+        RemoveUnusedVertexGroups,
         CryBlendReducedMenu,
     )
 
@@ -2539,6 +2573,13 @@ def physics_menu(self, context):
     layout.separator()
 
 
+def remove_unused_vertex_groups(self, context):
+    layout = self.layout
+    layout.separator()
+    layout.label("CryBlend")
+    layout.operator("ops.remove_unused_vertex_groups", icon="X")
+
+
 def register():
     for classToRegister in get_classes_to_register():
         bpy.utils.register_class(classToRegister)
@@ -2556,6 +2597,7 @@ def register():
 
     bpy.types.INFO_HT_header.append(draw_item)
     bpy.types.MATERIAL_MT_specials.append(physics_menu)
+    bpy.types.MESH_MT_vertex_group_specials.append(remove_unused_vertex_groups)
 
 
 def unregister():
@@ -2574,6 +2616,7 @@ def unregister():
 
     bpy.types.INFO_HT_header.remove(draw_item)
     bpy.types.MATERIAL_MT_specials.remove(physics_menu)
+    bpy.types.MESH_MT_vertex_group_specials.remove(remove_unused_vertex_groups)
 
 
 if __name__ == "__main__":
