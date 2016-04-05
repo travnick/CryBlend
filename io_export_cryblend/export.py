@@ -195,10 +195,8 @@ class CrytekDaeExporter:
             self.__convert_images_to_dds(images)
 
     def __export_library_image(self, image):
-        image_name = utils.get_filename(image.filepath)
-        dds_path = utils.build_path(
-            self.__config.texture_dir, image_name, ".dds")
-        image_path = utils.trim_path_to(dds_path, "Objects")
+        image_path = utils.get_image_path_for_game(image,
+                                        self.__config.game_dir)
 
         image_element = self.__doc.createElement('image')
         image_element.setAttribute('id', image.name)

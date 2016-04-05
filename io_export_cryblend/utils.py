@@ -533,6 +533,17 @@ def is_valid_cycles_texture_node(node):
     return False
 
 
+def get_image_path_for_game(image, game_dir):
+    if not game_dir or not os.path.isdir(game_dir):
+        raise exceptions.NoGameDirectorySelected
+
+    image_path = os.path.normpath(bpy.path.abspath(image.filepath))
+    image_path = get_path_with_new_extension(image_path, "dds")
+    image_path = os.path.relpath(image_path, game_dir)
+
+    return image_path
+
+
 #------------------------------------------------------------------------------
 # Materials:
 #------------------------------------------------------------------------------

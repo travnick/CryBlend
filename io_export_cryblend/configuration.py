@@ -29,7 +29,7 @@ class __Configuration:
     __CONFIG_FILEPATH = os.path.join(__CONFIG_PATH, __CONFIG_FILENAME)
     __DEFAULT_CONFIGURATION = {'RC_PATH': r'',
                                'TEXTURE_RC_PATH': r'',
-                               'TEXTURE_DIR': r''}
+                               'GAME_DIR': r''}
 
     def __init__(self):
         self.__CONFIG = self.__load({})
@@ -54,12 +54,12 @@ class __Configuration:
         self.__CONFIG['TEXTURE_RC_PATH'] = value
 
     @property
-    def texture_dir(self):
-        return self.__CONFIG['TEXTURE_DIR']
+    def game_dir(self):
+        return self.__CONFIG['GAME_DIR']
 
-    @texture_dir.setter
-    def texture_dir(self, value):
-        self.__CONFIG['TEXTURE_DIR'] = value
+    @game_dir.setter
+    def game_dir(self, value):
+        self.__CONFIG['GAME_DIR'] = value
 
     def configured(self):
         path = self.__CONFIG['RC_PATH']
