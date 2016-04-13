@@ -5,12 +5,14 @@
 * Only compatible with CryEngine 3.5 and up.
 * Only compatible with Blender 2.7 and up.
 * Supports primary assets: CGF, CGA, CHR, SKIN, ANM, I_CAF.
+* Compatible with LumberYard.
 
 #### UI Changes:
-* Apply Scale Animaiton.
+* Apply Scale Animation.
 * Edit Inverse Kinematics panel in Bone Utilities.
 * Do materials and fix weight default were set to false in export menu.
 * Add Property is changed with User Defined Properties menu.
+* Same options in quick menu, left tab panel and main menu.
 
 #### New Features:
 * Skeleton Physic.
@@ -21,13 +23,24 @@
 * Delete .animsettings, .caf, .$animsettings files if there are exist for clean reexport animation.
 * Set main material name which show in cryengine.
 * Change selected material physic in Do Material panel.
+* More material notation formats supported.
+* New material management options.
+* Proxies improvement.
+* Export only selected nodes.
+* Game folder selection to better management of textures.
+* Remove unused vertex groups option.
 
 #### Improvements/Fixes:
 * Texture export fix.
-* Skeleton Animaiton.
+* Skeleton Animation.
 * Blender 2.74 and up Skeleton and Animation support.
 * Now bone names replace double underscore with whitespace like maya.
 * CGF file is processed one time by rc.
+* Proxies problems.
+* Faster skin export.
+* More than 8 bones per vertex fix.
+* Residual vertex groups in skins generating problems.
+* Problem creating few branches in touch bending.
 
 ## 5.0
 #### Compatibility:
