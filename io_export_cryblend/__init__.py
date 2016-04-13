@@ -547,7 +547,6 @@ class SetMaterialNames(bpy.types.Operator):
         # Revert all materials to fetch also those that are no longer in a group
         # and store their possible physics properties in a dictionary.
         physicsProperties = getMaterialPhysics()
-        removeCryBlendProperties()
 
         # Create a dictionary with all CryExportNodes to store the current number
         # of materials in it.
