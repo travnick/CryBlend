@@ -330,6 +330,7 @@ def get_export_nodes(just_selected=False):
 
     return export_nodes
 
+
 def __get_selected_nodes():
     export_nodes = []
 
@@ -624,7 +625,9 @@ def extract_cryblend_properties(materialname):
     None if name is invalid.
     """
     if is_cryblend_material(materialname):
-        groups = re.findall("(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)", materialname)
+        groups = re.findall(
+            "(.+)__([0-9]+)__(.*)__(phys[A-Za-z0-9]+)",
+            materialname)
         properties = {}
         properties["ExportNode"] = groups[0][0]
         properties["Number"] = int(groups[0][1])
@@ -686,7 +689,7 @@ def get_armature_node_name(object_):
 
 def get_fakebone(bone_name):
     return next((fakebone for fakebone in get_type("fakebones")
-                if fakebone.name == bone_name), None)
+                 if fakebone.name == bone_name), None)
 
 
 def is_fakebone(object_):
@@ -733,7 +736,7 @@ def add_fakebones():
 def remove_fakebones():
     '''Select to remove all fakebones from the scene.'''
     if len(get_type("fakebones")) == 0:
-        return        
+        return
     old_mode = bpy.context.mode
     if old_mode != 'OBJECT':
         bpy.ops.object.mode_set(mode='OBJECT')
