@@ -932,10 +932,10 @@ def apply_animation_scale(armature):
 #------------------------------------------------------------------------------
 
 def get_bone_geometry(bone_name):
-    try:
-        return bpy.data.objects[bone_name + "_boneGeometry"]
-    except:
-        return None
+    if bone_name.endswith("_Phys"):
+        bone_name = bone_name[:-5]
+
+    return bpy.data.objects.get("{}_boneGeometry".format(bone_name), None)
 
 
 def is_bone_geometry(object_):
