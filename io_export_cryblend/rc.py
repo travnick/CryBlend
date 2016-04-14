@@ -94,7 +94,11 @@ class _DAEConverter:
             node_type = utils.get_node_type(group)
             if node_type in ALLOWED_NODE_TYPES:
                 out_file = os.path.join(output_path, group.name)
-                args = [self.__config.rc_path, "/refresh", "/vertexindexformat=u16", out_file]
+                args = [
+                    self.__config.rc_path,
+                    "/refresh",
+                    "/vertexindexformat=u16",
+                    out_file]
                 rc_second_pass = subprocess.Popen(args)
             elif node_type == 'i_caf':
                 try:

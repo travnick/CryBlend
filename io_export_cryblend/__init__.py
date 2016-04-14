@@ -227,7 +227,9 @@ class AddCryExportNode(bpy.types.Operator):
 
     def invoke(self, context, event):
         if len(context.selected_objects) == 0:
-            self.report({'ERROR'}, "Select one or more objects in OBJECT mode.")
+            self.report(
+                {'ERROR'},
+                "Select one or more objects in OBJECT mode.")
             return {'FINISHED'}
 
         return context.window_manager.invoke_props_dialog(self)
@@ -257,7 +259,9 @@ class SelectedToCryExportNodes(bpy.types.Operator):
 
     def invoke(self, context, event):
         if len(context.selected_objects) == 0:
-            self.report({'ERROR'}, "Select one or more objects in OBJECT mode.")
+            self.report(
+                {'ERROR'},
+                "Select one or more objects in OBJECT mode.")
             return {'FINISHED'}
 
         return context.window_manager.invoke_props_dialog(self)
@@ -285,7 +289,9 @@ class ApplyTransforms(bpy.types.Operator):
 
     def invoke(self, context, event):
         if len(context.selected_objects) == 0:
-            self.report({'ERROR'}, "Select one or more objects in OBJECT mode.")
+            self.report(
+                {'ERROR'},
+                "Select one or more objects in OBJECT mode.")
             return {'FINISHED'}
 
         return self.execute(context)
@@ -323,7 +329,8 @@ be converted to the selected shape in CryEngine.'''
         bound_box.dimensions = object_.dimensions
         bound_box.location = object_.location
         bound_box.rotation_euler = object_.rotation_euler
-        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        bpy.ops.object.transform_apply(
+            location=True, rotation=True, scale=True)
         bpy.ops.mesh.uv_texture_add()
 
         for group in object_.users_group:
@@ -363,7 +370,7 @@ class AddBreakableJoint(bpy.types.Operator):
 
     def execute(self, context):
         return add.add_joint(self, context)
-        
+
     def invoke(self, context, event):
         if context.object is None or context.object.type != "MESH" or context.object.mode != "OBJECT":
             self.report({'ERROR'}, "Select a mesh in OBJECT mode.")
@@ -480,7 +487,8 @@ def name_branch(is_new_branch):
             return "branch{}_1".format(highest_branch_number + 1)
         else:
             return "branch{}_{}".format(
-                    highest_branch_number, highest_joint_number[highest_branch_number] + 1)
+                highest_branch_number,
+                highest_joint_number[highest_branch_number] + 1)
     else:
         return "branch1_1"
 
@@ -511,7 +519,8 @@ class SetMaterialNames(bpy.types.Operator):
         ),
         default="physDefault")
 
-    just_rephysic = BoolProperty(name="Only Physic",
+    just_rephysic = BoolProperty(
+        name="Only Physic",
         description="Only change physic of selected material.")
 
     object_ = None
@@ -562,7 +571,8 @@ class SetMaterialNames(bpy.types.Operator):
                             materialCounter[group.name] += 1
                             materialOldName = slot.material.name
 
-                            # Load stored Physics if available for that material.
+                            # Load stored Physics if available for that
+                            # material.
                             if physicsProperties.get(slot.material.name):
                                 physics = physicsProperties[slot.material.name]
                             else:
@@ -570,13 +580,13 @@ class SetMaterialNames(bpy.types.Operator):
 
                             # Rename.
                             slot.material.name = "{}__{:02d}__{}__{}".format(
-                                    self.material_name,
-                                    materialCounter[group.name],
-                                    utils.replace_invalid_rc_characters(materialOldName),
-                                    physics)
+                                self.material_name,
+                                materialCounter[group.name],
+                                utils.replace_invalid_rc_characters(materialOldName),
+                                physics)
                             message = "Renamed {} to {}".format(
-                                    materialOldName,
-                                    slot.material.name)
+                                materialOldName,
+                                slot.material.name)
                             self.report({'INFO'}, message)
                             cbPrint(message)
         return {'FINISHED'}
@@ -638,6 +648,7 @@ def get_materials_per_group(group):
                     materials.append(material.name)
     return materials
 
+
 class AddMaterial(bpy.types.Operator):
     '''Add material to node'''
     bl_label = "Add Material to Node"
@@ -668,11 +679,11 @@ class AddMaterial(bpy.types.Operator):
                     # get material for this group
                     if node_name not in materials:
                         index = len(get_materials_per_group(node_name)) + 1
-                        #generate new material
+                        # generate new material
                         material = bpy.data.materials.new(
                             "{}__{:03d}__{}__{}".format(
-                            node_name.split(".")[0],
-                            index, self.material_name, self.physics_type
+                                node_name.split(".")[0],
+                                index, self.material_name, self.physics_type
                             )
                         )
                         materials[node_name] = material
@@ -690,7 +701,9 @@ class AddMaterial(bpy.types.Operator):
 
     def invoke(self, context, event):
         if len(context.selected_objects) == 0:
-            self.report({'ERROR'}, "Select one or more objects in OBJECT mode.")
+            self.report(
+                {'ERROR'},
+                "Select one or more objects in OBJECT mode.")
             return {'FINISHED'}
 
         return context.window_manager.invoke_props_dialog(self)
@@ -698,6 +711,7 @@ class AddMaterial(bpy.types.Operator):
 #------------------------------------------------------------------------------
 # (UDP) Inverse Kinematics:
 #------------------------------------------------------------------------------
+
 
 class EditInverseKinematics(bpy.types.Operator):
     '''Edit inverse kinematics properties for selected bone.'''
@@ -1561,12 +1575,12 @@ class AddRootBone(bpy.types.Operator):
             message = "No Object Selected."
         self.report({'INFO'}, message)
         return {'FINISHED'}
-        
+
     def invoke(self, context, event):
         if context.object is None or context.object.type != "ARMATURE":
             self.report({'ERROR'}, "Select one or more vertices in EDIT mode.")
             return {'FINISHED'}
-            
+
         return self.execute(context)
 
 
@@ -1635,7 +1649,9 @@ class AddBoneGeometry(bpy.types.Operator):
                 break
 
         if not has_armature:
-            self.report({'ERROR'}, "Select one or more armatures in OBJECT mode.")
+            self.report(
+                {'ERROR'},
+                "Select one or more armatures in OBJECT mode.")
             return {'FINISHED'}
 
         return self.execute(context)
@@ -1702,7 +1718,7 @@ class RenamePhysBones(bpy.types.Operator):
                         utils.physicalize(bone)
 
         return {'FINISHED'}
-        
+
     def invoke(self, context, event):
         has_armature = False
         for object_ in context.selected_objects:
@@ -1711,7 +1727,9 @@ class RenamePhysBones(bpy.types.Operator):
                 break
 
         if not has_armature:
-            self.report({'ERROR'}, "Select one or more armatures in OBJECT mode.")
+            self.report(
+                {'ERROR'},
+                "Select one or more armatures in OBJECT mode.")
             return {'FINISHED'}
 
         return self.execute(context)
@@ -2103,8 +2121,12 @@ class MaterialUtilitiesPanel(View3DPanel, Panel):
         col.separator()
         col.operator("material.add_cry_material", text="Add Material")
         col.separator()
-        col.operator("material.set_material_names", text="Do Material Convention")
-        col.operator("material.remove_material_names", text="Undo Material Convention")
+        col.operator(
+            "material.set_material_names",
+            text="Do Material Convention")
+        col.operator(
+            "material.remove_material_names",
+            text="Undo Material Convention")
 
 
 class CustomPropertiesPanel(View3DPanel, Panel):
@@ -2133,6 +2155,7 @@ class ConfigurationsPanel(View3DPanel, Panel):
         col.separator()
         col.operator("file.select_game_dir", text="Select Game Directory")
 
+
 class ExportPanel(View3DPanel, Panel):
     bl_label = "Export"
 
@@ -2147,6 +2170,7 @@ class ExportPanel(View3DPanel, Panel):
 #------------------------------------------------------------------------------
 # CryBlend Menu:
 #------------------------------------------------------------------------------
+
 
 class CryBlendMainMenu(bpy.types.Menu):
     bl_label = 'CryBlend'
@@ -2238,7 +2262,7 @@ class CryUtilitiesMenu(bpy.types.Menu):
             text="Add Branch Joint",
             icon='MOD_SIMPLEDEFORM')
 
- 
+
 class BoneUtilitiesMenu(bpy.types.Menu):
     bl_label = "Bone Utilities"
     bl_idname = "view3d.bone_utilities"
@@ -2334,7 +2358,7 @@ class MaterialUtilitiesMenu(bpy.types.Menu):
             "material.add_cry_material",
             text="Add Material",
             icon="MATERIAL_DATA")
-        layout.separator()        
+        layout.separator()
         layout.operator(
             "material.set_material_names",
             text="Do Material Convention",
@@ -2440,7 +2464,7 @@ class RemoveUnusedVertexGroups(bpy.types.Operator):
         for vertex in object_.data.vertices:
             for group in vertex.groups:
                 index = group.group
-                if not index in used_indices:
+                if index not in used_indices:
                     used_indices.append(index)
 
         used_vertex_groups = []
@@ -2448,7 +2472,7 @@ class RemoveUnusedVertexGroups(bpy.types.Operator):
             used_vertex_groups.append(object_.vertex_groups[index])
 
         for vertex_group in object_.vertex_groups:
-            if not vertex_group in used_vertex_groups:
+            if vertex_group not in used_vertex_groups:
                 object_.vertex_groups.remove(vertex_group)
 
         if old_mode != 'OBJECT':

@@ -95,7 +95,8 @@ class CrytekDaeExporter:
         materials = OrderedDict()
         material_counter = {}
 
-        for group in utils.get_export_nodes(self.__config.export_selected_nodes):
+        for group in utils.get_export_nodes(
+                self.__config.export_selected_nodes):
             material_counter[group.name] = 50
             for object in group.objects:
                 for slot in object.material_slots:
@@ -196,7 +197,7 @@ class CrytekDaeExporter:
 
     def __export_library_image(self, image):
         image_path = utils.get_image_path_for_game(image,
-                                        self.__config.game_dir)
+                                                   self.__config.game_dir)
 
         image_element = self.__doc.createElement('image')
         image_element.setAttribute('id', image.name)
@@ -464,7 +465,9 @@ class CrytekDaeExporter:
 
             start_time = clock()
             self.__write_vertex_colors(object_, mesh, mesh_node)
-            cbPrint('Vertex colors took {:.4f} sec.'.format(clock() - start_time))
+            cbPrint(
+                'Vertex colors took {:.4f} sec.'.format(
+                    clock() - start_time))
 
             start_time = clock()
             self.__write_vertices(object_, mesh, mesh_node)
@@ -749,19 +752,19 @@ class CrytekDaeExporter:
         bone_list = {}
 
         for bone_id, bone in enumerate(bones):
-            bone_list[bone.name] = bone_id;
+            bone_list[bone.name] = bone_id
 
         for vertex in object_.data.vertices:
             vertex_group_count = 0
             for group in vertex.groups:
                 group_name = object_.vertex_groups[group.group].name
                 if (group.weight == 0 or
-                    group_name not in bone_list):
+                        group_name not in bone_list):
                     continue
                 if vertex_group_count == 8:
                     cbPrint("Too many bone references in {}:{} vertex group"
                             .format(object_.name, group_name))
-                    continue  
+                    continue
                 group_weights.append(group.weight)
                 vw = "{}{} {} ".format(vw, bone_list[group_name], vertex_count)
                 vertex_count += 1
@@ -808,7 +811,8 @@ class CrytekDaeExporter:
         scene = bpy.context.scene
 
         ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
-        for group in utils.get_export_nodes(self.__config.export_selected_nodes):
+        for group in utils.get_export_nodes(
+                self.__config.export_selected_nodes):
             node_type = utils.get_node_type(group)
             if node_type in ALLOWED_NODE_TYPES:
                 animation_clip = self.__doc.createElement("animation_clip")
@@ -831,7 +835,8 @@ class CrytekDaeExporter:
 
                         is_animation = True
 
-                        props_name = self.__create_props_bone_name(object_, node_name)
+                        props_name = self.__create_props_bone_name(
+                            object_, node_name)
                         bone_name = "{!s}{!s}".format(object_.name, props_name)
 
                         for axis in iter(AXES):
@@ -1025,7 +1030,8 @@ class CrytekDaeExporter:
                 message = "Duplicate Node Names"
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
 
-            for group in utils.get_export_nodes(self.__config.export_selected_nodes):
+            for group in utils.get_export_nodes(
+                    self.__config.export_selected_nodes):
                 self.__write_export_node(group, visual_scene)
         else:
             pass  # TODO: Handle No Export Nodes Error
@@ -1076,7 +1082,7 @@ class CrytekDaeExporter:
                     node.appendChild(extra)
 
                 parent_node.appendChild(node)
-                
+
                 if object_.parent is not None and object_.parent.type == "ARMATURE":
                     self.__write_bone_list(
                         [utils.get_root_bone(object_.parent)], object_, parent_node)
@@ -1110,10 +1116,12 @@ class CrytekDaeExporter:
 
                 bone_geometry = utils.get_bone_geometry(bone.name)
                 if bone_geometry is not None:
-                    instance = self.__create_instance_for_bone(bone, bone_geometry)
+                    instance = self.__create_instance_for_bone(
+                        bone, bone_geometry)
                     node.appendChild(instance)
 
-                    extra = self.__create_physic_proxy_for_bone(object_.parent, bone)
+                    extra = self.__create_physic_proxy_for_bone(
+                        object_.parent, bone)
                     if extra is not None:
                         node.appendChild(extra)
 

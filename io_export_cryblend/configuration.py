@@ -80,8 +80,9 @@ class __Configuration:
                 cbPrint('Saved {}'.format(self.__CONFIG_FILEPATH))
 
             except:
-                cbPrint("[IO] can not write: {}".format(self.__CONFIG_FILEPATH),
-                        'error')
+                cbPrint(
+                    "[IO] can not write: {}".format(
+                        self.__CONFIG_FILEPATH), 'error')
 
         else:
             cbPrint("Configuration file path is missing {}".format(
