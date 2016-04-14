@@ -1,8 +1,10 @@
 #------------------------------------------------------------------------------
 # Name:        configuration.py
-# Purpose:     Storing CryBlend configuration settings
+# Purpose:     Stores CryBlend configuration settings
 #
-# Author:      Mikołaj Milej
+# Author:      Mikołaj Milej,
+#              Angelo J. Miner, Daniel White, David Marcelis, Duo Oratar,
+#              Oscar Martin Garcia, Özkan Afacan
 #
 # Created:     02/10/2013
 # Copyright:   (c) Mikołaj Milej 2013
@@ -13,7 +15,8 @@
 
 
 import bpy
-from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.outpipe import cbPrint
+from io_export_cryblend.utils import get_filename
 import os
 import pickle
 
@@ -24,48 +27,46 @@ class __Configuration:
                                             create=True)
     __CONFIG_FILENAME = 'cryblend.cfg'
     __CONFIG_FILEPATH = os.path.join(__CONFIG_PATH, __CONFIG_FILENAME)
-    __DEFAULT_CONFIGURATION = {'RC_LOCATION': r'',
-                              'RC_FOR_TEXTURES_CONVERSION': r'',
-                              'TEXTURES_DIR': r'',
-                              'SCRIPT_EDITOR': r''}
+    __DEFAULT_CONFIGURATION = {'RC_PATH': r'',
+                               'TEXTURE_RC_PATH': r'',
+                               'GAME_DIR': r''}
 
     def __init__(self):
         self.__CONFIG = self.__load({})
 
     @property
     def rc_path(self):
-        return self.__CONFIG['RC_LOCATION']
+        return self.__CONFIG['RC_PATH']
 
     @rc_path.setter
     def rc_path(self, value):
-        self.__CONFIG['RC_LOCATION'] = value
+        self.__CONFIG['RC_PATH'] = value
 
     @property
-    def rc_for_texture_conversion_path(self):
-        if (not self.__CONFIG['RC_FOR_TEXTURES_CONVERSION']):
+    def texture_rc_path(self):
+        if (not self.__CONFIG['TEXTURE_RC_PATH']):
             return self.rc_path
 
-        return self.__CONFIG['RC_FOR_TEXTURES_CONVERSION']
+        return self.__CONFIG['TEXTURE_RC_PATH']
 
-    @rc_for_texture_conversion_path.setter
-    def rc_for_texture_conversion_path(self, value):
-        self.__CONFIG['RC_FOR_TEXTURES_CONVERSION'] = value
-
-    @property
-    def textures_directory(self):
-        return self.__CONFIG['TEXTURES_DIR']
-
-    @textures_directory.setter
-    def textures_directory(self, value):
-        self.__CONFIG['TEXTURES_DIR'] = value
+    @texture_rc_path.setter
+    def texture_rc_path(self, value):
+        self.__CONFIG['TEXTURE_RC_PATH'] = value
 
     @property
-    def script_editor(self):
-        return self.__CONFIG['SCRIPT_EDITOR']
+    def game_dir(self):
+        return self.__CONFIG['GAME_DIR']
 
-    @script_editor.setter
-    def script_editor(self, value):
-        self.__CONFIG['SCRIPT_EDITOR'] = value
+    @game_dir.setter
+    def game_dir(self, value):
+        self.__CONFIG['GAME_DIR'] = value
+
+    def configured(self):
+        path = self.__CONFIG['RC_PATH']
+        if len(path) > 0 and get_filename(path) == "rc":
+            return True
+
+        return False
 
     def save(self):
         cbPrint("Saving configuration file.", 'debug')
@@ -76,15 +77,16 @@ class __Configuration:
                     pickle.dump(self.__CONFIG, f, -1)
                     cbPrint("Configuration file saved.")
 
-                cbPrint('Saved %s' % self.__CONFIG_FILEPATH)
+                cbPrint('Saved {}'.format(self.__CONFIG_FILEPATH))
 
             except:
-                cbPrint("[IO] can not write: %s" % self.__CONFIG_FILEPATH,
-                        'error')
+                cbPrint(
+                    "[IO] can not write: {}".format(
+                        self.__CONFIG_FILEPATH), 'error')
 
         else:
-            cbPrint("Configuration file path is missing %s"
-                    % self.__CONFIG_PATH,
+            cbPrint("Configuration file path is missing {}".format(
+                    self.__CONFIG_PATH),
                     'error')
 
     def __load(self, current_configuration):
@@ -98,7 +100,7 @@ class __Configuration:
                     new_configuration.update(pickle.load(f))
                     cbPrint('Configuration file loaded.')
             except:
-                cbPrint("[IO] can not read: %s" % self.__CONFIG_FILEPATH,
+                cbPrint("[IO] can not read: {}".format(self.__CONFIG_FILEPATH),
                         'error')
 
         return new_configuration

@@ -1,27 +1,11 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
 #------------------------------------------------------------------------------
 # Name:        export.py
 # Purpose:     Main exporter to CryEngine
 #
 # Author:      Angelo J. Miner,
-#                some code borrowed from fbx exporter Campbell Barton
-# Extended by: Duo Oratar
+#              Daniel White, David Marcelis, Duo Oratar, Mikołaj Milej,
+#              Oscar Martin Garcia, Özkan Afacan,
+#              Some code borrowed from fbx exporter Campbell Barton
 #
 # Created:     23/01/2012
 # Copyright:   (c) Angelo J. Miner 2012
@@ -35,13 +19,14 @@ if "bpy" in locals():
     imp.reload(exceptions)
 else:
     import bpy
-    from io_export_cryblend import utils, exceptions
+    from io_export_cryblend import utils, add, exceptions
 
-from io_export_cryblend.dds_converter import DdsConverterRunner
-from io_export_cryblend.outPipe import cbPrint
+from io_export_cryblend.rc import RCInstance
+from io_export_cryblend.outpipe import cbPrint
 from io_export_cryblend.utils import join
 
 from bpy_extras.io_utils import ExportHelper
+from collections import OrderedDict
 from datetime import datetime
 from mathutils import Matrix, Vector
 from time import clock
@@ -62,32 +47,19 @@ AXES = {
 }
 
 
-# replace minidom's function with ours
-xml.dom.minidom.Element.writexml = utils.fix_write_xml
-
-
 class CrytekDaeExporter:
+
     def __init__(self, config):
         self.__config = config
         self.__doc = Document()
-
-        # If you have all your textures in 'Texture', then path should be like:
-        # Textures/some/path
-        # so 'Textures' has to be removed from start path
-        normalized_path = os.path.normpath(config.textures_dir)
-        self.__textures_parent_directory = os.path.dirname(normalized_path)
-        cbPrint("Normalized textures directory: {!r}".format(normalized_path),
-                'debug')
-        cbPrint("Textures parent directory: {!r}".format(
-                                            self.__textures_parent_directory),
-                'debug')
+        self.__materials = self.__get_materials()
 
     def export(self):
         self.__prepare_for_export()
 
         root_element = self.__doc.createElement('collada')
-        root_element.setAttribute("xmlns",
-                               "http://www.collada.org/2005/11/COLLADASchema")
+        root_element.setAttribute(
+            "xmlns", "http://www.collada.org/2005/11/COLLADASchema")
         root_element.setAttribute("version", "1.4.1")
         self.__doc.appendChild(root_element)
         self.__create_file_header(root_element)
@@ -114,12 +86,47 @@ class CrytekDaeExporter:
 
         self.__export_scene(root_element)
 
-        filepath = bpy.path.ensure_ext(self.__config.filepath, ".dae")
-        write_to_file(self.__config,
-                      self.__doc, filepath,
-                      self.__config.rc_path)
+        converter = RCInstance(self.__config)
+        converter.convert_dae(self.__doc)
 
-        write_scripts(self.__config, filepath)
+        write_scripts(self.__config)
+
+    def __get_materials(self):
+        materials = OrderedDict()
+        material_counter = {}
+
+        for group in utils.get_export_nodes(
+                self.__config.export_selected_nodes):
+            material_counter[group.name] = 50
+            for object in group.objects:
+                for slot in object.material_slots:
+                    if slot.material is None:
+                        continue
+
+                    if slot.material not in materials:
+                        node_name = utils.get_node_name(group)
+
+                        node, index, name, physics = utils.get_material_parts(
+                            node_name, slot.material.name)
+
+                        # check if material has no position defined
+                        if index == 0:
+                            material_counter[group.name] += 1
+                            index = material_counter[group.name]
+
+                        materials[slot.material] = "{}__{:02d}__{}__{}".format(
+                            node, index, name, physics)
+
+        return materials
+
+    def __get_materials_for_object(self, object_):
+        materials = OrderedDict()
+        for material, materialname in self.__materials.items():
+            for object_material in object_.data.materials:
+                if material.name == object_material.name:
+                    materials[material] = materialname
+
+        return materials
 
     def __prepare_for_export(self):
         utils.clean_file()
@@ -131,82 +138,97 @@ class CrytekDaeExporter:
             utils.fix_weights()
 
     def __create_file_header(self, parent_element):
-        # Attributes are x=y values inside a tag
-        asset = self.__doc.createElement("asset")
+        asset = self.__doc.createElement('asset')
         parent_element.appendChild(asset)
-        contrib = self.__doc.createElement("contributor")
-        asset.appendChild(contrib)
-        auth = self.__doc.createElement("author")
-        contrib.appendChild(auth)
-        authname = self.__doc.createTextNode("Blender User")
-        auth.appendChild(authname)
-        authtool = self.__doc.createElement("authoring_tool")
-        authtname = self.__doc.createTextNode(
-            "CryBlend v%s" % self.__config.cryblend_version)
-        authtool.appendChild(authtname)
-        contrib.appendChild(authtool)
-        created = self.__doc.createElement("created")
-        created_value = self.__doc.createTextNode(datetime.now().isoformat(" "))
+        contributor = self.__doc.createElement('contributor')
+        asset.appendChild(contributor)
+        author = self.__doc.createElement('author')
+        contributor.appendChild(author)
+        author_name = self.__doc.createTextNode('Blender User')
+        author.appendChild(author_name)
+        author_tool = self.__doc.createElement('authoring_tool')
+        author_name_text = self.__doc.createTextNode(
+            'CryBlend v{}'.format(self.__config.cryblend_version))
+        author_tool.appendChild(author_name_text)
+        contributor.appendChild(author_tool)
+        created = self.__doc.createElement('created')
+        created_value = self.__doc.createTextNode(
+            datetime.now().isoformat(' '))
         created.appendChild(created_value)
         asset.appendChild(created)
-        modified = self.__doc.createElement("modified")
+        modified = self.__doc.createElement('modified')
         asset.appendChild(modified)
-        unit = self.__doc.createElement("unit")
-        unit.setAttribute("name", "meter")
-        unit.setAttribute("meter", "1")
+        unit = self.__doc.createElement('unit')
+        unit.setAttribute('name', 'meter')
+        unit.setAttribute('meter', '1')
         asset.appendChild(unit)
-        uax = self.__doc.createElement("up_axis")
-        zup = self.__doc.createTextNode("Z_UP")
-        uax.appendChild(zup)
-        asset.appendChild(uax)
+        up_axis = self.__doc.createElement('up_axis')
+        z_up = self.__doc.createTextNode('Z_UP')
+        up_axis.appendChild(z_up)
+        asset.appendChild(up_axis)
 
     def __export_library_cameras(self, root_element):
-        libcam = self.__doc.createElement("library_cameras")
-        root_element.appendChild(libcam)
+        library_cameras = self.__doc.createElement('library_cameras')
+        root_element.appendChild(library_cameras)
 
     def __export_library_lights(self, root_element):
-        liblights = self.__doc.createElement("library_lights")
-        root_element.appendChild(liblights)
+        library_lights = self.__doc.createElement('library_lights')
+        root_element.appendChild(library_lights)
+
+#------------------------------------------------------------------
+# Library Images:
+#------------------------------------------------------------------
 
     def __export_library_images(self, parent_element):
-        library_images = self.__doc.createElement("library_images")
+        library_images = self.__doc.createElement('library_images')
         parent_element.appendChild(library_images)
 
-        images_to_convert = []
+        if bpy.context.scene.render.engine == 'CYCLES':
+            images = self.__get_nodes_images_in_export_nodes()
+        else:
+            images = self.__get_image_textures_in_export_nodes()
 
-        for image in self.__get_image_textures_in_export_nodes():
-            image_element = self.__export_library_image(images_to_convert,
-                                                        image)
+        for image in images:
+            image_element = self.__export_library_image(image)
             library_images.appendChild(image_element)
 
-        if self.__config.convert_source_image_to_dds:
-            self.__convert_images_to_dds(images_to_convert)
+        if self.__config.do_textures:
+            self.__convert_images_to_dds(images)
 
-    def __export_library_image(self, images_to_convert, image):
-        if self.__config.convert_source_image_to_dds:
-            image_path = utils.get_path_with_new_extension(image.filepath,
-                "dds")
-            images_to_convert.append(image)
+    def __export_library_image(self, image):
+        image_path = utils.get_image_path_for_game(image,
+                                                   self.__config.game_dir)
 
-        else:
-            image_path = image.filepath
-
-        image_path = utils.get_relative_path(image_path,
-                                             self.__textures_parent_directory)
-
-        image_element = self.__doc.createElement("image")
-        image_element.setAttribute("id", "%s" % image.name)
-        image_element.setAttribute("name", "%s" % image.name)
-        init_from = self.__doc.createElement("init_from")
-        path_node = self.__doc.createTextNode("%s" % image_path)
+        image_element = self.__doc.createElement('image')
+        image_element.setAttribute('id', image.name)
+        image_element.setAttribute('name', image.name)
+        init_from = self.__doc.createElement('init_from')
+        path_node = self.__doc.createTextNode(image_path)
         init_from.appendChild(path_node)
         image_element.appendChild(init_from)
 
         return image_element
 
+    def __get_nodes_images_in_export_nodes(self):
+        images = []
+
+        nodes = utils.get_type("texture_nodes")
+
+        for node in nodes:
+            try:
+                if utils.is_valid_image(node.image):
+                    images.append(node.image)
+
+            except AttributeError:
+                # don't care about non-image textures
+                pass
+
+        # return only unique images
+        return list(set(images))
+
     def __get_image_textures_in_export_nodes(self):
         images = []
-        textures = utils.get_type("textures")
+        textures = utils.get_type('textures')
 
         for texture in textures:
             try:
@@ -220,37 +242,34 @@ class CrytekDaeExporter:
         # return only unique images
         return list(set(images))
 
-    def __convert_images_to_dds(self, images_to_convert):
-        converter = DdsConverterRunner(
-                                self.__config.rc_for_textures_conversion_path)
-        converter.start_conversion(images_to_convert,
-                                   self.__config.save_tiff_during_conversion)
+    def __convert_images_to_dds(self, images):
+        converter = RCInstance(self.__config)
+        converter.convert_tif(images)
+
+#--------------------------------------------------------------
+# Library Effects:
+#--------------------------------------------------------------
 
     def __export_library_effects(self, parent_element):
-        current_element = self.__doc.createElement("library_effects")
+        current_element = self.__doc.createElement('library_effects')
         parent_element.appendChild(current_element)
-        for material in utils.get_type("materials"):
-            self.__export_library_effects_material(material, current_element)
+        for material, materialname in self.__materials.items():
+            self.__export_library_effects_material(
+                material, materialname, current_element)
 
-    def __export_library_effects_material(self, material, current_element):
+    def __export_library_effects_material(
+            self, material, materialname, current_element):
         images = [[], [], []]
-        texture_slots = utils.get_texture_slots_for_material(material)
-        for texture_slot in texture_slots:
-            image = texture_slot.texture.image
-            if not image:
-                raise exceptions.CryBlendException(
-                            "One of texture slots has no image assigned.")
 
-            surface, sampler = self.__create_surface_and_sampler(image.name)
-            if texture_slot.use_map_color_diffuse:
-                images[0] = [image.name, surface, sampler] 
-            if texture_slot.use_map_color_spec:
-                images[1] = [image.name, surface, sampler]
-            if texture_slot.use_map_normal:
-                images[2] = [image.name, surface, sampler]
+        is_cycles_render = bpy.context.scene.render.engine == 'CYCLES'
+
+        if is_cycles_render:
+            self.__get_cycles_render_images(material, images)
+        else:
+            self.__get_blender_render_images(material, images)
 
         effect_node = self.__doc.createElement("effect")
-        effect_node.setAttribute("id", "%s_fx" % material.name)
+        effect_node.setAttribute("id", "{}_fx".format(materialname))
         profile_node = self.__doc.createElement("profile_COMMON")
         for image in images:
             if len(image) != 0:
@@ -262,7 +281,7 @@ class CrytekDaeExporter:
         phong = self.__create_material_node(material, images)
         technique_common.appendChild(phong)
         profile_node.appendChild(technique_common)
-        
+
         extra = self.__create_double_sided_extra("GOOGLEEARTH")
         profile_node.appendChild(extra)
         effect_node.appendChild(profile_node)
@@ -271,9 +290,41 @@ class CrytekDaeExporter:
         effect_node.appendChild(extra)
         current_element.appendChild(effect_node)
 
+    def __get_cycles_render_images(self, material, images):
+        cycles_nodes = utils.get_texture_nodes_for_material(material)
+        for cycles_node in cycles_nodes:
+            image = cycles_node.image
+            if not image:
+                raise exceptions.CryBlendException(
+                    "One of texture slots has no image assigned.")
+
+            surface, sampler = self.__create_surface_and_sampler(image.name)
+            if cycles_node.name == "Image Texture":
+                images[0] = [image.name, surface, sampler]
+            if cycles_node.name == "Specular":
+                images[1] = [image.name, surface, sampler]
+            if cycles_node.name == "Normal":
+                images[2] = [image.name, surface, sampler]
+
+    def __get_blender_render_images(self, material, images):
+        texture_slots = utils.get_texture_slots_for_material(material)
+        for texture_slot in texture_slots:
+            image = texture_slot.texture.image
+            if not image:
+                raise exceptions.CryBlendException(
+                    "One of texture slots has no image assigned.")
+
+            surface, sampler = self.__create_surface_and_sampler(image.name)
+            if texture_slot.use_map_color_diffuse:
+                images[0] = [image.name, surface, sampler]
+            if texture_slot.use_map_color_spec:
+                images[1] = [image.name, surface, sampler]
+            if texture_slot.use_map_normal:
+                images[2] = [image.name, surface, sampler]
+
     def __create_surface_and_sampler(self, image_name):
         surface = self.__doc.createElement("newparam")
-        surface.setAttribute("sid", "%s-surface" % image_name)
+        surface.setAttribute("sid", "{}-surface".format(image_name))
         surface_node = self.__doc.createElement("surface")
         surface_node.setAttribute("type", "2D")
         init_from_node = self.__doc.createElement("init_from")
@@ -282,11 +333,11 @@ class CrytekDaeExporter:
         surface_node.appendChild(init_from_node)
         surface.appendChild(surface_node)
         sampler = self.__doc.createElement("newparam")
-        sampler.setAttribute("sid", "%s-sampler" % image_name)
+        sampler.setAttribute("sid", "{}-sampler".format(image_name))
         sampler_node = self.__doc.createElement("sampler2D")
         source_node = self.__doc.createElement("source")
         temp_node = self.__doc.createTextNode(
-                                        "%s-surface" % (image_name))
+            "{}-surface".format(image_name))
         source_node.appendChild(temp_node)
         sampler_node.appendChild(source_node)
         sampler.appendChild(sampler_node)
@@ -308,7 +359,8 @@ class CrytekDaeExporter:
             specular = self.__create_color_node(material, "specular")
 
         shininess = self.__create_attribute_node(material, "shininess")
-        index_refraction = self.__create_attribute_node(material, "index_refraction")
+        index_refraction = self.__create_attribute_node(
+            material, "index_refraction")
 
         phong.appendChild(emission)
         phong.appendChild(ambient)
@@ -336,7 +388,7 @@ class CrytekDaeExporter:
     def __create_texture_node(self, image_name, type_):
         node = self.__doc.createElement(type_)
         texture = self.__doc.createElement("texture")
-        texture.setAttribute("texture", "%s-sampler" % image_name)
+        texture.setAttribute("texture", "{}-sampler".format(image_name))
         node.appendChild(texture)
 
         return node
@@ -364,57 +416,66 @@ class CrytekDaeExporter:
 
         return extra
 
-    def __export_library_materials(self, parent_element):
-        library_materials = self.__doc.createElement("library_materials")
-        materials = utils.get_type("materials")
+#------------------------------------------------------------------
+# Library Materials:
+#------------------------------------------------------------------
 
-        for material in materials:
-            material_element = self.__doc.createElement("material")
-            material_element.setAttribute("id", "%s" % (material.name))
-            instance_effect = self.__doc.createElement("instance_effect")
-            instance_effect.setAttribute("url", "#%s_fx" % (material.name))
+    def __export_library_materials(self, parent_element):
+        library_materials = self.__doc.createElement('library_materials')
+
+        for material, materialname in self.__materials.items():
+            material_element = self.__doc.createElement('material')
+            material_element.setAttribute('id', materialname)
+            instance_effect = self.__doc.createElement('instance_effect')
+            instance_effect.setAttribute('url', '#{}_fx'.format(materialname))
             material_element.appendChild(instance_effect)
             library_materials.appendChild(material_element)
 
         parent_element.appendChild(library_materials)
 
+#------------------------------------------------------------------
+# Library Geometries:
+#------------------------------------------------------------------
+
     def __export_library_geometries(self, parent_element):
         libgeo = self.__doc.createElement("library_geometries")
         parent_element.appendChild(libgeo)
         for object_ in utils.get_type("geometry"):
-            bpy.context.scene.objects.active = object_
+            utils.set_active(object_)
             if object_.mode != 'OBJECT':
                 bpy.ops.object.mode_set(mode='OBJECT')
             object_.data.update(calc_tessface=1)
             mesh = object_.data
             object_.name = object_.name
             geometry_node = self.__doc.createElement("geometry")
-            geometry_node.setAttribute("id", "%s" % (object_.name))
+            geometry_node.setAttribute("id", object_.name)
             mesh_node = self.__doc.createElement("mesh")
 
             start_time = clock()
             self.__write_positions(object_, mesh, mesh_node)
-            cbPrint('Positions took %.4f sec.' % (clock() - start_time))
+            cbPrint('Positions took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
             self.__write_normals(object_, mesh, mesh_node)
-            cbPrint('Normals took %.4f sec.' % (clock() - start_time))
+            cbPrint('Normals took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
             self.__write_uvs(object_, mesh, mesh_node)
-            cbPrint('UVs took %.4f sec.' % (clock() - start_time))
+            cbPrint('UVs took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
             self.__write_vertex_colors(object_, mesh, mesh_node)
-            cbPrint('Vertex colors took %.4f sec.' % (clock() - start_time))
+            cbPrint(
+                'Vertex colors took {:.4f} sec.'.format(
+                    clock() - start_time))
 
             start_time = clock()
             self.__write_vertices(object_, mesh, mesh_node)
-            cbPrint('Vertices took %.4f sec.' % (clock() - start_time))
+            cbPrint('Vertices took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
             self.__write_polylist(object_, mesh, mesh_node)
-            cbPrint('Polylist took %.4f sec.' % (clock() - start_time))
+            cbPrint('Polylist took {:.4f} sec.'.format(clock() - start_time))
 
             extra = self.__create_double_sided_extra("MAYA")
             mesh_node.appendChild(extra)
@@ -427,11 +488,7 @@ class CrytekDaeExporter:
             float_positions.extend(vertex.co)
 
         id_ = "{!s}-positions".format(object_.name)
-        source = utils.write_source(id_,
-                                    "float",
-                                    float_positions,
-                                    "XYZ",
-                                    self.__doc)
+        source = utils.write_source(id_, "float", float_positions, "XYZ")
         root.appendChild(source)
 
     def __write_normals(self, object_, mesh, root):
@@ -442,9 +499,7 @@ class CrytekDaeExporter:
             if face.use_smooth:
                 for vert in face.vertices:
                     vertex = mesh.vertices[vert]
-                    normal = utils.veckey3d21(vertex.normal)
-                    float_normals.extend(normal)
-
+                    float_normals.extend(vertex.normal)
             else:
                 if self.__config.average_planar:
                     count = 1
@@ -464,15 +519,10 @@ class CrytekDaeExporter:
                     float_normals.append(ny / count)
                     float_normals.append(nz / count)
                 else:
-                    normal = utils.veckey3d21(face.normal)
-                    float_normals.extend(normal)
+                    float_normals.extend(face.normal)
 
         id_ = "{!s}-normals".format(object_.name)
-        source = utils.write_source(id_,
-                                    "float",
-                                    float_normals,
-                                    "XYZ",
-                                    self.__doc)
+        source = utils.write_source(id_, "float", float_normals, "XYZ")
         root.appendChild(source)
 
     def __write_uvs(self, object_, mesh, root):
@@ -494,11 +544,7 @@ class CrytekDaeExporter:
                     float_uvs.extend(uv)
 
         id_ = "{!s}-UVMap-0".format(object_.name)
-        source = utils.write_source(id_,
-                                    "float",
-                                    float_uvs,
-                                    "ST",
-                                    self.__doc)
+        source = utils.write_source(id_, "float", float_uvs, "ST")
         root.appendChild(source)
 
     def __write_vertex_colors(self, object_, mesh, root):
@@ -516,7 +562,7 @@ class CrytekDaeExporter:
                     for color in colors:
                         if color_layer.name.lower() == "alpha":
                             alpha_found = True
-                            alpha = (color[0] + color[1] + color[2])/3
+                            alpha = (color[0] + color[1] + color[2]) / 3
                             float_colors.extend([1, 1, 1, alpha])
                         else:
                             float_colors.extend(color)
@@ -524,89 +570,114 @@ class CrytekDaeExporter:
         if float_colors:
             id_ = "{!s}-colors".format(object_.name)
             params = ("RGBA" if alpha_found else "RGB")
-            source = utils.write_source(id_,
-                                        "float",
-                                        float_colors,
-                                        params,
-                                        self.__doc)
+            source = utils.write_source(id_, "float", float_colors, params)
             root.appendChild(source)
 
     def __write_vertices(self, object_, mesh, root):
         vertices = self.__doc.createElement("vertices")
-        vertices.setAttribute("id", "%s-vertices" % (object_.name))
-        input = utils.write_input(object_.name, None,
-                                    "positions", "POSITION")
+        vertices.setAttribute("id", "{}-vertices".format(object_.name))
+        input = utils.write_input(object_.name, None, "positions", "POSITION")
         vertices.appendChild(input)
         root.appendChild(vertices)
 
     def __write_polylist(self, object_, mesh, root):
-        materials = mesh.materials[:]
-        if materials:
-            for matindex, material in enumerate(materials):
-                vert_data = ""
-                verts_per_poly = ""
-                poly_count = normal = texcoord = 0
+        matindex = 0
+        for material, materialname in self.__get_materials_for_object(
+                object_).items():
+            vert_data = ''
+            verts_per_poly = ''
+            poly_count = normal = texcoord = 0
 
-                for face in mesh.tessfaces:
-                    if face.material_index == matindex:
-                        verts_per_poly = join(verts_per_poly, len(face.vertices), " ")
-                        poly_count += 1
-                        for vert in face.vertices:
-                            data = self.__write_vertex_data(mesh, face, vert, normal, texcoord)
-                            vert_data = join(vert_data, data)
-                            texcoord += 1
-                    else:
-                        texcoord += len(face.vertices)
+            for face in mesh.tessfaces:
+                if face.material_index == matindex:
+                    verts_per_poly = join(
+                        verts_per_poly, len(
+                            face.vertices), ' ')
+                    poly_count += 1
+                    for vert in face.vertices:
+                        data = self.__write_vertex_data(
+                            mesh, face, vert, normal, texcoord)
+                        vert_data = join(vert_data, data)
+                        texcoord += 1
+                else:
+                    texcoord += len(face.vertices)
 
-                    if face.use_smooth:
-                        normal += len(face.vertices)
-                    else:
-                        normal += 1
+                if face.use_smooth:
+                    normal += len(face.vertices)
+                else:
+                    normal += 1
 
-                polylist = self.__doc.createElement("polylist")
-                polylist.setAttribute("material", material.name)
-                polylist.setAttribute("count", str(poly_count))
+            if poly_count == 0:
+                matindex += 1
+                continue
 
-                inputs = []
-                inputs.append(utils.write_input(object_.name, 0,
-                                            "vertices", "VERTEX"))
-                inputs.append(utils.write_input(object_.name, 1,
-                                            "normals", "NORMAL"))
-                inputs.append(utils.write_input(object_.name, 2,
-                                            "UVMap-0", "TEXCOORD"))
-                if mesh.vertex_colors:
-                    inputs.append(utils.write_input(object_.name, 3,
-                                                    "colors", "COLOR"))
+            polylist = self.__doc.createElement('polylist')
+            polylist.setAttribute('material', materialname)
+            polylist.setAttribute('count', str(poly_count))
 
-                for input in inputs:
-                    polylist.appendChild(input)
+            inputs = []
+            inputs.append(
+                utils.write_input(
+                    object_.name,
+                    0,
+                    'vertices',
+                    'VERTEX'))
+            inputs.append(
+                utils.write_input(
+                    object_.name,
+                    1,
+                    'normals',
+                    'NORMAL'))
+            inputs.append(
+                utils.write_input(
+                    object_.name,
+                    2,
+                    'UVMap-0',
+                    'TEXCOORD'))
+            if mesh.vertex_colors:
+                inputs.append(
+                    utils.write_input(
+                        object_.name,
+                        3,
+                        'colors',
+                        'COLOR'))
 
-                vcount = self.__doc.createElement("vcount")
-                vcount_text = self.__doc.createTextNode(verts_per_poly)
-                vcount.appendChild(vcount_text)
+            for input in inputs:
+                polylist.appendChild(input)
 
-                p = self.__doc.createElement("p")
-                p_text = self.__doc.createTextNode(vert_data)
-                p.appendChild(p_text)
+            vcount = self.__doc.createElement('vcount')
+            vcount_text = self.__doc.createTextNode(verts_per_poly)
+            vcount.appendChild(vcount_text)
 
-                polylist.appendChild(vcount)
-                polylist.appendChild(p)
-                root.appendChild(polylist)
+            p = self.__doc.createElement('p')
+            p_text = self.__doc.createTextNode(vert_data)
+            p.appendChild(p_text)
+
+            polylist.appendChild(vcount)
+            polylist.appendChild(p)
+            root.appendChild(polylist)
+            matindex += 1
 
     def __write_vertex_data(self, mesh, face, vert, normal, texcoord):
         if face.use_smooth:
             normal = vert
 
         if mesh.vertex_colors:
-            return "{:d} {:d} {:d} {:d} ".format(vert, normal, texcoord, texcoord)
+            return "{:d} {:d} {:d} {:d} ".format(
+                vert, normal, texcoord, texcoord)
         else:
             return "{:d} {:d} {:d} ".format(vert, normal, texcoord)
+
+# -------------------------------------------------------------------------
+# Library Controllers: --> Skeleton Armature and List of Bone Names
+#                      --> Skin Geometry, Weights, Transform Matrices
+# -------------------------------------------------------------------------
 
     def __export_library_controllers(self, parent_element):
         library_node = self.__doc.createElement("library_controllers")
 
         for object_ in utils.get_type("geometry"):
-            if not "_boneGeometry" in object_.name:
+            if not utils.is_bone_geometry(object_):
                 armature = utils.get_armature_for_object(object_)
                 if armature is not None:
                     self.__process_bones(library_node,
@@ -621,10 +692,10 @@ class CrytekDaeExporter:
 
         controller_node = self.__doc.createElement("controller")
         parent_node.appendChild(controller_node)
-
         controller_node.setAttribute("id", id_)
+
         skin_node = self.__doc.createElement("skin")
-        skin_node.setAttribute("source", "#%s" % object_.name)
+        skin_node.setAttribute("source", "#{}".format(object_.name))
         controller_node.appendChild(skin_node)
 
         bind_shape_matrix = self.__doc.createElement("bind_shape_matrix")
@@ -646,20 +717,21 @@ class CrytekDaeExporter:
 
         bones = utils.get_bones(armature)
         id_ = "{!s}_{!s}-joints".format(armature.name, object_.name)
-        bone_names = [bone.name for bone in bones]
-        source = utils.write_source(id_,
-                                    "IDREF",
-                                    bone_names,
-                                    [],
-                                    self.__doc)
+        node_name = utils.get_armature_node_name(object_)
+        bone_names = []
+        for bone in bones:
+            props_name = self.__create_props_bone_name(bone, node_name)
+            bone_name = "{!s}{!s}".format(bone.name, props_name)
+            bone_names.append(bone_name)
+        source = utils.write_source(id_, "IDREF", bone_names, [])
         skin_node.appendChild(source)
 
     def __process_bone_matrices(self, object_, armature, skin_node):
-        
+
         bones = utils.get_bones(armature)
         bone_matrices = []
         for bone in bones:
-            fakebone = utils.find_fakebone(bone.name)
+            fakebone = utils.get_fakebone(bone.name)
             if fakebone is None:
                 return
             matrix_local = copy.deepcopy(fakebone.matrix_local)
@@ -667,11 +739,7 @@ class CrytekDaeExporter:
             bone_matrices.extend(utils.matrix_to_array(matrix_local))
 
         id_ = "{!s}_{!s}-matrices".format(armature.name, object_.name)
-        source = utils.write_source(id_,
-                                    "float4x4",
-                                    bone_matrices,
-                                    [],
-                                    self.__doc)
+        source = utils.write_source(id_, "float4x4", bone_matrices, [])
         skin_node.appendChild(source)
 
     def __process_bone_weights(self, object_, armature, skin_node):
@@ -681,27 +749,32 @@ class CrytekDaeExporter:
         vw = ""
         vertex_groups_lengths = ""
         vertex_count = 0
+        bone_list = {}
+
+        for bone_id, bone in enumerate(bones):
+            bone_list[bone.name] = bone_id
 
         for vertex in object_.data.vertices:
+            vertex_group_count = 0
             for group in vertex.groups:
+                group_name = object_.vertex_groups[group.group].name
+                if (group.weight == 0 or
+                        group_name not in bone_list):
+                    continue
+                if vertex_group_count == 8:
+                    cbPrint("Too many bone references in {}:{} vertex group"
+                            .format(object_.name, group_name))
+                    continue
                 group_weights.append(group.weight)
-                for vertex_group in object_.vertex_groups:
-                    if vertex_group.index == group.group:
-                        for bone_id, bone in enumerate(bones):
-                            if bone.name == vertex_group.name:
-                                vw += "%s " % bone_id
-
-                vw += "%s " % vertex_count
+                vw = "{}{} {} ".format(vw, bone_list[group_name], vertex_count)
                 vertex_count += 1
+                vertex_group_count += 1
 
-            vertex_groups_lengths += "%s " % len(vertex.groups)
+            vertex_groups_lengths = "{}{} ".format(vertex_groups_lengths,
+                                                   vertex_group_count)
 
         id_ = "{!s}_{!s}-weights".format(armature.name, object_.name)
-        source = utils.write_source(id_,
-                                    "float",
-                                    group_weights,
-                                    [],
-                                    self.__doc)
+        source = utils.write_source(id_, "float", group_weights, [])
         skin_node.appendChild(source)
 
         vertex_weights = self.__doc.createElement("vertex_weights")
@@ -725,6 +798,10 @@ class CrytekDaeExporter:
 
         skin_node.appendChild(vertex_weights)
 
+# -----------------------------------------------------------------------------
+# Library Animation and Clips: --> Animations, Fakebones, Bone Geometries
+# -----------------------------------------------------------------------------
+
     def __export_library_animation_clips_and_animations(self, parent_element):
         libanmcl = self.__doc.createElement("library_animation_clips")
         libanm = self.__doc.createElement("library_animations")
@@ -732,36 +809,50 @@ class CrytekDaeExporter:
         parent_element.appendChild(libanm)
 
         scene = bpy.context.scene
-        for group in utils.get_export_nodes():
-            node_type = utils.get_node_type(group.name)
-            allowed = ["cga", "anm", "i_caf"]
-            if node_type in allowed:
+
+        ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
+        for group in utils.get_export_nodes(
+                self.__config.export_selected_nodes):
+            node_type = utils.get_node_type(group)
+            if node_type in ALLOWED_NODE_TYPES:
                 animation_clip = self.__doc.createElement("animation_clip")
-                node_name = utils.get_node_name(group.name)
-                animation_clip.setAttribute("id",
-                                            "{!s}-{!s}".format(node_name, node_name))
-                animation_clip.setAttribute("start",
-                                            "{:f}".format(utils.convert_time(scene.frame_start)))
-                animation_clip.setAttribute("end",
-                                            "{:f}".format(utils.convert_time(scene.frame_end)))
+                node_name = utils.get_node_name(group)
+                animation_clip.setAttribute(
+                    "id", "{!s}-{!s}".format(node_name, node_name))
+                animation_clip.setAttribute(
+                    "start", "{:f}".format(
+                        utils.frame_to_time(
+                            scene.frame_start)))
+                animation_clip.setAttribute(
+                    "end", "{:f}".format(
+                        utils.frame_to_time(
+                            scene.frame_end)))
                 is_animation = False
-                for object_ in group.objects:
+
+                for object_ in bpy.context.selected_objects:
                     if (object_.type != 'ARMATURE' and object_.animation_data and
                             object_.animation_data.action):
 
                         is_animation = True
+
+                        props_name = self.__create_props_bone_name(
+                            object_, node_name)
+                        bone_name = "{!s}{!s}".format(object_.name, props_name)
+
                         for axis in iter(AXES):
-                            animation = self.__get_animation_location(object_, axis)
+                            animation = self.__get_animation_location(
+                                object_, bone_name, axis)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
                         for axis in iter(AXES):
-                            animation = self.__get_animation_rotation(object_, axis)
+                            animation = self.__get_animation_rotation(
+                                object_, bone_name, axis)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
-                        self.__export_instance_animation_parameters(object_,
-                                                            animation_clip)
+                        self.__export_instance_animation_parameters(
+                            object_, animation_clip)
 
                 if is_animation:
                     libanmcl.appendChild(animation_clip)
@@ -779,21 +870,24 @@ class CrytekDaeExporter:
                         break
 
         if location_exists:
-            self.__export_instance_parameter(object_, animation_clip, "location")
+            self.__export_instance_parameter(
+                object_, animation_clip, "location")
         if rotation_exists:
-            self.__export_instance_parameter(object_, animation_clip, "rotation_euler")
+            self.__export_instance_parameter(
+                object_, animation_clip, "rotation_euler")
 
     def __export_instance_parameter(self, object_, animation_clip, parameter):
         for axis in iter(AXES):
             inst = self.__doc.createElement("instance_animation")
-            inst.setAttribute("url",
-                              "#{!s}_{!s}_{!s}".format(object_.name, parameter, axis))
+            inst.setAttribute(
+                "url", "#{!s}_{!s}_{!s}".format(
+                    object_.name, parameter, axis))
             animation_clip.appendChild(inst)
 
-    def __get_animation_location(self, object_, axis):
+    def __get_animation_location(self, object_, bone_name, axis):
         attribute_type = "location"
         multiplier = 1
-        target = "{!s}{!s}{!s}".format(object_.name, "/translation.", axis)
+        target = "{!s}{!s}{!s}".format(bone_name, "/translation.", axis)
 
         animation_element = self.__get_animation_attribute(object_,
                                                            axis,
@@ -802,10 +896,10 @@ class CrytekDaeExporter:
                                                            target)
         return animation_element
 
-    def __get_animation_rotation(self, object_, axis):
+    def __get_animation_rotation(self, object_, bone_name, axis):
         attribute_type = "rotation_euler"
-        multiplier = utils.toDegrees
-        target = "{!s}{!s}{!s}{!s}".format(object_.name,
+        multiplier = utils.to_degrees
+        target = "{!s}{!s}{!s}{!s}".format(bone_name,
                                            "/rotation_",
                                            axis,
                                            ".ANGLE")
@@ -827,7 +921,8 @@ class CrytekDaeExporter:
         source_prefix = "#{!s}".format(id_prefix)
 
         for curve in object_.animation_data.action.fcurves:
-            if (curve.data_path == attribute_type and curve.array_index == AXES[axis]):
+            if (curve.data_path ==
+                    attribute_type and curve.array_index == AXES[axis]):
                 keyframe_points = curve.keyframe_points
                 sources = {
                     "input": [],
@@ -843,22 +938,27 @@ class CrytekDaeExporter:
                     khry = keyframe_point.handle_right[1]
                     frame, value = keyframe_point.co
 
-                    sources["input"].append(utils.convert_time(frame))
+                    sources["input"].append(utils.frame_to_time(frame))
                     sources["output"].append(value * multiplier)
-                    sources["interpolation"].append(keyframe_point.interpolation)
-                    sources["intangent"].extend( [utils.convert_time(khlx), khly] )
-                    sources["outangent"].extend( [utils.convert_time(khrx), khry] )
+                    sources["interpolation"].append(
+                        keyframe_point.interpolation)
+                    sources["intangent"].extend(
+                        [utils.frame_to_time(khlx), khly])
+                    sources["outangent"].extend(
+                        [utils.frame_to_time(khrx), khry])
 
                 animation_element = self.__doc.createElement("animation")
                 animation_element.setAttribute("id", id_prefix)
 
                 for type_, data in sources.items():
-                    anim_node = self.__create_animation_node(type_, data, id_prefix)
+                    anim_node = self.__create_animation_node(
+                        type_, data, id_prefix)
                     animation_element.appendChild(anim_node)
 
                 sampler = self.__create_sampler(id_prefix, source_prefix)
                 channel = self.__doc.createElement("channel")
-                channel.setAttribute("source", "{!s}-sampler".format(source_prefix))
+                channel.setAttribute(
+                    "source", "{!s}-sampler".format(source_prefix))
                 channel.setAttribute("target", target)
 
                 animation_element.appendChild(sampler)
@@ -869,18 +969,15 @@ class CrytekDaeExporter:
     def __create_animation_node(self, type_, data, id_prefix):
         id_ = "{!s}-{!s}".format(id_prefix, type_)
         type_map = {
-            "input":            ["float", ["TIME"]],
-            "output":           ["float", ["VALUE"]],
-            "intangent":        ["float", "XY"],
-            "outangent":        ["float", "XY"],
-            "interpolation":    ["name",  ["INTERPOLATION"]]
+            "input": ["float", ["TIME"]],
+            "output": ["float", ["VALUE"]],
+            "intangent": ["float", "XY"],
+            "outangent": ["float", "XY"],
+            "interpolation": ["name", ["INTERPOLATION"]]
         }
 
-        source = utils.write_source(id_,
-                                    type_map[type_][0],
-                                    data,
-                                    type_map[type_][1],
-                                    self.__doc)
+        source = utils.write_source(
+            id_, type_map[type_][0], data, type_map[type_][1])
 
         return source
 
@@ -896,13 +993,16 @@ class CrytekDaeExporter:
         output.setAttribute("source", "{!s}-output".format(source_prefix))
         interpolation = self.__doc.createElement("input")
         interpolation.setAttribute("semantic", "INTERPOLATION")
-        interpolation.setAttribute("source", "{!s}-interpolation".format(source_prefix))
+        interpolation.setAttribute(
+            "source", "{!s}-interpolation".format(source_prefix))
         intangent = self.__doc.createElement("input")
         intangent.setAttribute("semantic", "IN_TANGENT")
-        intangent.setAttribute("source", "{!s}-intangent".format(source_prefix))
+        intangent.setAttribute(
+            "source", "{!s}-intangent".format(source_prefix))
         outangent = self.__doc.createElement("input")
         outangent.setAttribute("semantic", "OUT_TANGENT")
-        outangent.setAttribute("source", "{!s}-outangent".format(source_prefix))
+        outangent.setAttribute(
+            "source", "{!s}-outangent".format(source_prefix))
 
         sampler.appendChild(input)
         sampler.appendChild(output)
@@ -912,6 +1012,11 @@ class CrytekDaeExporter:
 
         return sampler
 
+# ---------------------------------------------------------------------
+# Library Visual Scene: --> Skeleton and _Phys bones, Bone
+#       Transformations, and Instance URL (_boneGeometry) and extras.
+# ---------------------------------------------------------------------
+
     def __export_library_visual_scenes(self, parent_element):
         current_element = self.__doc.createElement("library_visual_scenes")
         visual_scene = self.__doc.createElement("visual_scene")
@@ -920,21 +1025,29 @@ class CrytekDaeExporter:
         current_element.appendChild(visual_scene)
         parent_element.appendChild(current_element)
 
-        if utils.get_export_nodes():
+        if utils.get_export_nodes(self.__config.export_selected_nodes):
             if utils.are_duplicate_nodes():
                 message = "Duplicate Node Names"
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
 
-            for group in utils.get_export_nodes():
+            for group in utils.get_export_nodes(
+                    self.__config.export_selected_nodes):
                 self.__write_export_node(group, visual_scene)
         else:
-            pass # TODO: Handle No Export Nodes Error
+            pass  # TODO: Handle No Export Nodes Error
 
     def __write_export_node(self, group, visual_scene):
-        nodename = "CryExportNode_{}".format(utils.get_node_name(group.name))
-        node = self.__doc.createElement("node")
-        node.setAttribute("id", nodename)
-        node.setIdAttribute("id")
+        if not self.__config.export_for_lumberyard:
+            node_name = "CryExportNode_{}".format(utils.get_node_name(group))
+            node = self.__doc.createElement("node")
+            node.setAttribute("id", node_name)
+            node.setIdAttribute("id")
+        else:
+            node_name = "{}".format(utils.get_node_name(group))
+            node = self.__doc.createElement("node")
+            node.setAttribute("id", node_name)
+            node.setAttribute("LumberyardExportNode", "1")
+            node.setIdAttribute("id")
 
         bpy.ops.mesh.primitive_cube_add(location=(0, 0, 0))
         self.__write_transforms(bpy.context.active_object, node)
@@ -942,20 +1055,18 @@ class CrytekDaeExporter:
 
         root_objects = []
         for object_ in group.objects:
-            if object_.parent is None:
+            if (object_.parent is None or object_.type == 'MESH') and \
+                    not utils.is_bone_geometry(object_):
                 root_objects.append(object_)
-        node = self.__write_visual_scene_node(root_objects, node, node)
+        node = self.__write_visual_scene_node(root_objects, node)
 
         extra = self.__create_cryengine_extra(group)
         node.appendChild(extra)
         visual_scene.appendChild(node)
 
-    def __write_visual_scene_node(self, objects, nodeparent, root):
+    def __write_visual_scene_node(self, objects, parent_node):
         for object_ in objects:
-            if object_.type == "ARMATURE":
-                self.__write_bone_list([utils.get_root_bone(object_)], object_, root, root)
-                node = root
-            elif not utils.is_fakebone(object_):
+            if object_.type == "MESH" and not utils.is_fakebone(object_):
                 node = self.__doc.createElement("node")
                 node.setAttribute("id", object_.name)
                 node.setIdAttribute("id")
@@ -970,41 +1081,103 @@ class CrytekDaeExporter:
                 if extra is not None:
                     node.appendChild(extra)
 
-                nodeparent.appendChild(node)
+                parent_node.appendChild(node)
 
-            if object_.children:
-                object_children = utils.get_object_children(object_)
-                self.__write_visual_scene_node(object_children, node, root)
+                if object_.parent is not None and object_.parent.type == "ARMATURE":
+                    self.__write_bone_list(
+                        [utils.get_root_bone(object_.parent)], object_, parent_node)
 
-        return root
+            elif object_.type == "ARMATURE" and utils.is_physical(object_):
+                self.__write_bone_list(
+                    [utils.get_root_bone(object_)], object_, parent_node)
 
-    def __write_bone_list(self, bones, object_, nodeparent, root):
+        return parent_node
+
+    def __write_bone_list(self, bones, object_, parent_node):
         scene = bpy.context.scene
-        bonenames = []
+        bone_names = []
+
+        node_name = utils.get_armature_node_name(object_)
 
         for bone in bones:
-            props = self.__create_ik_properties(bone, object_, root)
-            nodename = join(bone.name, props)
-            bonenames.append(nodename)
+            props_name = self.__create_props_bone_name(bone, node_name)
+            props_ik = self.__create_ik_properties(bone, object_)
+            bone_name = join(bone.name, props_name, props_ik)
+            bone_names.append(bone_name)
 
             node = self.__doc.createElement("node")
-            node.setAttribute("id", nodename)
-            node.setAttribute("name", nodename)
+            node.setAttribute("id", bone_name)
+            node.setAttribute("name", bone_name)
             node.setIdAttribute("id")
 
-            fakebone = utils.find_fakebone(bone.name)
+            fakebone = utils.get_fakebone(bone.name)
             if fakebone is not None:
                 self.__write_transforms(fakebone, node)
 
-            bone_geometry = utils.find_bone_geometry(bone.name)
-            if bone_geometry is not None:
-                instance = self.__create_instance(object_)
-                node.appendChild(instance)
+                bone_geometry = utils.get_bone_geometry(bone.name)
+                if bone_geometry is not None:
+                    instance = self.__create_instance_for_bone(
+                        bone, bone_geometry)
+                    node.appendChild(instance)
 
-            nodeparent.appendChild(node)
+                    extra = self.__create_physic_proxy_for_bone(
+                        object_.parent, bone)
+                    if extra is not None:
+                        node.appendChild(extra)
 
-            if object_.children:
-                self.__write_bone_list(bone.children, object_, node, root)
+            elif utils.is_physical(bone):
+                bone_geometry = utils.get_bone_geometry(bone.name)
+                if bone_geometry is not None:
+                    self.__write_transforms(bone_geometry, node)
+
+            parent_node.appendChild(node)
+
+            if bone.children:
+                self.__write_bone_list(bone.children, object_, node)
+
+    def __create_instance_for_bone(self, bone, bone_geometry):
+        instance = None
+
+        instance = self.__doc.createElement("instance_geometry")
+        instance.setAttribute("url", "#{}_boneGeometry".format(bone.name))
+        bm = self.__doc.createElement("bind_material")
+        tc = self.__doc.createElement("technique_common")
+
+        for mat in bone_geometry.material_slots:
+            im = self.__doc.createElement("instance_material")
+            im.setAttribute("symbol", mat.name)
+            im.setAttribute("target", "#{}".format(mat.name))
+            bvi = self.__doc.createElement("bind_vertex_input")
+            bvi.setAttribute("semantic", "UVMap")
+            bvi.setAttribute("input_semantic", "TEXCOORD")
+            bvi.setAttribute("input_set", "0")
+            im.appendChild(bvi)
+            tc.appendChild(im)
+
+        bm.appendChild(tc)
+        instance.appendChild(bm)
+
+        return instance
+
+    def __create_physic_proxy_for_bone(self, object_, bone):
+        extra = None
+        try:
+            bonePhys = object_.pose.bones[bone.name]['phys_proxy']
+            cbPrint(bone.name + " physic proxy is " + bonePhys)
+
+            extra = self.__doc.createElement("extra")
+            techcry = self.__doc.createElement("technique")
+            techcry.setAttribute("profile", "CryEngine")
+            prop2 = self.__doc.createElement("properties")
+
+            cryprops = self.__doc.createTextNode(bonePhys)
+            prop2.appendChild(cryprops)
+            techcry.appendChild(prop2)
+            extra.appendChild(techcry)
+        except:
+            pass
+
+        return extra
 
     def __write_transforms(self, object_, node):
         trans = self.__create_translation_node(object_)
@@ -1021,15 +1194,18 @@ class CrytekDaeExporter:
         trans = self.__doc.createElement("translate")
         trans.setAttribute("sid", "translation")
         trans_text = self.__doc.createTextNode("{:f} {:f} {:f}".format(
-                                                    * object_.location))
+            * object_.location))
         trans.appendChild(trans_text)
 
         return trans
 
     def __create_rotation_node(self, object_):
-        rotx = self.__write_rotation("X", "1 0 0 {:f}", object_.rotation_euler[0])
-        roty = self.__write_rotation("Y", "0 1 0 {:f}", object_.rotation_euler[1])
-        rotz = self.__write_rotation("Z", "0 0 1 {:f}", object_.rotation_euler[2])
+        rotx = self.__write_rotation(
+            "X", "1 0 0 {:f}", object_.rotation_euler[0])
+        roty = self.__write_rotation(
+            "Y", "0 1 0 {:f}", object_.rotation_euler[1])
+        rotz = self.__write_rotation(
+            "Z", "0 0 1 {:f}", object_.rotation_euler[2])
 
         return rotx, roty, rotz
 
@@ -1037,7 +1213,7 @@ class CrytekDaeExporter:
         rot = self.__doc.createElement("rotate")
         rot.setAttribute("sid", "rotation_{}".format(axis))
         rot_text = self.__doc.createTextNode(textFormat.format(
-                                                rotation * utils.toDegrees))
+            rotation * utils.to_degrees))
         rot.appendChild(rot_text)
 
         return rot
@@ -1046,7 +1222,7 @@ class CrytekDaeExporter:
         scale = self.__doc.createElement("scale")
         scale.setAttribute("sid", "scale")
         scale_text = self.__doc.createTextNode(
-                    utils.floats_to_string(object_.scale, " ", "%s"))
+            utils.floats_to_string(object_.scale, " ", "%s"))
         scale.appendChild(scale_text)
 
         return scale
@@ -1058,8 +1234,8 @@ class CrytekDaeExporter:
             instance = self.__doc.createElement("instance_controller")
             # This binds the mesh object to the armature in control of it
             instance.setAttribute("url", "#{!s}_{!s}".format(
-                                        armature.name,
-                                        object_.name))
+                armature.name,
+                object_.name))
         elif object_.name[:6] != "_joint" and object_.type == "MESH":
             instance = self.__doc.createElement("instance_geometry")
             instance.setAttribute("url", "#{!s}".format(object_.name))
@@ -1070,21 +1246,22 @@ class CrytekDaeExporter:
             return instance
 
     def __create_bind_material(self, object_):
-        bind_material = self.__doc.createElement("bind_material")
-        technique_common = self.__doc.createElement("technique_common")
+        bind_material = self.__doc.createElement('bind_material')
+        technique_common = self.__doc.createElement('technique_common')
 
-        for material in object_.material_slots:
+        for material, materialname in self.__get_materials_for_object(
+                object_).items():
             instance_material = self.__doc.createElement(
-                                "instance_material")
-            instance_material.setAttribute("symbol", material.name)
-            instance_material.setAttribute("target", "#{!s}".format(
-                                material.name))
+                'instance_material')
+            instance_material.setAttribute('symbol', materialname)
+            instance_material.setAttribute('target', '#{!s}'.format(
+                materialname))
 
             bind_vertex_input = self.__doc.createElement(
-                                "bind_vertex_input")
-            bind_vertex_input.setAttribute("semantic", "UVMap")
-            bind_vertex_input.setAttribute("input_semantic", "TEXCOORD")
-            bind_vertex_input.setAttribute("input_set", "0")
+                'bind_vertex_input')
+            bind_vertex_input.setAttribute('semantic', 'UVMap')
+            bind_vertex_input.setAttribute('input_semantic', 'TEXCOORD')
+            bind_vertex_input.setAttribute('input_set', '0')
 
             instance_material.appendChild(bind_vertex_input)
             technique_common.appendChild(instance_material)
@@ -1092,29 +1269,30 @@ class CrytekDaeExporter:
         bind_material.appendChild(technique_common)
 
         return bind_material
-        
+
     def __create_cryengine_extra(self, node):
         extra = self.__doc.createElement("extra")
         technique = self.__doc.createElement("technique")
         technique.setAttribute("profile", "CryEngine")
-        # Tag properties onto the end of the item.
         properties = self.__doc.createElement("properties")
-        if utils.is_export_node(node.name):
-            node_type = utils.get_node_type(node.name)
-            allowed = {"cgf", "cga", "chr", "skin", "anm", "i_caf"}
-            if node_type in allowed:
-                prop = self.__doc.createTextNode("fileType={}".format(node_type))
+
+        ALLOWED_NODE_TYPES = ("cgf", "cga", "chr", "skin", "anm", "i_caf")
+
+        if utils.is_export_node(node):
+            node_type = utils.get_node_type(node)
+            if node_type in ALLOWED_NODE_TYPES:
+                prop = self.__doc.createTextNode(
+                    "fileType={}".format(node_type))
                 properties.appendChild(prop)
-            if self.__config.donot_merge:
+            if self.__config.do_not_merge:
                 prop = self.__doc.createTextNode("DoNotMerge")
                 properties.appendChild(prop)
         else:
             if not node.rna_type.id_data.items():
                 return
         for prop in node.rna_type.id_data.items():
-            if prop:
-                user_defined_property = self.__doc.createTextNode("{!s}".format(prop[1]))
-                properties.appendChild(user_defined_property)
+            self.__create_user_defined_property(prop, properties)
+
         technique.appendChild(properties)
 
         if (node.name[:6] == "_joint"):
@@ -1125,15 +1303,31 @@ class CrytekDaeExporter:
 
         return extra
 
+    def __create_user_defined_property(self, prop, node):
+        if prop:
+            prop_name = prop[0]
+            if add.is_user_defined_property(prop_name):
+                udp = None
+
+                if isinstance(prop[1], str):
+                    udp = self.__doc.createTextNode("{!s}".format(prop[1]))
+                else:
+                    udp = self.__doc.createTextNode("{!s}=".format(prop[0])
+                                                    + "{!s}".format(prop[1]))
+
+                node.appendChild(udp)
+
     def __create_helper_joint(self, object_):
         x1, y1, z1, x2, y2, z2 = utils.get_bounding_box(object_)
 
         min = self.__doc.createElement("bound_box_min")
-        min_text = self.__doc.createTextNode("{:f} {:f} {:f}".format(x1, y1, z1))
+        min_text = self.__doc.createTextNode(
+            "{:f} {:f} {:f}".format(x1, y1, z1))
         min.appendChild(min_text)
 
         max = self.__doc.createElement("bound_box_max")
-        max_text = self.__doc.createTextNode("{:f} {:f} {:f}".format(x2, y2, z2))
+        max_text = self.__doc.createTextNode(
+            "{:f} {:f} {:f}".format(x2, y2, z2))
         max.appendChild(max_text)
 
         joint = self.__doc.createElement("helper")
@@ -1143,109 +1337,63 @@ class CrytekDaeExporter:
 
         return joint
 
-    def __create_ik_properties(self, bone, object_, export_node):
+    def __create_props_bone_name(self, bone, node_name):
+        bone_name = bone.name.replace("__", "*")
+        props_name = '%{!s}%--PRprops_name={!s}'.format(node_name, bone_name)
+
+        return props_name
+
+    def __create_ik_properties(self, bone, object_):
         props = ""
-        if self.__config.include_ik and bone.name.endswith("_Phys"):
-            nodename = root.getAttribute('id')[14:]
-            props_name = bone.name.replace("_", "*")
+        if utils.is_physical(bone):
 
             armature_object = bpy.data.objects[object_.name[:-5]]
             pose_bone = armature_object.pose.bones[bone.name[:-5]]
 
+            xIK, yIK, zIK = add.get_bone_ik_max_min(pose_bone)
+
+            damping, spring, spring_tension = add.get_bone_ik_properties(
+                pose_bone)
+
             props = join(
-                        '%{!s}%'.format(nodename),
-                        '--PRprops_name={!s}_'.format(props_name),
+                xIK,
+                '_xdamping={}'.format(damping[0]),
+                '_xspringangle={}'.format(spring[0]),
+                '_xspringtension={}'.format(spring_tension[0]),
 
-                        'xmax={!s}_'.format(pose_bone.ik_max_x),
-                        'xmin={!s}_'.format(pose_bone.ik_min_x),
-                        'xdamping={!s}_'.format(pose_bone.ik_stiffness_x),
-                        'xspringangle={!s}_'.format(0.0),
-                        'xspringtension={!s}_'.format(1.0),
+                yIK,
+                '_ydamping={}'.format(damping[1]),
+                '_yspringangle={}'.format(spring[1]),
+                '_yspringtension={}'.format(spring_tension[1]),
 
-                        'ymax={!s}_'.format(pose_bone.ik_max_y),
-                        'ymin={!s}_'.format(pose_bone.ik_min_y),
-                        'ydamping={!s}_'.format(pose_bone.ik_stiffness_y),
-                        'yspringangle={!s}_'.format(0.0),
-                        'yspringtension={!s}_'.format(1.0),
-
-                        'zmax={!s}_'.format(pose_bone.ik_max_z),
-                        'zmin={!s}_'.format(pose_bone.ik_min_z),
-                        'zdamping={!s}_'.format(pose_bone.ik_stiffness_z),
-                        'zspringangle={!s}_'.format(0.0),
-                        'zspringtension={!s}_'.format(1.0)
-                    )
+                zIK,
+                '_zdamping={}'.format(damping[2]),
+                '_zspringangle={}'.format(spring[2]),
+                '_zspringtension={}'.format(spring_tension[2])
+            )
 
         return props
 
     def __export_scene(self, parent_element):
         scene = self.__doc.createElement("scene")
-        instance_visual_scene = self.__doc.createElement("instance_visual_scene")
+        instance_visual_scene = self.__doc.createElement(
+            "instance_visual_scene")
         instance_visual_scene.setAttribute("url", "#scene")
         scene.appendChild(instance_visual_scene)
         parent_element.appendChild(scene)
 
 
-def write_to_file(config, doc, filepath, exe):
-    xml_string = doc.toprettyxml(indent="    ")
-    file = open(filepath, "w")
-    file.write(xml_string)
-    file.close()
-
-    dae_path = utils.get_absolute_path_for_rc(filepath)
-    rc_params = ["/verbose", "/threads=processors", "/refresh"]
-
-    if not config.disable_rc:
-        if config.do_materials:
-            rc_params.append("/createmtl=1")
-
-        rc_process = utils.run_rc(exe, dae_path, rc_params)
-
-        if rc_process is not None:
-            rc_process.wait()
-            components = dae_path.split("\\")
-            name = components[len(components)-1]
-            output_path = dae_path[:-len(name)]
-            for group in utils.get_export_nodes():
-                node_type = utils.get_node_type(group.name)
-                allowed = {"cgf", "cga", "chr", "skin"}
-                if node_type in allowed:
-                    out_file = "{0}{1}".format(output_path,
-                                                group.name)
-                    args = [exe, "/refresh", "/vertexindexformat=u16", out_file]
-                    rc_second_pass = subprocess.Popen(args)
-
-        if config.do_materials:
-            mtl_fix_thread = threading.Thread(
-                target=fix_normalmap_in_mtls,
-                args=(rc_process, filepath)
-            )
-            mtl_fix_thread.start()
-
-    if not config.save_dae:
-        rcdone_path = "{}.rcdone".format(dae_path)
-        if os.path.exists(dae_path):
-            os.remove(dae_path)
-        if os.path.exists(rcdone_path):
-            os.remove(rcdone_path)
-
-    if config.make_layer:
-        layer = make_layer(filepath)
-        lyr_file_name = os.path.splitext(filepath)[0] + ".lyr"
-        file = open(lyr_file_name, 'w')
-        file.write(layer)
-        file.close()
-
-
-def write_scripts(config, filepath):
+def write_scripts(config):
+    filepath = bpy.path.ensure_ext(config.filepath, ".dae")
     if not config.make_chrparams and not config.make_cdf:
         return
 
     dae_path = utils.get_absolute_path_for_rc(filepath)
-    output_path =  os.path.dirname(dae_path)
+    output_path = os.path.dirname(dae_path)
     chr_names = []
-    for group in utils.get_export_nodes():
-        if utils.get_node_type(group.name) == "chr":
-            chr_names.append(utils.get_node_name(group.name))
+    for group in utils.get_export_nodes(self.__config.export_selected_nodes):
+        if utils.get_node_type(group) == "chr":
+            chr_names.append(utils.get_node_name(group))
 
     for chr_name in chr_names:
         if config.make_chrparams:
@@ -1258,149 +1406,17 @@ def write_scripts(config, filepath):
             utils.generate_xml(filepath, contents)
 
 
-def make_layer(fname):
-    lName = "ExportedLayer"
-    layerDoc = Document()
-    # ObjectLayer
-    objLayer = layerDoc.createElement("ObjectLayer")
-    # Layer
-    layer = layerDoc.createElement("Layer")
-    layer.setAttribute('name', lName)
-    layer.setAttribute('GUID', utils.get_guid())
-    layer.setAttribute('FullName', lName)
-    layer.setAttribute('External', '0')
-    layer.setAttribute('Exportable', '1')
-    layer.setAttribute('ExportLayerPak', '1')
-    layer.setAttribute('DefaultLoaded', '0')
-    layer.setAttribute('HavePhysics', '1')
-    layer.setAttribute('Expanded', '0')
-    layer.setAttribute('IsDefaultColor', '1')
-    # Layer Objects
-    layerObjects = layerDoc.createElement("LayerObjects")
-    # Actual Objects
-    for group in utils.get_export_nodes():
-        if len(group.objects) > 1:
-            origin = 0, 0, 0
-            rotation = 1, 0, 0, 0
-        else:
-            origin = group.objects[0].location
-            rotation = group.objects[0].delta_rotation_quaternion
-
-        if 'CryExportNode' in group.name:
-            object_node = layerDoc.createElement("Object")
-            object_node.setAttribute('name', group.name[14:])
-            object_node.setAttribute('Type', 'Entity')
-            object_node.setAttribute('Id', utils.get_guid())
-            object_node.setAttribute('LayerGUID', layer.getAttribute('GUID'))
-            object_node.setAttribute('Layer', lName)
-            cbPrint(origin)
-            positionString = "%s, %s, %s" % origin[:]
-            object_node.setAttribute('Pos', positionString)
-            rotationString = "%s, %s, %s, %s" % rotation[:]
-            object_node.setAttribute('Rotate', rotationString)
-            object_node.setAttribute('EntityClass', 'BasicEntity')
-            object_node.setAttribute('FloorNumber', '-1')
-            object_node.setAttribute('RenderNearest', '0')
-            object_node.setAttribute('NoStaticDecals', '0')
-            object_node.setAttribute('CreatedThroughPool', '0')
-            object_node.setAttribute('MatLayersMask', '0')
-            object_node.setAttribute('OutdoorOnly', '0')
-            object_node.setAttribute('CastShadow', '1')
-            object_node.setAttribute('MotionBlurMultiplier', '1')
-            object_node.setAttribute('LodRatio', '100')
-            object_node.setAttribute('ViewDistRatio', '100')
-            object_node.setAttribute('HiddenInGame', '0')
-            properties = layerDoc.createElement("Properties")
-            properties.setAttribute('object_Model', '/Objects/%s.cgf'
-                                    % group.name[14:])
-            properties.setAttribute('bCanTriggerAreas', '0')
-            properties.setAttribute('bExcludeCover', '0')
-            properties.setAttribute('DmgFactorWhenCollidingAI', '1')
-            properties.setAttribute('esFaction', '')
-            properties.setAttribute('bHeavyObject', '0')
-            properties.setAttribute('bInteractLargeObject', '0')
-            properties.setAttribute('bMissionCritical', '0')
-            properties.setAttribute('bPickable', '0')
-            properties.setAttribute('soclasses_SmartObjectClass', '')
-            properties.setAttribute('bUsable', '0')
-            properties.setAttribute('UseMessage', '0')
-            health = layerDoc.createElement("Health")
-            health.setAttribute('bInvulnerable', '1')
-            health.setAttribute('MaxHealth', '500')
-            health.setAttribute('bOnlyEnemyFire', '1')
-            interest = layerDoc.createElement("Interest")
-            interest.setAttribute('soaction_Action', '')
-            interest.setAttribute('bInteresting', '0')
-            interest.setAttribute('InterestLevel', '1')
-            interest.setAttribute('Pause', '15')
-            interest.setAttribute('Radius', '20')
-            interest.setAttribute('bShared', '0')
-            vOffset = layerDoc.createElement('vOffset')
-            vOffset.setAttribute('x', '0')
-            vOffset.setAttribute('y', '0')
-            vOffset.setAttribute('z', '0')
-            interest.appendChild(vOffset)
-            properties.appendChild(health)
-            properties.appendChild(interest)
-            object_node.appendChild(properties)
-            layerObjects.appendChild(object_node)
-
-    layer.appendChild(layerObjects)
-    objLayer.appendChild(layer)
-    layerDoc.appendChild(objLayer)
-    return layerDoc.toprettyxml(indent="  ")
-
-
-def fix_normalmap_in_mtls(rc_process, dae_file):
-    SUCCESS = 0
-
-    return_code = rc_process.wait()
-
-    if return_code == SUCCESS:
-        export_directory = os.path.dirname(dae_file)
-
-        mtl_files = utils.get_mtl_files_in_directory(export_directory)
-
-        for mtl_file_name in mtl_files:
-            fix_normalmap_in_mtl(mtl_file_name)
-
-
-def fix_normalmap_in_mtl(mtl_file_name):
-    TMP_FILE_SUFFIX = ".tmp"
-    BAD_TAG_NAME = "<Texture Map=\"NormalMap\" File=\""
-    GOOD_TAG_NAME = "<Texture Map=\"Bumpmap\" File=\""
-
-    tmp_mtl_file_name = mtl_file_name + TMP_FILE_SUFFIX
-    mtl_old_file = open(mtl_file_name, "r")
-    mtl_new_file = open(tmp_mtl_file_name, "w")
-
-    for line in mtl_old_file:
-        line = line.replace(BAD_TAG_NAME, GOOD_TAG_NAME)
-        mtl_new_file.write(line)
-
-    mtl_old_file.close()
-    mtl_new_file.close()
-
-    os.remove(mtl_file_name)
-    os.rename(tmp_mtl_file_name, mtl_file_name)
-
-
 def save(config):
     # prevent wasting time for exporting if RC was not found
-    if not os.path.isfile(config.rc_path):
+    if not config.disable_rc and not os.path.isfile(config.rc_path):
         raise exceptions.NoRcSelectedException
 
     exporter = CrytekDaeExporter(config)
     exporter.export()
 
 
-def menu_function_export(self, context):
-    self.layout.operator(CrytekDaeExporter.bl_idname, text="Export Crytek Dae")
-
-
 def register():
     bpy.utils.register_class(CrytekDaeExporter)
-    bpy.types.INFO_MT_file_export.append(menu_function_export)
 
     bpy.utils.register_class(TriangulateMeError)
     bpy.utils.register_class(Error)
@@ -1408,7 +1424,6 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(CrytekDaeExporter)
-    bpy.types.INFO_MT_file_export.remove(menu_function_export)
     bpy.utils.unregister_class(TriangulateMeError)
     bpy.utils.unregister_class(Error)
 

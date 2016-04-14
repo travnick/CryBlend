@@ -2,7 +2,9 @@
 # Name:        exceptions.py
 # Purpose:     Holds custom exception classes
 #
-# Author:      Mikołaj Milej
+# Author:      Mikołaj Milej,
+#              Angelo J. Miner, Daniel White, David Marcelis, Duo Oratar,
+#              Oscar Martin Garcia, Özkan Afacan
 #
 # Created:     23/06/2013
 # Copyright:   (c) Mikołaj Milej 2013
@@ -13,6 +15,7 @@
 
 
 class CryBlendException(RuntimeError):
+
     def __init__(self, message):
         self._message = message
 
@@ -24,6 +27,7 @@ class CryBlendException(RuntimeError):
 
 
 class BlendNotSavedException(CryBlendException):
+
     def __init__(self):
         message = "Blend file has to be saved before exporting."
 
@@ -31,6 +35,7 @@ class BlendNotSavedException(CryBlendException):
 
 
 class TextureAndBlendDiskMismatchException(CryBlendException):
+
     def __init__(self, blend_path, texture_path):
         message = """
 Blend file and all textures have to be placed on the same disk.
@@ -42,10 +47,19 @@ Texture file: {!r}""".format(blend_path, texture_path)
 
 
 class NoRcSelectedException(CryBlendException):
+
     def __init__(self):
         message = """
 Please find Resource Compiler first.
 Usually located in 'CryEngine\\Bin32\\rc\\rc.exe'
 """
+
+        CryBlendException.__init__(self, message)
+
+
+class NoGameDirectorySelected(CryBlendException):
+
+    def __init__(self):
+        message = "Please select a Game Directory!"
 
         CryBlendException.__init__(self, message)
