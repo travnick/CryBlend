@@ -1108,14 +1108,19 @@ class CrytekDaeExporter:
             if fakebone is not None:
                 self.__write_transforms(fakebone, node)
 
-            bone_geometry = utils.get_bone_geometry(bone.name)
-            if bone_geometry is not None:
-                instance = self.__create_instance_for_bone(bone, bone_geometry)
-                node.appendChild(instance)
+                bone_geometry = utils.get_bone_geometry(bone.name)
+                if bone_geometry is not None:
+                    instance = self.__create_instance_for_bone(bone, bone_geometry)
+                    node.appendChild(instance)
 
-                extra = self.__create_physic_proxy_for_bone(object_.parent, bone)
-                if extra is not None:
-                    node.appendChild(extra)
+                    extra = self.__create_physic_proxy_for_bone(object_.parent, bone)
+                    if extra is not None:
+                        node.appendChild(extra)
+
+            elif utils.is_physical(bone):
+                bone_geometry = utils.get_bone_geometry(bone.name)
+                if bone_geometry is not None:
+                    self.__write_transforms(bone_geometry, node)
 
             parent_node.appendChild(node)
 
