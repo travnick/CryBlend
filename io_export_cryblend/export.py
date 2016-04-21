@@ -450,6 +450,9 @@ class CrytekDaeExporter:
             geometry_node.setAttribute("id", object_.name)
             mesh_node = self.__doc.createElement("mesh")
 
+            print('')
+            cbPrint('"{}" object is processing...'.format(object_.name))
+
             start_time = clock()
             self.__write_positions(object_, mesh, mesh_node)
             cbPrint('Positions took {:.4f} sec.'.format(clock() - start_time))
