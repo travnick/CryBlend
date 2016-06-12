@@ -844,23 +844,23 @@ class CrytekDaeExporter:
 
                         for axis in iter(AXES):
                             animation = self.__get_animation_location(
-                                object_, bone_name, axis)
+                                object_, bone_name, axis, node_name)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
                         for axis in iter(AXES):
                             animation = self.__get_animation_rotation(
-                                object_, bone_name, axis)
+                                object_, bone_name, axis, node_name)
                             if animation is not None:
                                 libanm.appendChild(animation)
 
                         self.__export_instance_animation_parameters(
-                            object_, animation_clip)
+                            object_, animation_clip, node_name)
 
                 if is_animation:
                     libanmcl.appendChild(animation_clip)
 
-    def __export_instance_animation_parameters(self, object_, animation_clip):
+    def __export_instance_animation_parameters(self, object_, animation_clip, node_name):
         location_exists = rotation_exists = False
         for curve in object_.animation_data.action.fcurves:
             for axis in iter(AXES):
@@ -874,20 +874,20 @@ class CrytekDaeExporter:
 
         if location_exists:
             self.__export_instance_parameter(
-                object_, animation_clip, "location")
+                object_, animation_clip, "location", node_name)
         if rotation_exists:
             self.__export_instance_parameter(
-                object_, animation_clip, "rotation_euler")
+                object_, animation_clip, "rotation_euler", node_name)
 
-    def __export_instance_parameter(self, object_, animation_clip, parameter):
+    def __export_instance_parameter(self, object_, animation_clip, parameter, node_name):
         for axis in iter(AXES):
             inst = self.__doc.createElement("instance_animation")
             inst.setAttribute(
-                "url", "#{!s}_{!s}_{!s}".format(
-                    object_.name, parameter, axis))
+                "url", "#{!s}-{!s}-{!s}_{!s}_{!s}".format(
+                    node_name, node_name, object_.name, parameter, axis))
             animation_clip.appendChild(inst)
 
-    def __get_animation_location(self, object_, bone_name, axis):
+    def __get_animation_location(self, object_, bone_name, axis, node_name):
         attribute_type = "location"
         multiplier = 1
         target = "{!s}{!s}{!s}".format(bone_name, "/translation.", axis)
@@ -896,10 +896,11 @@ class CrytekDaeExporter:
                                                            axis,
                                                            attribute_type,
                                                            multiplier,
-                                                           target)
+                                                           target,
+                                                           node_name)
         return animation_element
 
-    def __get_animation_rotation(self, object_, bone_name, axis):
+    def __get_animation_rotation(self, object_, bone_name, axis, node_name):
         attribute_type = "rotation_euler"
         multiplier = utils.to_degrees
         target = "{!s}{!s}{!s}{!s}".format(bone_name,
@@ -911,7 +912,8 @@ class CrytekDaeExporter:
                                                            axis,
                                                            attribute_type,
                                                            multiplier,
-                                                           target)
+                                                           target,
+                                                           node_name)
         return animation_element
 
     def __get_animation_attribute(self,
@@ -919,8 +921,10 @@ class CrytekDaeExporter:
                                   axis,
                                   attribute_type,
                                   multiplier,
-                                  target):
-        id_prefix = "{!s}_{!s}_{!s}".format(object_.name, attribute_type, axis)
+                                  target,
+                                  node_name):
+        id_prefix = "{!s}-{!s}-{!s}_{!s}_{!s}".format(node_name, node_name,
+                                           object_.name, attribute_type, axis)
         source_prefix = "#{!s}".format(id_prefix)
 
         for curve in object_.animation_data.action.fcurves:
@@ -1061,13 +1065,13 @@ class CrytekDaeExporter:
             if (object_.parent is None or object_.type == 'MESH') and \
                     not utils.is_bone_geometry(object_):
                 root_objects.append(object_)
-        node = self.__write_visual_scene_node(root_objects, node)
+        node = self.__write_visual_scene_node(root_objects, node, group)
 
         extra = self.__create_cryengine_extra(group)
         node.appendChild(extra)
         visual_scene.appendChild(node)
 
-    def __write_visual_scene_node(self, objects, parent_node):
+    def __write_visual_scene_node(self, objects, parent_node, group):
         for object_ in objects:
             if object_.type == "MESH" and not utils.is_fakebone(object_):
                 node = self.__doc.createElement("node")
@@ -1088,19 +1092,19 @@ class CrytekDaeExporter:
 
                 if object_.parent is not None and object_.parent.type == "ARMATURE":
                     self.__write_bone_list(
-                        [utils.get_root_bone(object_.parent)], object_, parent_node)
+                        [utils.get_root_bone(object_.parent)], object_, parent_node, group)
 
             elif object_.type == "ARMATURE" and utils.is_physical(object_):
                 self.__write_bone_list(
-                    [utils.get_root_bone(object_)], object_, parent_node)
+                    [utils.get_root_bone(object_)], object_, parent_node, group)
 
         return parent_node
 
-    def __write_bone_list(self, bones, object_, parent_node):
+    def __write_bone_list(self, bones, object_, parent_node, group):
         scene = bpy.context.scene
         bone_names = []
 
-        node_name = utils.get_armature_node_name(object_)
+        node_name = utils.get_node_name(group)
 
         for bone in bones:
             props_name = self.__create_props_bone_name(bone, node_name)
@@ -1136,7 +1140,7 @@ class CrytekDaeExporter:
             parent_node.appendChild(node)
 
             if bone.children:
-                self.__write_bone_list(bone.children, object_, node)
+                self.__write_bone_list(bone.children, object_, node, group)
 
     def __create_instance_for_bone(self, bone, bone_geometry):
         instance = None
