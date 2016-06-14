@@ -126,7 +126,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
                 is_animation = True
 
-                props_name = self._create_props_bone_name(object_, node_name)
+                props_name = self._create_properties_name(object_, group)
                 bone_name = "{!s}{!s}".format(object_.name, props_name)
 
                 for axis in iter(AXES):

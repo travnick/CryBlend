@@ -676,11 +676,11 @@ def get_node_type(node):
     return node_components[-1]
 
 
-def get_armature_node_name(object_):
+def get_armature_node(object_):
     ALLOWED_NODE_TYPES = ("cga", "anm", "chr", "skin", "i_caf")
     for group in object_.users_group:
         if get_node_type(group) in ALLOWED_NODE_TYPES:
-            return get_node_name(group)
+            return group
 
 
 #------------------------------------------------------------------------------
