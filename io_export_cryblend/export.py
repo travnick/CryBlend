@@ -860,8 +860,11 @@ class CrytekDaeExporter:
     def _write_visual_scene_node(self, objects, parent_node, group):
         for object_ in objects:
             if object_.type == "MESH" and not utils.is_fakebone(object_):
+                prop_name = join(object_.name,
+                    self._create_properties_name(object_, group))
                 node = self._doc.createElement("node")
-                node.setAttribute("id", object_.name)
+                node.setAttribute("id", prop_name)
+                node.setAttribute("name", prop_name)
                 node.setIdAttribute("id")
 
                 self._write_transforms(object_, node)
