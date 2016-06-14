@@ -63,3 +63,11 @@ class NoGameDirectorySelected(CryBlendException):
         message = "Please select a Game Directory!"
 
         CryBlendException.__init__(self, message)
+
+
+class MarkersNotFound(CryBlendException):
+
+    def __init__(self):
+        message = "Start or end marker is less!"
+
+        CryBlendException.__init__(self, message)
