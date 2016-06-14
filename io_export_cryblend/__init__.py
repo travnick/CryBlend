@@ -198,10 +198,6 @@ class AddCryExportNode(bpy.types.Operator):
              "Character"),
             ("skin", "SKIN",
              "Skinned Render Mesh"),
-            ("anm", "ANM",
-             "Geometry Animation"),
-            ("i_caf", "I_CAF",
-             "Character Animation"),
         ),
         default="cgf",
     )
@@ -241,6 +237,16 @@ class AddCryAnimationNode(bpy.types.Operator):
     bl_idname = "object.add_cry_animation_node"
     bl_options = {"REGISTER", "UNDO"}
 
+    node_type = EnumProperty(
+        name="Type",
+        items=(
+            ("anm", "ANM",
+             "Geometry Animation"),
+            ("i_caf", "I_CAF",
+             "Character Animation"),
+        ),
+        default="i_caf",
+    )
     node_name = StringProperty(name="Animation Name")
     node_start = IntProperty(name="Start Frame")
     node_end = IntProperty(name="End Frame")
@@ -251,12 +257,17 @@ class AddCryAnimationNode(bpy.types.Operator):
     def __init__(self):
         self.node_start = bpy.context.scene.frame_start
         self.node_end = bpy.context.scene.frame_end
+        
+        if bpy.context.active_object.type == 'ARMATURE':
+            self.node_type = 'i_caf'
+        else:
+            self.node_type = 'anm'
 
         return None
 
     def execute(self, context):
-        skeleton = bpy.context.active_object
-        if skeleton and skeleton.type == 'ARMATURE':
+        object_ = bpy.context.active_object
+        if object_:
             node_start = None
             node_end = None
             
@@ -276,10 +287,10 @@ class AddCryAnimationNode(bpy.types.Operator):
                 node_start = self.node_start
                 node_end = self.node_end
 
-            skeleton[start_name] = node_start
-            skeleton[end_name] = node_end
+            object_[start_name] = node_start
+            object_[end_name] = node_end
             
-            node_name = "{}.i_caf".format(self.node_name)
+            node_name = "{}.{}".format(self.node_name, self.node_type)
             group = bpy.data.groups.get(node_name)
             if group is None:
                 bpy.ops.group.create(name=node_name)
@@ -296,9 +307,9 @@ class AddCryAnimationNode(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        skeleton = bpy.context.active_object
-        if not skeleton or skeleton.type != 'ARMATURE':
-            self.report({'ERROR'}, "Please select and active a armature.")
+        object_ = bpy.context.active_object
+        if not object_:
+            self.report({'ERROR'}, "Please select and active a armature or object.")
             return {'FINISHED'}
 
         return context.window_manager.invoke_props_dialog(self)
