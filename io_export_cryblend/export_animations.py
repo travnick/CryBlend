@@ -63,6 +63,10 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         lib_visual_scene.appendChild(visual_scene)
         root_element.appendChild(lib_visual_scene)
 
+        initial_frame_active = bpy.context.scene.frame_current
+        initial_frame_start = bpy.context.scene.frame_start
+        initial_frame_end = bpy.context.scene.frame_end
+
         ALLOWED_NODE_TYPES = ("i_caf", "anm")
         for group in utils.get_export_nodes():
 
@@ -102,6 +106,9 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
                     cbPrint("Animation has been processed.")
 
+        bpy.context.scene.frame_current = initial_frame_active
+        bpy.context.scene.frame_start = initial_frame_start
+        bpy.context.scene.frame_end = initial_frame_end
         print('')
 
         self._export_scene(root_element)
