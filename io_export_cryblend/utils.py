@@ -703,7 +703,14 @@ def add_fakebones(group = None):
     '''Add helpers to track bone transforms.'''
     scene = bpy.context.scene
     remove_unused_meshes()
-    armature = get_armature()
+
+    if group:
+        for object_ in group.objects:
+            if object_.type == 'ARMATURE':
+                armature = object_
+    else:
+        armature = get_armature()
+
     if armature is None:
         return
 
