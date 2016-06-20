@@ -68,6 +68,7 @@ class _DAEConverter:
             if rc_process is not None:
                 rc_process.wait()
                 self.__recompile(dae_path)
+                self.__rename_anm_files(dae_path)
 
             if self.__config.do_materials:
                 mtl_fix_thread = threading.Thread(
@@ -107,6 +108,24 @@ class _DAEConverter:
                     os.remove(os.path.join(output_path, ".$animsettings"))
                 except:
                     pass
+
+    def __rename_anm_files(self, dae_path):
+        output_path = os.path.dirname(dae_path)
+
+        for group in utils.get_export_nodes():
+            if utils.get_node_type(group) == 'anm':
+                node_name = utils.get_node_name(group)
+                src_name = "{}_{}".format(node_name, group.name)
+                src_name = os.path.join(output_path, src_name)
+
+                if os.path.exists(src_name):
+                    dest_name = utils.get_geometry_animation_file_name(group)
+                    dest_name = os.path.join(output_path, dest_name)
+
+                    if os.path.exists(dest_name):
+                        os.remove(dest_name)
+                
+                    os.rename(src_name, dest_name)
 
     def __fix_normalmap_in_mtls(self, rc_process, dae_file):
         SUCCESS = 0

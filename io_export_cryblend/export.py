@@ -713,10 +713,10 @@ class CrytekDaeExporter:
 
         bones = utils.get_bones(armature)
         id_ = "{!s}_{!s}-joints".format(armature.name, object_.name)
-        node_name = utils.get_armature_node_name(object_)
+        group = utils.get_armature_node(object_)
         bone_names = []
         for bone in bones:
-            props_name = self._create_props_bone_name(bone, node_name)
+            props_name = self._create_properties_name(bone, group)
             bone_name = "{!s}{!s}".format(bone.name, props_name)
             bone_names.append(bone_name)
         source = utils.write_source(id_, "IDREF", bone_names, [])
@@ -860,8 +860,11 @@ class CrytekDaeExporter:
     def _write_visual_scene_node(self, objects, parent_node, group):
         for object_ in objects:
             if object_.type == "MESH" and not utils.is_fakebone(object_):
+                prop_name = join(object_.name,
+                    self._create_properties_name(object_, group))
                 node = self._doc.createElement("node")
-                node.setAttribute("id", object_.name)
+                node.setAttribute("id", prop_name)
+                node.setAttribute("name", prop_name)
                 node.setIdAttribute("id")
 
                 self._write_transforms(object_, node)
@@ -892,10 +895,8 @@ class CrytekDaeExporter:
         scene = bpy.context.scene
         bone_names = []
 
-        node_name = utils.get_node_name(group)
-
         for bone in bones:
-            props_name = self._create_props_bone_name(bone, node_name)
+            props_name = self._create_properties_name(bone, group)
             props_ik = self._create_ik_properties(bone, object_)
             bone_name = join(bone.name, props_name, props_ik)
             bone_names.append(bone_name)
@@ -1132,8 +1133,9 @@ class CrytekDaeExporter:
 
         return joint
 
-    def _create_props_bone_name(self, bone, node_name):
+    def _create_properties_name(self, bone, group):
         bone_name = bone.name.replace("__", "*")
+        node_name = utils.get_node_name(group)
         props_name = '%{!s}%--PRprops_name={!s}'.format(node_name, bone_name)
 
         return props_name

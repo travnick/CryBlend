@@ -110,10 +110,10 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
     def _export_library_animation_clips_and_animations(self, libanmcl, libanm, group):
 
         scene = bpy.context.scene
+        anim_id = utils.get_animation_id(group)
 
         animation_clip = self._doc.createElement("animation_clip")
-        node_name = utils.get_node_name(group)
-        animation_clip.setAttribute("id", "{!s}-{!s}".format(node_name, node_name))
+        animation_clip.setAttribute("id", anim_id)
         animation_clip.setAttribute("start", "{:f}".format(
             utils.frame_to_time(scene.frame_start)))
         animation_clip.setAttribute("end", "{:f}".format(
@@ -126,28 +126,28 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
                 is_animation = True
 
-                props_name = self._create_props_bone_name(object_, node_name)
+                props_name = self._create_properties_name(object_, group)
                 bone_name = "{!s}{!s}".format(object_.name, props_name)
 
                 for axis in iter(AXES):
                     animation = self._get_animation_location(
-                        object_, bone_name, axis, node_name)
+                        object_, bone_name, axis, anim_id)
                     if animation is not None:
                         libanm.appendChild(animation)
 
                 for axis in iter(AXES):
                     animation = self._get_animation_rotation(
-                        object_, bone_name, axis, node_name)
+                        object_, bone_name, axis, anim_id)
                     if animation is not None:
                         libanm.appendChild(animation)
 
                 self._export_instance_animation_parameters(
-                    object_, animation_clip, node_name)
+                    object_, animation_clip, anim_id)
 
         if is_animation:
             libanmcl.appendChild(animation_clip)
 
-    def _export_instance_animation_parameters(self, object_, animation_clip, node_name):
+    def _export_instance_animation_parameters(self, object_, animation_clip, anim_id):
         location_exists = rotation_exists = False
         for curve in object_.animation_data.action.fcurves:
             for axis in iter(AXES):
@@ -161,20 +161,20 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
         if location_exists:
             self._export_instance_parameter(
-                object_, animation_clip, "location", node_name)
+                object_, animation_clip, "location", anim_id)
         if rotation_exists:
             self._export_instance_parameter(
-                object_, animation_clip, "rotation_euler", node_name)
+                object_, animation_clip, "rotation_euler", anim_id)
 
-    def _export_instance_parameter(self, object_, animation_clip, parameter, node_name):
+    def _export_instance_parameter(self, object_, animation_clip, parameter, anim_id):
         for axis in iter(AXES):
             inst = self._doc.createElement("instance_animation")
             inst.setAttribute(
-                "url", "#{!s}-{!s}-{!s}_{!s}_{!s}".format(
-                    node_name, node_name, object_.name, parameter, axis))
+                "url", "#{!s}-{!s}_{!s}_{!s}".format(
+                    anim_id, object_.name, parameter, axis))
             animation_clip.appendChild(inst)
 
-    def _get_animation_location(self, object_, bone_name, axis, node_name):
+    def _get_animation_location(self, object_, bone_name, axis, anim_id):
         attribute_type = "location"
         multiplier = 1
         target = "{!s}{!s}{!s}".format(bone_name, "/translation.", axis)
@@ -184,10 +184,10 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                                                            attribute_type,
                                                            multiplier,
                                                            target,
-                                                           node_name)
+                                                           anim_id)
         return animation_element
 
-    def _get_animation_rotation(self, object_, bone_name, axis, node_name):
+    def _get_animation_rotation(self, object_, bone_name, axis, anim_id):
         attribute_type = "rotation_euler"
         multiplier = utils.to_degrees
         target = "{!s}{!s}{!s}{!s}".format(bone_name,
@@ -200,7 +200,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                                                            attribute_type,
                                                            multiplier,
                                                            target,
-                                                           node_name)
+                                                           anim_id)
         return animation_element
 
     def _get_animation_attribute(self,
@@ -209,9 +209,9 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                                   attribute_type,
                                   multiplier,
                                   target,
-                                  node_name):
-        id_prefix = "{!s}-{!s}-{!s}_{!s}_{!s}".format(node_name, node_name,
-                                           object_.name, attribute_type, axis)
+                                  anim_id):
+        id_prefix = "{!s}-{!s}_{!s}_{!s}".format(anim_id, object_.name,
+                                                attribute_type, axis)
         source_prefix = "#{!s}".format(id_prefix)
 
         for curve in object_.animation_data.action.fcurves:

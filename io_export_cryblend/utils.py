@@ -676,11 +676,11 @@ def get_node_type(node):
     return node_components[-1]
 
 
-def get_armature_node_name(object_):
+def get_armature_node(object_):
     ALLOWED_NODE_TYPES = ("cga", "anm", "chr", "skin", "i_caf")
     for group in object_.users_group:
         if get_node_type(group) in ALLOWED_NODE_TYPES:
-            return get_node_name(group)
+            return group
 
 
 #------------------------------------------------------------------------------
@@ -924,6 +924,53 @@ def apply_animation_scale(armature):
     bpy.ops.object.delete()
 
     cbPrint("Apply Animation was completed.")
+
+
+def get_animation_id(group):
+    node_type = get_node_type(group)
+    node_name = get_node_name(group)
+
+    return "{!s}-{!s}".format(node_name, node_name)
+
+    # Now anm files produces with name as node_name_node_name.anm
+    # after the process is done anm files are renmaed by rc.py to
+    # cga_name_node_name.anm
+    # In the future we may export directly correct name
+    # with using below codes. But there is a prerequisite for that:
+    # Dae have to be one main visual_node, others have to be in that main node
+    # To achieve that we must change a bit visual_exporting process for anm.
+    # Deficiency at that way process export nodes show as one at console.
+    if node_type == 'i_caf':
+        return "{!s}-{!s}".format(node_name, node_name)
+    else:
+        cga_node = find_cga_node_from_anm_node(group)
+        if cga_node:
+            cga_name = get_node_name(cga_node)
+            return "{!s}-{!s}".format(node_name, cga_name)
+        else:
+            cga_name = group.objects[0].name
+            return "{!s}-{!s}".format(node_name, cga_name)
+
+
+def get_geometry_animation_file_name(group):
+    node_type = get_node_type(group)
+    node_name = get_node_name(group)
+
+    cga_node = find_cga_node_from_anm_node(group)
+    if cga_node:
+        cga_name = cga_node.name
+        return "{!s}_{!s}".format(cga_name, node_name)
+    else:
+        cga_name = group.objects[0].name
+        return "{!s}_{!s}.anm".format(cga_name, node_name)
+
+
+def find_cga_node_from_anm_node(anm_group):
+    for object_ in anm_group.objects:
+        for group in object_.users_group:
+            if get_node_type(group) == 'cga':
+                return group
+    return None
 
 
 #------------------------------------------------------------------------------
