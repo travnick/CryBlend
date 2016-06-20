@@ -699,7 +699,7 @@ def is_fakebone(object_):
         return False
 
 
-def add_fakebones():
+def add_fakebones(group = None):
     '''Add helpers to track bone transforms.'''
     scene = bpy.context.scene
     remove_unused_meshes()
@@ -724,9 +724,8 @@ def add_fakebones():
         armature.data.bones.active = pose_bone.bone
         bpy.ops.object.parent_set(type='BONE_RELATIVE')
 
-    ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
-
-    for group in armature.users_group:
+    if group:
+        ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
         node_type = get_node_type(group)
 
         if node_type in ALLOWED_NODE_TYPES:
@@ -991,6 +990,45 @@ def get_armature():
 
 def get_bones(armature):
     return [bone for bone in armature.data.bones]
+
+
+def get_animation_node_range(object_, node_name):
+    try:
+        start_frame = object_["{}_Start".format(node_name)]
+        end_frame = object_["{}_End".format(node_name)]
+        
+        if type(start_frame) is str and type(end_frame) is str:
+            tm = bpy.context.scene.timeline_markers
+            if tm.find(start_frame) != -1 and tm.find(end_frame) != -1:
+                return tm[start_frame].frame, tm[end_frame].frame
+            else:
+                raise exceptions.MarkerNotFound
+        else:
+            return start_frame, end_frame
+    except:
+        return bpy.context.scene.frame_start, bpy.context.scene.frame_end
+
+
+def get_armature_from_node(group):
+    armature_count = 0
+    armature = None
+    for object_ in group.objects:
+        if object_.type == "ARMATURE":
+            armature_count += 1
+            armature = object_
+
+    if armature_count == 1:
+        return armature
+
+    error_message = None
+    if armature_count == 0:
+        raise exceptions.CryBlendException("i_caf node has no armature!")
+        error_message = "i_caf node has no armature!"
+    elif armature_count > 1:
+        raise exceptions.CryBlendException(
+            "{} i_caf node have more than one armature!".format(node_name))
+
+    return None
 
 
 #------------------------------------------------------------------------------
