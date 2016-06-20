@@ -712,7 +712,6 @@ def add_fakebones(group = None):
     skeleton.pose_position = 'REST'
     time.sleep(0.5)
 
-    deselect_all()
     scene.frame_set(scene.frame_start)
     for pose_bone in armature.pose.bones:
         bmatrix = pose_bone.bone.head_local
@@ -724,11 +723,11 @@ def add_fakebones(group = None):
         armature.data.bones.active = pose_bone.bone
         bpy.ops.object.parent_set(type='BONE_RELATIVE')
 
-    if group:
-        ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
-        node_type = get_node_type(group)
+        if group:
+            group.objects.link(fakebone)
 
-        if node_type in ALLOWED_NODE_TYPES:
+    if group:
+        if get_node_type(group) == 'i_caf':
             process_animation(armature, skeleton)
 
 
@@ -755,8 +754,6 @@ def process_animation(armature, skeleton):
     '''Process animation to export.'''
     skeleton.pose_position = 'POSE'
     time.sleep(0.5)
-
-    select_all()
 
     location_list, rotation_list = get_keyframes(armature)
     set_keyframes(armature, location_list, rotation_list)

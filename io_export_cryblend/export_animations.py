@@ -62,34 +62,37 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         visual_scene.setAttribute("name", "scene")
         lib_visual_scene.appendChild(visual_scene)
         root_element.appendChild(lib_visual_scene)
-       
-        ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
+
+        ALLOWED_NODE_TYPES = ("i_caf", "anm")
         for group in utils.get_export_nodes():
 
             node_type = utils.get_node_type(group)
             node_name = utils.get_node_name(group)
 
-            object_ = None
+            if node_type in ALLOWED_NODE_TYPES:
+                object_ = None
 
-            if node_type == 'i_caf':
-                object_ = utils.get_armature_from_node(group)
-            elif node_type == 'anm':
-                object_ = group.objects[0]
-
-            frame_start, frame_end = utils.get_animation_node_range(object_, node_name)
-            bpy.context.scene.frame_start = frame_start
-            bpy.context.scene.frame_end = frame_end
-
-            if node_type == 'i_caf':
-                utils.add_fakebones(group)
-            try:
-                self._export_library_animation_clips_and_animations(libanmcl, libanm, group)
-                self._export_library_visual_scenes(visual_scene, group)
-            except RuntimeError:
-                pass
-            finally:
                 if node_type == 'i_caf':
-                    utils.remove_fakebones()
+                    object_ = utils.get_armature_from_node(group)
+                elif node_type == 'anm':
+                    object_ = group.objects[0]
+
+                frame_start, frame_end = utils.get_animation_node_range(
+                    object_, node_name)
+                bpy.context.scene.frame_start = frame_start
+                bpy.context.scene.frame_end = frame_end
+
+                if node_type == 'i_caf':
+                    utils.add_fakebones(group)
+                try:
+                    self._export_library_animation_clips_and_animations(
+                        libanmcl, libanm, group)
+                    self._export_library_visual_scenes(visual_scene, group)
+                except RuntimeError:
+                    pass
+                finally:
+                    if node_type == 'i_caf':
+                        utils.remove_fakebones()
 
         self._export_scene(root_element)
 
@@ -117,7 +120,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                 utils.frame_to_time(scene.frame_end)))
         is_animation = False
 
-        for object_ in bpy.context.selected_objects:
+        for object_ in group.objects:
             if (object_.type != 'ARMATURE' and object_.animation_data and
                     object_.animation_data.action):
 
