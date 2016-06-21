@@ -82,6 +82,12 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                 bpy.context.scene.frame_start = frame_start
                 bpy.context.scene.frame_end = frame_end
 
+                print('')
+                cbPrint(group.name)
+                cbPrint("Animation is being preparing to process.")
+                cbPrint("Animation frame range are [{} - {}]".format(
+                    frame_start, frame_end))
+
                 if node_type == 'i_caf':
                     utils.add_fakebones(group)
                 try:
@@ -93,6 +99,10 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                 finally:
                     if node_type == 'i_caf':
                         utils.remove_fakebones()
+
+                    cbPrint("Animation has been processed.")
+
+        print('')
 
         self._export_scene(root_element)
 

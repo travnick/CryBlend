@@ -757,7 +757,6 @@ def process_animation(armature, skeleton):
 
     location_list, rotation_list = get_keyframes(armature)
     set_keyframes(armature, location_list, rotation_list)
-    cbPrint("Animation was processed.")
 
 
 def get_keyframes(armature):
@@ -796,7 +795,7 @@ def get_keyframes(armature):
         del locations
         del rotations
 
-    cbPrint("Keyframes were appended to lists.")
+    cbPrint("Keyframes have been appended to lists.")
 
     return location_list, rotation_list
 
@@ -812,7 +811,7 @@ def set_keyframes(armature, location_list, rotation_list):
         set_keyframe(armature, frame, location_list, rotation_list)
 
     bpy.context.scene.frame_set(bpy.context.scene.frame_start)
-    cbPrint("Keyframes were inserted to armature fakebones.")
+    cbPrint("Keyframes have been inserted to armature fakebones.")
 
 
 def set_keyframe(armature, frame, location_list, rotation_list):
