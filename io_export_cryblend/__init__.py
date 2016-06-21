@@ -263,6 +263,20 @@ class AddCryAnimationNode(bpy.types.Operator):
         else:
             self.node_type = 'anm'
 
+        tm = bpy.context.scene.timeline_markers
+        for marker in tm:
+            if marker.select:
+                self.start_m_name = marker.name
+                self.end_m_name = "{}_E".format(marker.name)
+                self.is_use_markers = True
+
+                self.node_start = marker.frame
+                if tm.find(self.end_m_name) != -1:
+                    self.node_end = tm[self.end_m_name].frame
+
+                self.node_name = marker.name
+                break
+
         return None
 
     def execute(self, context):
