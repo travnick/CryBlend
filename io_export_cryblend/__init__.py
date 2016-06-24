@@ -2404,7 +2404,7 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.operator(
             "object.selected_to_cry_export_nodes",
             text="Export Nodes from Objects",
-            icon="GROUP")
+            icon="SCENE_DATA")
         layout.separator()
         layout.operator(
             "object.apply_transforms",
