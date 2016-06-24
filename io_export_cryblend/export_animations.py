@@ -340,6 +340,55 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
             pass  # TODO: Handle No Export Nodes Error
 
 
+    def _write_export_node(self, group, visual_scene):
+        if not self._config.export_for_lumberyard:
+            node_name = "CryExportNode_{}".format(utils.get_node_name(group))
+            node = self._doc.createElement("node")
+            node.setAttribute("id", node_name)
+            node.setIdAttribute("id")
+        else:
+            node_name = "{}".format(utils.get_node_name(group))
+            node = self._doc.createElement("node")
+            node.setAttribute("id", node_name)
+            node.setAttribute("LumberyardExportNode", "1")
+            node.setIdAttribute("id")
+
+        bpy.ops.mesh.primitive_cube_add(location=(0, 0, 0))
+        self._write_transforms(bpy.context.active_object, node)
+        bpy.ops.object.delete(use_global=False)
+
+        node = self._write_visual_scene_node(group.objects, node, group)
+
+        extra = self._create_cryengine_extra(group)
+        node.appendChild(extra)
+        visual_scene.appendChild(node)
+
+    def _write_visual_scene_node(self, objects, parent_node, group):
+        node_type = utils.get_node_type(group)
+        for object_ in objects:
+            if node_type == 'i_caf' and object_.type == 'ARMATURE':
+                self._write_bone_list(
+                    [utils.get_root_bone(object_)], object_, parent_node, group)
+                    
+            elif node_type == 'anm' and object_.type == 'MESH':
+                prop_name = join(object_.name,
+                    self._create_properties_name(object_, group))
+                node = self._doc.createElement("node")
+                node.setAttribute("id", prop_name)
+                node.setAttribute("name", prop_name)
+                node.setIdAttribute("id")
+
+                self._write_transforms(object_, node)
+
+                extra = self._create_cryengine_extra(object_)
+                if extra is not None:
+                    node.appendChild(extra)
+
+                parent_node.appendChild(node)
+
+        return parent_node
+
+
 # -------------------------------------------------------------------
 
 
