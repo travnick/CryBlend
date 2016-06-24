@@ -88,7 +88,7 @@ class CrytekDaeExporter:
         materials = OrderedDict()
         material_counter = {}
 
-        for group in utils.get_export_nodes(
+        for group in utils.get_mesh_export_nodes(
                 self._config.export_selected_nodes):
             material_counter[group.name] = 50
             for object in group.objects:
@@ -818,12 +818,12 @@ class CrytekDaeExporter:
         current_element.appendChild(visual_scene)
         parent_element.appendChild(current_element)
 
-        if utils.get_export_nodes(self._config.export_selected_nodes):
+        if utils.get_mesh_export_nodes(self._config.export_selected_nodes):
             if utils.are_duplicate_nodes():
                 message = "Duplicate Node Names"
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)
 
-            for group in utils.get_export_nodes(
+            for group in utils.get_mesh_export_nodes(
                     self._config.export_selected_nodes):
                 self._write_export_node(group, visual_scene)
         else:
@@ -848,9 +848,9 @@ class CrytekDaeExporter:
 
         root_objects = []
         for object_ in group.objects:
-            if (object_.parent is None or object_.type == 'MESH') and \
-                    not utils.is_bone_geometry(object_):
+            if utils.is_visual_scene_node_writed(object_, group):
                 root_objects.append(object_)
+
         node = self._write_visual_scene_node(root_objects, node, group)
 
         extra = self._create_cryengine_extra(group)
@@ -1187,12 +1187,8 @@ def write_scripts(config):
 
     dae_path = utils.get_absolute_path_for_rc(filepath)
     output_path = os.path.dirname(dae_path)
-    chr_names = []
-    for group in utils.get_export_nodes(self._config.export_selected_nodes):
-        if utils.get_node_type(group) == "chr":
-            chr_names.append(utils.get_node_name(group))
 
-    for chr_name in chr_names:
+    for chr_name in utils.get_chr_names(self._config.export_selected_nodes):
         if config.make_chrparams:
             filepath = "{}/{}.chrparams".format(output_path, chr_name)
             contents = utils.generate_file_contents("chrparams")

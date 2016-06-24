@@ -68,7 +68,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         initial_frame_end = bpy.context.scene.frame_end
 
         ALLOWED_NODE_TYPES = ("i_caf", "anm")
-        for group in utils.get_export_nodes():
+        for group in utils.get_animation_export_nodes():
 
             node_type = utils.get_node_type(group)
             node_name = utils.get_node_name(group)
@@ -330,7 +330,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
     def _export_library_visual_scenes(self, visual_scene, group):
 
-        if utils.get_export_nodes():
+        if utils.get_animation_export_nodes():
             if utils.are_duplicate_nodes():
                 message = "Duplicate Node Names"
                 bpy.ops.screen.display_error('INVOKE_DEFAULT', message=message)

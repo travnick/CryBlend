@@ -331,6 +331,42 @@ def get_export_nodes(just_selected=False):
     return export_nodes
 
 
+def get_mesh_export_nodes(just_selected=False):
+    export_nodes = []
+
+    ALLOWED_NODE_TYPES = ('cgf', 'cga', 'chr', 'skin')
+    for node in get_export_nodes(just_selected):
+        if get_node_type(node) in ALLOWED_NODE_TYPES:
+            export_nodes.append(node)
+
+    return export_nodes
+
+
+def get_chr_names(just_selected=False):
+    chr_names = []
+
+    for node in get_export_nodes(just_selected):
+        if get_node_type(node) == 'chr':
+            chr_nodes.append(get_node_name(node))
+
+    return chr_names
+
+
+def get_animation_export_nodes(just_selected=False):
+    export_nodes = []
+
+    if just_selected:
+        return __get_selected_nodes()
+
+    ALLOWED_NODE_TYPES = ('anm', 'i_caf')
+    for group in bpy.data.groups:
+        if is_export_node(group) and len(group.objects) > 0:
+            if get_node_type(group) in ALLOWED_NODE_TYPES:
+                export_nodes.append(group)
+
+    return export_nodes
+
+
 def __get_selected_nodes():
     export_nodes = []
 
@@ -681,6 +717,15 @@ def get_armature_node(object_):
     for group in object_.users_group:
         if get_node_type(group) in ALLOWED_NODE_TYPES:
             return group
+
+
+def is_visual_scene_node_writed(object_, group):
+    if is_bone_geometry(object_):
+        return False
+    if object_.parent is not None and object_.type != 'MESH':
+        return False
+
+    return True
 
 
 #------------------------------------------------------------------------------
