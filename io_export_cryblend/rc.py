@@ -124,7 +124,7 @@ class _DAEConverter:
 
                     if os.path.exists(dest_name):
                         os.remove(dest_name)
-                
+
                     os.rename(src_name, dest_name)
 
     def __fix_normalmap_in_mtls(self, rc_process, dae_file):

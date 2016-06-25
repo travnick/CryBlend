@@ -50,12 +50,12 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         root_element.setAttribute("version", "1.4.1")
         self._doc.appendChild(root_element)
         self._create_file_header(root_element)
-        
+
         libanmcl = self._doc.createElement("library_animation_clips")
         libanm = self._doc.createElement("library_animations")
         root_element.appendChild(libanmcl)
         root_element.appendChild(libanm)
-        
+
         lib_visual_scene = self._doc.createElement("library_visual_scenes")
         visual_scene = self._doc.createElement("visual_scene")
         visual_scene.setAttribute("id", "scene")
@@ -124,7 +124,8 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 # Library Animations and Clips: --> Animations, F-Curves
 # -----------------------------------------------------------------------------
 
-    def _export_library_animation_clips_and_animations(self, libanmcl, libanm, group):
+    def _export_library_animation_clips_and_animations(
+            self, libanmcl, libanm, group):
 
         scene = bpy.context.scene
         anim_id = utils.get_animation_id(group)
@@ -134,7 +135,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         animation_clip.setAttribute("start", "{:f}".format(
             utils.frame_to_time(scene.frame_start)))
         animation_clip.setAttribute("end", "{:f}".format(
-                utils.frame_to_time(scene.frame_end)))
+            utils.frame_to_time(scene.frame_end)))
         is_animation = False
 
         for object_ in group.objects:
@@ -164,7 +165,8 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         if is_animation:
             libanmcl.appendChild(animation_clip)
 
-    def _export_instance_animation_parameters(self, object_, animation_clip, anim_id):
+    def _export_instance_animation_parameters(
+            self, object_, animation_clip, anim_id):
         location_exists = rotation_exists = False
         for curve in object_.animation_data.action.fcurves:
             for axis in iter(AXES):
@@ -183,7 +185,12 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
             self._export_instance_parameter(
                 object_, animation_clip, "rotation_euler", anim_id)
 
-    def _export_instance_parameter(self, object_, animation_clip, parameter, anim_id):
+    def _export_instance_parameter(
+            self,
+            object_,
+            animation_clip,
+            parameter,
+            anim_id):
         for axis in iter(AXES):
             inst = self._doc.createElement("instance_animation")
             inst.setAttribute(
@@ -197,11 +204,11 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         target = "{!s}{!s}{!s}".format(bone_name, "/translation.", axis)
 
         animation_element = self._get_animation_attribute(object_,
-                                                           axis,
-                                                           attribute_type,
-                                                           multiplier,
-                                                           target,
-                                                           anim_id)
+                                                          axis,
+                                                          attribute_type,
+                                                          multiplier,
+                                                          target,
+                                                          anim_id)
         return animation_element
 
     def _get_animation_rotation(self, object_, bone_name, axis, anim_id):
@@ -213,22 +220,22 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                                            ".ANGLE")
 
         animation_element = self._get_animation_attribute(object_,
-                                                           axis,
-                                                           attribute_type,
-                                                           multiplier,
-                                                           target,
-                                                           anim_id)
+                                                          axis,
+                                                          attribute_type,
+                                                          multiplier,
+                                                          target,
+                                                          anim_id)
         return animation_element
 
     def _get_animation_attribute(self,
-                                  object_,
-                                  axis,
-                                  attribute_type,
-                                  multiplier,
-                                  target,
-                                  anim_id):
+                                 object_,
+                                 axis,
+                                 attribute_type,
+                                 multiplier,
+                                 target,
+                                 anim_id):
         id_prefix = "{!s}-{!s}_{!s}_{!s}".format(anim_id, object_.name,
-                                                attribute_type, axis)
+                                                 attribute_type, axis)
         source_prefix = "#{!s}".format(id_prefix)
 
         for curve in object_.animation_data.action.fcurves:
@@ -339,7 +346,6 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         else:
             pass  # TODO: Handle No Export Nodes Error
 
-
     def _write_export_node(self, group, visual_scene):
         if not self._config.export_for_lumberyard:
             node_name = "CryExportNode_{}".format(utils.get_node_name(group))
@@ -367,12 +373,12 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         node_type = utils.get_node_type(group)
         for object_ in objects:
             if node_type == 'i_caf' and object_.type == 'ARMATURE':
-                self._write_bone_list(
-                    [utils.get_root_bone(object_)], object_, parent_node, group)
-                    
+                self._write_bone_list([utils.get_root_bone(
+                    object_)], object_, parent_node, group)
+
             elif node_type == 'anm' and object_.type == 'MESH':
                 prop_name = join(object_.name,
-                    self._create_properties_name(object_, group))
+                                 self._create_properties_name(object_, group))
                 node = self._doc.createElement("node")
                 node.setAttribute("id", prop_name)
                 node.setAttribute("name", prop_name)

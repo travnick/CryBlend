@@ -677,8 +677,8 @@ class CrytekDaeExporter:
                 armature = utils.get_armature_for_object(object_)
                 if armature is not None:
                     self._process_bones(library_node,
-                                         object_,
-                                         armature)
+                                        object_,
+                                        armature)
 
         parent_element.appendChild(library_node)
 
@@ -861,7 +861,7 @@ class CrytekDaeExporter:
         for object_ in objects:
             if object_.type == "MESH" and not utils.is_fakebone(object_):
                 prop_name = join(object_.name,
-                    self._create_properties_name(object_, group))
+                                 self._create_properties_name(object_, group))
                 node = self._doc.createElement("node")
                 node.setAttribute("id", prop_name)
                 node.setAttribute("name", prop_name)
@@ -882,12 +882,12 @@ class CrytekDaeExporter:
                 parent_node.appendChild(node)
 
                 if object_.parent is not None and object_.parent.type == "ARMATURE":
-                    self._write_bone_list(
-                        [utils.get_root_bone(object_.parent)], object_, parent_node, group)
+                    self._write_bone_list([utils.get_root_bone(
+                        object_.parent)], object_, parent_node, group)
 
             elif object_.type == "ARMATURE" and utils.is_physical(object_):
-                self._write_bone_list(
-                    [utils.get_root_bone(object_)], object_, parent_node, group)
+                self._write_bone_list([utils.get_root_bone(
+                    object_)], object_, parent_node, group)
 
         return parent_node
 
@@ -1109,7 +1109,7 @@ class CrytekDaeExporter:
                     udp = self._doc.createTextNode("{!s}".format(prop[1]))
                 else:
                     udp = self._doc.createTextNode("{!s}=".format(prop[0])
-                                                    + "{!s}".format(prop[1]))
+                                                   + "{!s}".format(prop[1]))
 
                 node.appendChild(udp)
 
