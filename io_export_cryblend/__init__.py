@@ -253,11 +253,11 @@ class AddCryAnimationNode(bpy.types.Operator):
     is_use_markers = BoolProperty(name="Use Markers")
     start_m_name = StringProperty(name="Marker Start Name")
     end_m_name = StringProperty(name="Marker End Name")
-    
+
     def __init__(self):
         self.node_start = bpy.context.scene.frame_start
         self.node_end = bpy.context.scene.frame_end
-        
+
         if bpy.context.active_object.type == 'ARMATURE':
             self.node_type = 'i_caf'
         else:
@@ -284,14 +284,14 @@ class AddCryAnimationNode(bpy.types.Operator):
         if object_:
             node_start = None
             node_end = None
-            
+
             start_name = "{}_Start".format(self.node_name)
             end_name = "{}_End".format(self.node_name)
-        
+
             if self.is_use_markers:
                 node_start = self.start_m_name
                 node_end = self.end_m_name
-                
+
                 tm = bpy.context.scene.timeline_markers
                 if tm.find(self.start_m_name) == -1:
                     tm.new(name=self.start_m_name, frame=self.node_start)
@@ -303,7 +303,7 @@ class AddCryAnimationNode(bpy.types.Operator):
 
             object_[start_name] = node_start
             object_[end_name] = node_end
-            
+
             node_name = "{}.{}".format(self.node_name, self.node_type)
             group = bpy.data.groups.get(node_name)
             if group is None:
@@ -323,7 +323,9 @@ class AddCryAnimationNode(bpy.types.Operator):
     def invoke(self, context, event):
         object_ = bpy.context.active_object
         if not object_:
-            self.report({'ERROR'}, "Please select and active a armature or object.")
+            self.report(
+                {'ERROR'},
+                "Please select and active a armature or object.")
             return {'FINISHED'}
 
         return context.window_manager.invoke_props_dialog(self)
@@ -2110,8 +2112,9 @@ class ExportAnimations(bpy.types.Operator, ExportHelper):
 
             if self.run_in_profiler:
                 import cProfile
-                cProfile.runctx('export_animations.save(config)', {},
-                                {'export_animations': export_animations, 'config': config})
+                cProfile.runctx(
+                    'export_animations.save(config)', {}, {
+                        'export_animations': export_animations, 'config': config})
             else:
                 export_animations.save(config)
 
@@ -2215,7 +2218,9 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         col.separator()
         row = col.row(align=True)
         row.operator("object.add_cry_export_node", text="Add Export Node")
-        row.operator("object.add_cry_animation_node", text="Add Animation Node")
+        row.operator(
+            "object.add_cry_animation_node",
+            text="Add Animation Node")
         col.operator(
             "object.selected_to_cry_export_nodes",
             text="Export Nodes from Objects")

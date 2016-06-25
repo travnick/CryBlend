@@ -744,7 +744,7 @@ def is_fakebone(object_):
         return False
 
 
-def add_fakebones(group = None):
+def add_fakebones(group=None):
     '''Add helpers to track bone transforms.'''
     scene = bpy.context.scene
     remove_unused_meshes()
@@ -1091,8 +1091,8 @@ def get_animation_node_range(object_, node_name):
     try:
         start_frame = object_["{}_Start".format(node_name)]
         end_frame = object_["{}_End".format(node_name)]
-        
-        if type(start_frame) is str and type(end_frame) is str:
+
+        if isinstance(start_frame, str) and isinstance(end_frame, str):
             tm = bpy.context.scene.timeline_markers
             if tm.find(start_frame) != -1 and tm.find(end_frame) != -1:
                 return tm[start_frame].frame, tm[end_frame].frame
