@@ -1,5 +1,24 @@
 # Changelog:
 
+## 5.2
+#### Compatibility:
+* Only compatible with CryEngine 3.5 and up.
+* Only compatible with Blender 2.7 and up.
+* Supports primary assets: CGF, CGA, CHR, SKIN, ANM, I_CAF.
+* Compatible with LumberYard.
+
+#### UI Changes:
+* Added new Animation Node menuitem to create I_CAF and ANM nodes.
+* Added new Export Animation menuitem to separate animation and mesh exporting.
+
+#### New Features:
+* Support multiple I_CAF and ANM animation files exporting.
+* Animation and character nodes can be located in same project.
+
+#### Improvements/Fixes:
+* CGA and ANM exporting have been fixed.
+* Mesh exporting logs have been improved.
+
 ## 5.1
 #### Compatibility:
 * Only compatible with CryEngine 3.5 and up.
