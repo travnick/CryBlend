@@ -35,7 +35,7 @@ bl_info = {
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, Daniel White, "
               "David Marcelis, Özkan Afacan, Oscar Martin Garcia",
     "blender": (2, 70, 0),
-    "version": (5, 1, 0),
+    "version": (5, 2, 0),
     "location": "CryBlend Menu",
     "description": "Export assets from Blender to CryEngine 3",
     "warning": "",
