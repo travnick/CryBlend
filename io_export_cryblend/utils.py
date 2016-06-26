@@ -1009,8 +1009,8 @@ def get_geometry_animation_file_name(group):
 
     cga_node = find_cga_node_from_anm_node(group)
     if cga_node:
-        cga_name = cga_node.name
-        return "{!s}_{!s}".format(cga_name, node_name)
+        cga_name = get_node_name(cga_node)
+        return "{!s}_{!s}.anm".format(cga_name, node_name)
     else:
         cga_name = group.objects[0].name
         return "{!s}_{!s}.anm".format(cga_name, node_name)
