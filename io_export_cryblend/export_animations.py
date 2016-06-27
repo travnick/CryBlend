@@ -377,8 +377,9 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                     object_)], object_, parent_node, group)
 
             elif node_type == 'anm' and object_.type == 'MESH':
-                prop_name = join(object_.name,
-                                 self._create_properties_name(object_, group))
+                prop_name = "{}{}".format(
+                    object_.name, self._create_properties_name(
+                        object_, group))
                 node = self._doc.createElement("node")
                 node.setAttribute("id", prop_name)
                 node.setAttribute("name", prop_name)
