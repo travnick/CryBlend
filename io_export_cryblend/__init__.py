@@ -35,7 +35,7 @@ bl_info = {
     "author": "Angelo J. Miner, Duo Oratar, Mikołaj Milej, Daniel White, "
               "David Marcelis, Özkan Afacan, Oscar Martin Garcia",
     "blender": (2, 70, 0),
-    "version": (5, 1, 0),
+    "version": (5, 2, 0),
     "location": "CryBlend Menu",
     "description": "Export assets from Blender to CryEngine 3",
     "warning": "",
@@ -59,7 +59,7 @@ if "bpy" in locals():
     imp.reload(desc)
 else:
     import bpy
-    from io_export_cryblend import add, export, exceptions, utils, desc
+    from io_export_cryblend import add, export, export_animations, exceptions, utils, desc
 
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, \
     FloatProperty, IntProperty, StringProperty, BoolVectorProperty
@@ -198,10 +198,6 @@ class AddCryExportNode(bpy.types.Operator):
              "Character"),
             ("skin", "SKIN",
              "Skinned Render Mesh"),
-            ("anm", "ANM",
-             "Geometry Animation"),
-            ("i_caf", "I_CAF",
-             "Character Animation"),
         ),
         default="cgf",
     )
@@ -230,6 +226,106 @@ class AddCryExportNode(bpy.types.Operator):
             self.report(
                 {'ERROR'},
                 "Select one or more objects in OBJECT mode.")
+            return {'FINISHED'}
+
+        return context.window_manager.invoke_props_dialog(self)
+
+
+class AddCryAnimationNode(bpy.types.Operator):
+    '''Add selected objects to an existing or new CryExportNode'''
+    bl_label = "Add Animation Node"
+    bl_idname = "object.add_cry_animation_node"
+    bl_options = {"REGISTER", "UNDO"}
+
+    node_type = EnumProperty(
+        name="Type",
+        items=(
+            ("anm", "ANM",
+             "Geometry Animation"),
+            ("i_caf", "I_CAF",
+             "Character Animation"),
+        ),
+        default="i_caf",
+    )
+    node_name = StringProperty(name="Animation Name")
+    node_start = IntProperty(name="Start Frame")
+    node_end = IntProperty(name="End Frame")
+    is_use_markers = BoolProperty(name="Use Markers")
+    start_m_name = StringProperty(name="Marker Start Name")
+    end_m_name = StringProperty(name="Marker End Name")
+
+    def __init__(self):
+        self.node_start = bpy.context.scene.frame_start
+        self.node_end = bpy.context.scene.frame_end
+
+        if bpy.context.active_object.type == 'ARMATURE':
+            self.node_type = 'i_caf'
+        else:
+            self.node_type = 'anm'
+
+        tm = bpy.context.scene.timeline_markers
+        for marker in tm:
+            if marker.select:
+                self.start_m_name = marker.name
+                self.end_m_name = "{}_E".format(marker.name)
+                self.is_use_markers = True
+
+                self.node_start = marker.frame
+                if tm.find(self.end_m_name) != -1:
+                    self.node_end = tm[self.end_m_name].frame
+
+                self.node_name = marker.name
+                break
+
+        return None
+
+    def execute(self, context):
+        object_ = bpy.context.active_object
+        if object_:
+            node_start = None
+            node_end = None
+
+            start_name = "{}_Start".format(self.node_name)
+            end_name = "{}_End".format(self.node_name)
+
+            if self.is_use_markers:
+                node_start = self.start_m_name
+                node_end = self.end_m_name
+
+                tm = bpy.context.scene.timeline_markers
+                if tm.find(self.start_m_name) == -1:
+                    tm.new(name=self.start_m_name, frame=self.node_start)
+                if tm.find(self.end_m_name) == -1:
+                    tm.new(name=self.end_m_name, frame=self.node_end)
+            else:
+                node_start = self.node_start
+                node_end = self.node_end
+
+            object_[start_name] = node_start
+            object_[end_name] = node_end
+
+            node_name = "{}.{}".format(self.node_name, self.node_type)
+            group = bpy.data.groups.get(node_name)
+            if group is None:
+                bpy.ops.group.create(name=node_name)
+            else:
+                for object in bpy.context.selected_objects:
+                    if object.name not in group.objects:
+                        group.objects.link(object)
+
+            message = "Adding Export Node"
+        else:
+            message = "There is no a active armature! Please select a armature."
+
+        self.report({"INFO"}, message)
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        object_ = bpy.context.active_object
+        if not object_:
+            self.report(
+                {'ERROR'},
+                "Please select and active a armature or object.")
             return {'FINISHED'}
 
         return context.window_manager.invoke_props_dialog(self)
@@ -1952,6 +2048,115 @@ class Export(bpy.types.Operator, ExportHelper):
         box.prop(self, "run_in_profiler")
 
 
+class ExportAnimations(bpy.types.Operator, ExportHelper):
+    '''Export animations to CryEngine'''
+    bl_label = "Export Animations"
+    bl_idname = "scene.export_animations"
+    filename_ext = ".dae"
+    filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
+
+    do_not_merge = BoolProperty(
+        name="Do Not Merge Nodes",
+        description="Generally a good idea.",
+        default=True,
+    )
+    export_for_lumberyard = BoolProperty(
+        name="Export for LumberYard",
+        description="Export for LumberYard engine instead of CryEngine.",
+        default=False,
+    )
+    disable_rc = BoolProperty(
+        name="Disable RC",
+        description="Do not run the resource compiler.",
+        default=False,
+    )
+    save_dae = BoolProperty(
+        name="Save DAE File",
+        description="Save the DAE file for developing purposes.",
+        default=False,
+    )
+    run_in_profiler = BoolProperty(
+        name="Profile CryBlend",
+        description="Select only if you want to profile CryBlend.",
+        default=False,
+    )
+    do_materials = False
+    make_layer = False
+
+    class Config:
+
+        def __init__(self, config):
+            attributes = (
+                'filepath',
+                'do_not_merge',
+                'do_materials',
+                'export_for_lumberyard',
+                'make_layer',
+                'disable_rc',
+                'save_dae',
+                'run_in_profiler'
+            )
+
+            for attribute in attributes:
+                setattr(self, attribute, getattr(config, attribute))
+
+            setattr(self, 'cryblend_version', VERSION)
+            setattr(self, 'rc_path', Configuration.rc_path)
+            setattr(self, 'texture_rc_path', Configuration.texture_rc_path)
+            setattr(self, 'game_dir', Configuration.game_dir)
+
+    def execute(self, context):
+        cbPrint(Configuration.rc_path, 'debug')
+        try:
+            config = ExportAnimations.Config(config=self)
+
+            if self.run_in_profiler:
+                import cProfile
+                cProfile.runctx(
+                    'export_animations.save(config)', {}, {
+                        'export_animations': export_animations, 'config': config})
+            else:
+                export_animations.save(config)
+
+            self.filepath = '//'
+
+        except exceptions.CryBlendException as exception:
+            cbPrint(exception.what(), 'error')
+            bpy.ops.screen.display_error(
+                'INVOKE_DEFAULT', message=exception.what())
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        if not Configuration.configured():
+            self.report({'ERROR'}, "No RC found.")
+            return {'FINISHED'}
+
+        if not utils.get_export_nodes():
+            self.report({'ERROR'}, "No export nodes found.")
+            return {'FINISHED'}
+
+        return ExportHelper.invoke(self, context, event)
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+
+        box = col.box()
+        box.label("General", icon="WORLD")
+        box.prop(self, "do_not_merge")
+
+        box = col.box()
+        box.label("LumberYard", icon="GAME")
+        box.prop(self, "export_for_lumberyard")
+
+        box = col.box()
+        box.label("Developer Tools", icon="MODIFIER")
+        box.prop(self, "disable_rc")
+        box.prop(self, "save_dae")
+        box.prop(self, "run_in_profiler")
+
+
 class ErrorHandler(bpy.types.Operator):
     bl_label = "Error:"
     bl_idname = "screen.display_error"
@@ -2013,6 +2218,9 @@ class ExportUtilitiesPanel(View3DPanel, Panel):
         col.separator()
         row = col.row(align=True)
         row.operator("object.add_cry_export_node", text="Add Export Node")
+        row.operator(
+            "object.add_cry_animation_node",
+            text="Add Animation Node")
         col.operator(
             "object.selected_to_cry_export_nodes",
             text="Export Nodes from Objects")
@@ -2166,6 +2374,10 @@ class ExportPanel(View3DPanel, Panel):
         col.label("Export", icon="GAME")
         col.separator()
         col.operator("scene.export_to_game", text="Export to Game")
+        col.separator()
+        col.label("Export Animations", icon="GAME")
+        col.separator()
+        col.operator("scene.export_animations", text="Export Animations")
 
 #------------------------------------------------------------------------------
 # CryBlend Menu:
@@ -2191,8 +2403,13 @@ class CryBlendMainMenu(bpy.types.Menu):
             text="Add Export Node",
             icon="GROUP")
         layout.operator(
+            "object.add_cry_animation_node",
+            text="Add Animation Node",
+            icon="PREVIEW_RANGE")
+        layout.operator(
             "object.selected_to_cry_export_nodes",
-            text="Export Nodes from Objects")
+            text="Export Nodes from Objects",
+            icon="SCENE_DATA")
         layout.separator()
         layout.operator(
             "object.apply_transforms",
@@ -2217,6 +2434,8 @@ class CryBlendMainMenu(bpy.types.Menu):
         layout.separator()
         layout.separator()
         layout.operator("scene.export_to_game", icon="GAME")
+        layout.separator()
+        layout.operator("scene.export_animations", icon="RENDER_ANIMATION")
 
 
 class AddPhysicsProxyMenu(bpy.types.Menu):
@@ -2518,6 +2737,7 @@ def get_classes_to_register():
         SaveCryBlendConfiguration,
 
         AddCryExportNode,
+        AddCryAnimationNode,
         SelectedToCryExportNodes,
         AddMaterial,
         SetMaterialNames,
@@ -2558,6 +2778,7 @@ def get_classes_to_register():
         ApplyAnimationScale,
 
         Export,
+        ExportAnimations,
         ErrorHandler,
 
         ExportUtilitiesPanel,

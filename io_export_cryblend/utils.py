@@ -331,6 +331,42 @@ def get_export_nodes(just_selected=False):
     return export_nodes
 
 
+def get_mesh_export_nodes(just_selected=False):
+    export_nodes = []
+
+    ALLOWED_NODE_TYPES = ('cgf', 'cga', 'chr', 'skin')
+    for node in get_export_nodes(just_selected):
+        if get_node_type(node) in ALLOWED_NODE_TYPES:
+            export_nodes.append(node)
+
+    return export_nodes
+
+
+def get_chr_names(just_selected=False):
+    chr_names = []
+
+    for node in get_export_nodes(just_selected):
+        if get_node_type(node) == 'chr':
+            chr_nodes.append(get_node_name(node))
+
+    return chr_names
+
+
+def get_animation_export_nodes(just_selected=False):
+    export_nodes = []
+
+    if just_selected:
+        return __get_selected_nodes()
+
+    ALLOWED_NODE_TYPES = ('anm', 'i_caf')
+    for group in bpy.data.groups:
+        if is_export_node(group) and len(group.objects) > 0:
+            if get_node_type(group) in ALLOWED_NODE_TYPES:
+                export_nodes.append(group)
+
+    return export_nodes
+
+
 def __get_selected_nodes():
     export_nodes = []
 
@@ -676,11 +712,20 @@ def get_node_type(node):
     return node_components[-1]
 
 
-def get_armature_node_name(object_):
+def get_armature_node(object_):
     ALLOWED_NODE_TYPES = ("cga", "anm", "chr", "skin", "i_caf")
     for group in object_.users_group:
         if get_node_type(group) in ALLOWED_NODE_TYPES:
-            return get_node_name(group)
+            return group
+
+
+def is_visual_scene_node_writed(object_, group):
+    if is_bone_geometry(object_):
+        return False
+    if object_.parent is not None and object_.type != 'MESH':
+        return False
+
+    return True
 
 
 #------------------------------------------------------------------------------
@@ -699,11 +744,18 @@ def is_fakebone(object_):
         return False
 
 
-def add_fakebones():
+def add_fakebones(group=None):
     '''Add helpers to track bone transforms.'''
     scene = bpy.context.scene
     remove_unused_meshes()
-    armature = get_armature()
+
+    if group:
+        for object_ in group.objects:
+            if object_.type == 'ARMATURE':
+                armature = object_
+    else:
+        armature = get_armature()
+
     if armature is None:
         return
 
@@ -712,7 +764,6 @@ def add_fakebones():
     skeleton.pose_position = 'REST'
     time.sleep(0.5)
 
-    deselect_all()
     scene.frame_set(scene.frame_start)
     for pose_bone in armature.pose.bones:
         bmatrix = pose_bone.bone.head_local
@@ -724,12 +775,11 @@ def add_fakebones():
         armature.data.bones.active = pose_bone.bone
         bpy.ops.object.parent_set(type='BONE_RELATIVE')
 
-    ALLOWED_NODE_TYPES = ("cga", "anm", "i_caf")
+        if group:
+            group.objects.link(fakebone)
 
-    for group in armature.users_group:
-        node_type = get_node_type(group)
-
-        if node_type in ALLOWED_NODE_TYPES:
+    if group:
+        if get_node_type(group) == 'i_caf':
             process_animation(armature, skeleton)
 
 
@@ -757,11 +807,8 @@ def process_animation(armature, skeleton):
     skeleton.pose_position = 'POSE'
     time.sleep(0.5)
 
-    select_all()
-
     location_list, rotation_list = get_keyframes(armature)
     set_keyframes(armature, location_list, rotation_list)
-    cbPrint("Animation was processed.")
 
 
 def get_keyframes(armature):
@@ -800,7 +847,7 @@ def get_keyframes(armature):
         del locations
         del rotations
 
-    cbPrint("Keyframes were appended to lists.")
+    cbPrint("Keyframes have been appended to lists.")
 
     return location_list, rotation_list
 
@@ -816,7 +863,7 @@ def set_keyframes(armature, location_list, rotation_list):
         set_keyframe(armature, frame, location_list, rotation_list)
 
     bpy.context.scene.frame_set(bpy.context.scene.frame_start)
-    cbPrint("Keyframes were inserted to armature fakebones.")
+    cbPrint("Keyframes have been inserted to armature fakebones.")
 
 
 def set_keyframe(armature, frame, location_list, rotation_list):
@@ -930,6 +977,53 @@ def apply_animation_scale(armature):
     cbPrint("Apply Animation was completed.")
 
 
+def get_animation_id(group):
+    node_type = get_node_type(group)
+    node_name = get_node_name(group)
+
+    return "{!s}-{!s}".format(node_name, node_name)
+
+    # Now anm files produces with name as node_name_node_name.anm
+    # after the process is done anm files are renmaed by rc.py to
+    # cga_name_node_name.anm
+    # In the future we may export directly correct name
+    # with using below codes. But there is a prerequisite for that:
+    # Dae have to be one main visual_node, others have to be in that main node
+    # To achieve that we must change a bit visual_exporting process for anm.
+    # Deficiency at that way process export nodes show as one at console.
+    if node_type == 'i_caf':
+        return "{!s}-{!s}".format(node_name, node_name)
+    else:
+        cga_node = find_cga_node_from_anm_node(group)
+        if cga_node:
+            cga_name = get_node_name(cga_node)
+            return "{!s}-{!s}".format(node_name, cga_name)
+        else:
+            cga_name = group.objects[0].name
+            return "{!s}-{!s}".format(node_name, cga_name)
+
+
+def get_geometry_animation_file_name(group):
+    node_type = get_node_type(group)
+    node_name = get_node_name(group)
+
+    cga_node = find_cga_node_from_anm_node(group)
+    if cga_node:
+        cga_name = get_node_name(cga_node)
+        return "{!s}_{!s}.anm".format(cga_name, node_name)
+    else:
+        cga_name = group.objects[0].name
+        return "{!s}_{!s}.anm".format(cga_name, node_name)
+
+
+def find_cga_node_from_anm_node(anm_group):
+    for object_ in anm_group.objects:
+        for group in object_.users_group:
+            if get_node_type(group) == 'cga':
+                return group
+    return None
+
+
 #------------------------------------------------------------------------------
 # Bone Geometry:
 #------------------------------------------------------------------------------
@@ -991,6 +1085,45 @@ def get_armature():
 
 def get_bones(armature):
     return [bone for bone in armature.data.bones]
+
+
+def get_animation_node_range(object_, node_name):
+    try:
+        start_frame = object_["{}_Start".format(node_name)]
+        end_frame = object_["{}_End".format(node_name)]
+
+        if isinstance(start_frame, str) and isinstance(end_frame, str):
+            tm = bpy.context.scene.timeline_markers
+            if tm.find(start_frame) != -1 and tm.find(end_frame) != -1:
+                return tm[start_frame].frame, tm[end_frame].frame
+            else:
+                raise exceptions.MarkerNotFound
+        else:
+            return start_frame, end_frame
+    except:
+        return bpy.context.scene.frame_start, bpy.context.scene.frame_end
+
+
+def get_armature_from_node(group):
+    armature_count = 0
+    armature = None
+    for object_ in group.objects:
+        if object_.type == "ARMATURE":
+            armature_count += 1
+            armature = object_
+
+    if armature_count == 1:
+        return armature
+
+    error_message = None
+    if armature_count == 0:
+        raise exceptions.CryBlendException("i_caf node has no armature!")
+        error_message = "i_caf node has no armature!"
+    elif armature_count > 1:
+        raise exceptions.CryBlendException(
+            "{} i_caf node have more than one armature!".format(node_name))
+
+    return None
 
 
 #------------------------------------------------------------------------------
