@@ -152,3 +152,12 @@ list['notaprim'] = """A general physics proxy parameter, it keeps the physics\
  mesh from being turned into a primitive (box, cylinder). This is\
  especially important for deformable objects - the skeleton being\
  a primitive will cause a crash!"""
+ 
+#------------------------------------------------------------------------------
+# Export:
+#------------------------------------------------------------------------------
+
+list['merge_all_nodes'] = """Compiles all the geometry from the different\
+ nodes into a single node which improves the efficiency. It's supported only\
+ for non-skinned geometry. For more information on Merge All Nodes,\
+ please refer http://docs.cryengine.com/display/CEMANUAL/Merge+All+Nodes"""

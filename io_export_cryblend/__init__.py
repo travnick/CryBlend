@@ -1869,10 +1869,10 @@ class Export(bpy.types.Operator, ExportHelper):
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
-    do_not_merge = BoolProperty(
-        name="Do Not Merge Nodes",
-        description="Generally a good idea.",
-        default=True,
+    merge_all_nodes = BoolProperty(
+        name="Merge All Nodes",
+        description=desc.list["merge_all_nodes"],
+        default=False,
     )
     export_selected_nodes = BoolProperty(
         name="Export Selected Nodes",
@@ -1950,7 +1950,7 @@ class Export(bpy.types.Operator, ExportHelper):
         def __init__(self, config):
             attributes = (
                 'filepath',
-                'do_not_merge',
+                'merge_all_nodes',
                 'export_selected_nodes',
                 'apply_modifiers',
                 'do_materials',
@@ -2013,7 +2013,7 @@ class Export(bpy.types.Operator, ExportHelper):
 
         box = col.box()
         box.label("General", icon="WORLD")
-        box.prop(self, "do_not_merge")
+        box.prop(self, "merge_all_nodes")
         box.prop(self, "export_selected_nodes")
         box.prop(self, "apply_modifiers")
 
@@ -2055,10 +2055,10 @@ class ExportAnimations(bpy.types.Operator, ExportHelper):
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
-    do_not_merge = BoolProperty(
-        name="Do Not Merge Nodes",
-        description="Generally a good idea.",
-        default=True,
+    merge_all_nodes = BoolProperty(
+        name="Merge Nodes",
+        description="Generally not a good idea.",
+        default=False,
     )
     export_for_lumberyard = BoolProperty(
         name="Export for LumberYard",
@@ -2088,7 +2088,7 @@ class ExportAnimations(bpy.types.Operator, ExportHelper):
         def __init__(self, config):
             attributes = (
                 'filepath',
-                'do_not_merge',
+                'merge_all_nodes',
                 'do_materials',
                 'export_for_lumberyard',
                 'make_layer',
@@ -2144,7 +2144,7 @@ class ExportAnimations(bpy.types.Operator, ExportHelper):
 
         box = col.box()
         box.label("General", icon="WORLD")
-        box.prop(self, "do_not_merge")
+        box.prop(self, "merge_all_nodes")
 
         box = col.box()
         box.label("LumberYard", icon="GAME")
