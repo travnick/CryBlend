@@ -1869,11 +1869,6 @@ class Export(bpy.types.Operator, ExportHelper):
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
-    apply_modifiers = BoolProperty(
-        name="Apply Modifiers",
-        description="Apply all modifiers before exporting.",
-        default=True,
-    )
     do_not_merge = BoolProperty(
         name="Do Not Merge Nodes",
         description="Generally a good idea.",
@@ -1882,6 +1877,11 @@ class Export(bpy.types.Operator, ExportHelper):
     export_selected_nodes = BoolProperty(
         name="Export Selected Nodes",
         description="Just exports selected nodes.",
+        default=False,
+    )
+    apply_modifiers = BoolProperty(
+        name="Apply Modifiers",
+        description="Apply all modifiers for objects before exporting.",
         default=False,
     )
     do_materials = BoolProperty(
@@ -1950,9 +1950,9 @@ class Export(bpy.types.Operator, ExportHelper):
         def __init__(self, config):
             attributes = (
                 'filepath',
-                'apply_modifiers',
                 'do_not_merge',
                 'export_selected_nodes',
+                'apply_modifiers',
                 'do_materials',
                 'do_textures',
                 'make_chrparams',
@@ -2013,9 +2013,9 @@ class Export(bpy.types.Operator, ExportHelper):
 
         box = col.box()
         box.label("General", icon="WORLD")
-        box.prop(self, "apply_modifiers")
         box.prop(self, "do_not_merge")
         box.prop(self, "export_selected_nodes")
+        box.prop(self, "apply_modifiers")
 
         box = col.box()
         box.label("Material & Texture", icon="TEXTURE")
