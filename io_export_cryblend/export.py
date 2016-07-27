@@ -125,7 +125,7 @@ class CrytekDaeExporter:
         utils.clean_file()
 
         if self._config.apply_modifiers:
-            utils.apply_modifiers()
+            utils.apply_modifiers(self._config.export_selected_nodes)
 
         if self._config.fix_weights:
             utils.fix_weights()

@@ -304,14 +304,18 @@ def fix_weights():
     cbPrint("Weights Corrected.")
 
 
-def apply_modifiers():
-    for object_ in bpy.data.objects:
-        for mod in object_.modifiers:
-            if mod.type != "ARMATURE":
-                try:
-                    bpy.ops.object.modifier_apply(modifier=mod.name)
-                except RuntimeError:
-                    pass
+def apply_modifiers(just_selected=False):
+    print()
+    for node in get_export_nodes(just_selected):
+        for object_ in node.objects:
+            bpy.context.scene.objects.active = object_
+            for modifier in object_.modifiers:
+                if modifier.type == 'ARMATURE':
+                    continue
+                mod_name = modifier.name
+                bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod_name)
+
+        cbPrint("Modifiers are applied for {} node.".format(node.name))
 
 
 #------------------------------------------------------------------------------
