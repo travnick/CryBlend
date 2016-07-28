@@ -438,7 +438,7 @@ class CrytekDaeExporter:
             if object_.mode != 'OBJECT':
                 bpy.ops.object.mode_set(mode='OBJECT')
             object_.data.update(calc_tessface=1)
-            mesh = object_.data
+            data_ = object_.data
             object_.name = object_.name
             geometry_node = self._doc.createElement("geometry")
             geometry_node.setAttribute("id", object_.name)
@@ -448,29 +448,29 @@ class CrytekDaeExporter:
             cbPrint('"{}" object is processing...'.format(object_.name))
 
             start_time = clock()
-            self._write_positions(object_, mesh, mesh_node)
+            self._write_positions(object_, data_, mesh_node)
             cbPrint('Positions took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
-            self._write_normals(object_, mesh, mesh_node)
+            self._write_normals(object_, data_, mesh_node)
             cbPrint('Normals took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
-            self._write_uvs(object_, mesh, mesh_node)
+            self._write_uvs(object_, data_, mesh_node)
             cbPrint('UVs took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
-            self._write_vertex_colors(object_, mesh, mesh_node)
+            self._write_vertex_colors(object_, data_, mesh_node)
             cbPrint(
                 'Vertex colors took {:.4f} sec.'.format(
                     clock() - start_time))
 
             start_time = clock()
-            self._write_vertices(object_, mesh, mesh_node)
+            self._write_vertices(object_, data_, mesh_node)
             cbPrint('Vertices took {:.4f} sec.'.format(clock() - start_time))
 
             start_time = clock()
-            self._write_polylist(object_, mesh, mesh_node)
+            self._write_polylist(object_, data_, mesh_node)
             cbPrint('Polylist took {:.4f} sec.'.format(clock() - start_time))
 
             extra = self._create_double_sided_extra("MAYA")
@@ -478,23 +478,23 @@ class CrytekDaeExporter:
             geometry_node.appendChild(mesh_node)
             libgeo.appendChild(geometry_node)
 
-    def _write_positions(self, object_, mesh, root):
+    def _write_positions(self, object_, data_, root):
         float_positions = []
-        for vertex in mesh.vertices:
+        for vertex in data_.vertices:
             float_positions.extend(vertex.co)
 
         id_ = "{!s}-positions".format(object_.name)
         source = utils.write_source(id_, "float", float_positions, "XYZ")
         root.appendChild(source)
 
-    def _write_normals(self, object_, mesh, root):
+    def _write_normals(self, object_, data_, root):
         float_normals = []
         float_normals_count = ""
 
-        for face in mesh.tessfaces:
+        for face in data_.tessfaces:
             if face.use_smooth:
                 for vert in face.vertices:
-                    vertex = mesh.vertices[vert]
+                    vertex = data_.vertices[vert]
                     float_normals.extend(vertex.normal)
             else:
                 if self._config.average_planar:
@@ -503,7 +503,7 @@ class CrytekDaeExporter:
                     ny = face.normal.y
                     nz = face.normal.z
 
-                    for planar_face in mesh.tessfaces:
+                    for planar_face in data_.tessfaces:
                         angle = face.normal.angle(planar_face.normal)
                         if (-.052 < angle and angle < .052):
                             nx += planar_face.normal.x
@@ -521,11 +521,11 @@ class CrytekDaeExporter:
         source = utils.write_source(id_, "float", float_normals, "XYZ")
         root.appendChild(source)
 
-    def _write_uvs(self, object_, mesh, root):
+    def _write_uvs(self, object_, data_, root):
         uvdata = object_.data.tessface_uv_textures
         if uvdata is None:
             cbPrint("Your UV map is missing, adding...")
-            bpy.ops.mesh.uv_texture_add()
+            bpy.ops.data_.uv_texture_add()
         else:
             cbPrint("Found UV map.")
 
@@ -543,7 +543,7 @@ class CrytekDaeExporter:
         source = utils.write_source(id_, "float", float_uvs, "ST")
         root.appendChild(source)
 
-    def _write_vertex_colors(self, object_, mesh, root):
+    def _write_vertex_colors(self, object_, data_, root):
         float_colors = []
         alpha_found = False
 
@@ -552,7 +552,7 @@ class CrytekDaeExporter:
             for color_layer in color_layers:
                 for fi, face in enumerate(color_layer.data):
                     colors = [face.color1[:], face.color2[:], face.color3[:]]
-                    if len(mesh.tessfaces[fi].vertices) == 4:
+                    if len(data_.tessfaces[fi].vertices) == 4:
                         colors.append(face.color4[:])
 
                     for color in colors:
@@ -569,14 +569,14 @@ class CrytekDaeExporter:
             source = utils.write_source(id_, "float", float_colors, params)
             root.appendChild(source)
 
-    def _write_vertices(self, object_, mesh, root):
+    def _write_vertices(self, object_, data_, root):
         vertices = self._doc.createElement("vertices")
         vertices.setAttribute("id", "{}-vertices".format(object_.name))
         input = utils.write_input(object_.name, None, "positions", "POSITION")
         vertices.appendChild(input)
         root.appendChild(vertices)
 
-    def _write_polylist(self, object_, mesh, root):
+    def _write_polylist(self, object_, data_, root):
         matindex = 0
         for material, materialname in self._get_materials_for_object(
                 object_).items():
@@ -584,7 +584,7 @@ class CrytekDaeExporter:
             verts_per_poly = ''
             poly_count = normal = texcoord = 0
 
-            for face in mesh.tessfaces:
+            for face in data_.tessfaces:
                 if face.material_index == matindex:
                     verts_per_poly = join(
                         verts_per_poly, len(
@@ -592,7 +592,7 @@ class CrytekDaeExporter:
                     poly_count += 1
                     for vert in face.vertices:
                         data = self._write_vertex_data(
-                            mesh, face, vert, normal, texcoord)
+                            data_, face, vert, normal, texcoord)
                         vert_data = join(vert_data, data)
                         texcoord += 1
                 else:
@@ -630,7 +630,7 @@ class CrytekDaeExporter:
                     2,
                     'UVMap-0',
                     'TEXCOORD'))
-            if mesh.vertex_colors:
+            if data_.vertex_colors:
                 inputs.append(
                     utils.write_input(
                         object_.name,
@@ -654,11 +654,11 @@ class CrytekDaeExporter:
             root.appendChild(polylist)
             matindex += 1
 
-    def _write_vertex_data(self, mesh, face, vert, normal, texcoord):
+    def _write_vertex_data(self, data_, face, vert, normal, texcoord):
         if face.use_smooth:
             normal = vert
 
-        if mesh.vertex_colors:
+        if data_.vertex_colors:
             return "{:d} {:d} {:d} {:d} ".format(
                 vert, normal, texcoord, texcoord)
         else:
@@ -683,7 +683,6 @@ class CrytekDaeExporter:
         parent_element.appendChild(library_node)
 
     def _process_bones(self, parent_node, object_, armature):
-        mesh = object_.data
         id_ = "{!s}_{!s}".format(armature.name, object_.name)
 
         controller_node = self._doc.createElement("controller")
