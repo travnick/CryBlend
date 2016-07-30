@@ -1081,7 +1081,7 @@ class CrytekDaeExporter:
                 prop = self._doc.createTextNode(
                     "fileType={}".format(node_type))
                 properties.appendChild(prop)
-            if self._config.do_not_merge:
+            if not self._config.merge_all_nodes:
                 prop = self._doc.createTextNode("DoNotMerge")
                 properties.appendChild(prop)
         else:
