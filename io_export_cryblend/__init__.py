@@ -1976,7 +1976,7 @@ class Export(bpy.types.Operator, ExportHelper):
             setattr(self, 'game_dir', Configuration.game_dir)
 
     def execute(self, context):
-        cbPrint(Configuration.rc_path, 'debug')
+        cbPrint(Configuration.rc_path, 'debug', True)
         try:
             config = Export.Config(config=self)
 
