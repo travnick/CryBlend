@@ -711,6 +711,12 @@ def get_node_name(node):
     return node.name[:-(len(node_type) + 1)]
 
 
+def get_geometry_name(object_)
+    node_name = get_node_name(object_)
+    geometry_name = "{}_{}_geometry".format(node_name, node_name)
+    return geometry_name
+
+
 def get_node_type(node):
     node_components = node.name.split(".")
     return node_components[-1]

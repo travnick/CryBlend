@@ -433,61 +433,63 @@ class CrytekDaeExporter:
     def _export_library_geometries(self, parent_element):
         libgeo = self._doc.createElement("library_geometries")
         parent_element.appendChild(libgeo)
-        for object_ in utils.get_type("geometry"):
-            utils.set_active(object_)
-            if object_.mode != 'OBJECT':
-                bpy.ops.object.mode_set(mode='OBJECT')
-            object_.data.update(calc_tessface=1)
-            data_ = object_.data
-            object_.name = object_.name
-            geometry_node = self._doc.createElement("geometry")
-            geometry_node.setAttribute("id", object_.name)
-            mesh_node = self._doc.createElement("mesh")
+        for group in utils.get_mesh_export_nodes(self._config.export_selected_nodes):
+            for object_ in group.objects:
+                utils.set_active(object_)
+                if object_.mode != 'OBJECT':
+                    bpy.ops.object.mode_set(mode='OBJECT')
+                object_.data.update(calc_tessface=1)
+                data_ = object_.data
+                object_.name = object_.name
+                geometry_node = self._doc.createElement("geometry")
+                geometry_name = utils.get_geometry_name(object_.name)
+                geometry_node.setAttribute("id", geometry_name)
+                mesh_node = self._doc.createElement("mesh")
 
-            print('')
-            cbPrint('"{}" object is processing...'.format(object_.name))
+                print('')
+                cbPrint('"{}" object is processing...'.format(object_.name))
 
-            start_time = clock()
-            self._write_positions(object_, data_, mesh_node)
-            cbPrint('Positions took {:.4f} sec.'.format(clock() - start_time))
+                start_time = clock()
+                self._write_positions(object_, data_, mesh_node, geometry_name)
+                cbPrint('Positions took {:.4f} sec.'.format(clock() - start_time))
 
-            start_time = clock()
-            self._write_normals(object_, data_, mesh_node)
-            cbPrint('Normals took {:.4f} sec.'.format(clock() - start_time))
+                start_time = clock()
+                self._write_normals(object_, data_, mesh_node, geometry_name)
+                cbPrint('Normals took {:.4f} sec.'.format(clock() - start_time))
 
-            start_time = clock()
-            self._write_uvs(object_, data_, mesh_node)
-            cbPrint('UVs took {:.4f} sec.'.format(clock() - start_time))
+                start_time = clock()
+                self._write_uvs(object_, data_, mesh_node, geometry_name)
+                cbPrint('UVs took {:.4f} sec.'.format(clock() - start_time))
 
-            start_time = clock()
-            self._write_vertex_colors(object_, data_, mesh_node)
-            cbPrint(
-                'Vertex colors took {:.4f} sec.'.format(
-                    clock() - start_time))
+                start_time = clock()
+                self._write_vertex_colors(object_, data_, mesh_node, geometry_name)
+                cbPrint(
+                    'Vertex colors took {:.4f} sec.'.format(
+                        clock() - start_time))
 
-            start_time = clock()
-            self._write_vertices(object_, data_, mesh_node)
-            cbPrint('Vertices took {:.4f} sec.'.format(clock() - start_time))
+                start_time = clock()
+                self._write_vertices(object_, data_, mesh_node, geometry_name)
+                cbPrint('Vertices took {:.4f} sec.'.format(clock() - start_time))
 
-            start_time = clock()
-            self._write_polylist(object_, data_, mesh_node)
-            cbPrint('Polylist took {:.4f} sec.'.format(clock() - start_time))
+                start_time = clock()
+                self._write_polylist(object_, data_, mesh_node, geometry_name)
+                cbPrint('Polylist took {:.4f} sec.'.format(clock() - start_time))
 
-            extra = self._create_double_sided_extra("MAYA")
-            mesh_node.appendChild(extra)
-            geometry_node.appendChild(mesh_node)
-            libgeo.appendChild(geometry_node)
+                extra = self._create_double_sided_extra("MAYA")
+                mesh_node.appendChild(extra)
+                geometry_node.appendChild(mesh_node)
+                libgeo.appendChild(geometry_node)
 
-    def _write_positions(self, object_, data_, root):
+    def _write_positions(self, object_, data_, root, geometry_name):
         float_positions = []
         for vertex in data_.vertices:
             float_positions.extend(vertex.co)
 
-        id_ = "{!s}-positions".format(object_.name)
+        id_ = "{!s}-pos".format(geometry_name)
         source = utils.write_source(id_, "float", float_positions, "XYZ")
         root.appendChild(source)
 
-    def _write_normals(self, object_, data_, root):
+    def _write_normals(self, object_, data_, root, geometry_name):
         float_normals = []
         float_normals_count = ""
 
@@ -517,11 +519,11 @@ class CrytekDaeExporter:
                 else:
                     float_normals.extend(face.normal)
 
-        id_ = "{!s}-normals".format(object_.name)
+        id_ = "{!s}-normal".format(geometry_name)
         source = utils.write_source(id_, "float", float_normals, "XYZ")
         root.appendChild(source)
 
-    def _write_uvs(self, object_, data_, root):
+    def _write_uvs(self, object_, data_, root, geometry_name):
         uvdata = object_.data.tessface_uv_textures
         if uvdata is None:
             cbPrint("Your UV map is missing, adding...")
@@ -539,11 +541,11 @@ class CrytekDaeExporter:
                 for uv in uf.uv:
                     float_uvs.extend(uv)
 
-        id_ = "{!s}-UVMap-0".format(object_.name)
+        id_ = "{!s}-uvs".format(geometry_name)
         source = utils.write_source(id_, "float", float_uvs, "ST")
         root.appendChild(source)
 
-    def _write_vertex_colors(self, object_, data_, root):
+    def _write_vertex_colors(self, object_, data_, root, geometry_name):
         float_colors = []
         alpha_found = False
 
@@ -564,19 +566,19 @@ class CrytekDaeExporter:
                             float_colors.extend(color)
 
         if float_colors:
-            id_ = "{!s}-colors".format(object_.name)
+            id_ = "{!s}-colors".format(geometry_name)
             params = ("RGBA" if alpha_found else "RGB")
             source = utils.write_source(id_, "float", float_colors, params)
             root.appendChild(source)
 
-    def _write_vertices(self, object_, data_, root):
+    def _write_vertices(self, object_, data_, root, geometry_name):
         vertices = self._doc.createElement("vertices")
-        vertices.setAttribute("id", "{}-vertices".format(object_.name))
-        input = utils.write_input(object_.name, None, "positions", "POSITION")
+        vertices.setAttribute("id", "{}-vtx".format(geometry_name))
+        input = utils.write_input(object_.name, None, "pos", "POSITION")
         vertices.appendChild(input)
         root.appendChild(vertices)
 
-    def _write_polylist(self, object_, data_, root):
+    def _write_polylist(self, object_, data_, root, geometry_name):
         matindex = 0
         for material, materialname in self._get_materials_for_object(
                 object_).items():
@@ -614,26 +616,26 @@ class CrytekDaeExporter:
             inputs = []
             inputs.append(
                 utils.write_input(
-                    object_.name,
+                    geometry_name,
                     0,
-                    'vertices',
+                    'vtx',
                     'VERTEX'))
             inputs.append(
                 utils.write_input(
-                    object_.name,
+                    geometry_name,
                     1,
-                    'normals',
+                    'normal',
                     'NORMAL'))
             inputs.append(
                 utils.write_input(
-                    object_.name,
+                    geometry_name,
                     2,
-                    'UVMap-0',
+                    'uvs',
                     'TEXCOORD'))
-            if data_.vertex_colors:
+            if object_.data.vertex_colors:
                 inputs.append(
                     utils.write_input(
-                        object_.name,
+                        geometry_name,
                         3,
                         'colors',
                         'COLOR'))
@@ -870,7 +872,7 @@ class CrytekDaeExporter:
 
                 ALLOWED_NODE_TYPES = ('cgf', 'cga', 'chr', 'skin')
                 if utils.get_node_type(group) in ALLOWED_NODE_TYPES:
-                    instance = self._create_instance(object_)
+                    instance = self._create_instance(group, object_)
                     if instance is not None:
                         node.appendChild(instance)
 
@@ -911,7 +913,7 @@ class CrytekDaeExporter:
 
                 bone_geometry = utils.get_bone_geometry(bone.name)
                 if bone_geometry is not None:
-                    instance = self._create_instance_for_bone(
+                    instance = self._create_bone_instance(
                         bone, bone_geometry)
                     node.appendChild(instance)
 
@@ -930,7 +932,7 @@ class CrytekDaeExporter:
             if bone.children:
                 self._write_bone_list(bone.children, object_, node, group)
 
-    def _create_instance_for_bone(self, bone, bone_geometry):
+    def _create_bone_instance(self, bone, bone_geometry):
         instance = None
 
         instance = self._doc.createElement("instance_geometry")
@@ -1022,7 +1024,7 @@ class CrytekDaeExporter:
 
         return scale
 
-    def _create_instance(self, object_):
+    def _create_instance(self, group, object_):
         armature = utils.get_armature_for_object(object_)
         instance = None
         if armature is not None:
@@ -1033,7 +1035,7 @@ class CrytekDaeExporter:
                 object_.name))
         elif object_.name[:6] != "_joint" and object_.type == "MESH":
             instance = self._doc.createElement("instance_geometry")
-            instance.setAttribute("url", "#{!s}".format(object_.name))
+            instance.setAttribute("url", "#{!s}".format(utils.get_geometry_name(group, object_)))
 
         if instance is not None:
             bind_material = self._create_bind_material(object_)
