@@ -446,34 +446,34 @@ class CrytekDaeExporter:
                 geometry_node.setAttribute("id", geometry_name)
                 mesh_node = self._doc.createElement("mesh")
 
-                print('')
-                cbPrint('"{}" object is processing...'.format(object_.name))
+                print()
+                cbPrint('"{}" object is being processed...'.format(object_.name))
 
                 start_time = clock()
                 self._write_positions(object_, data_, mesh_node, geometry_name)
-                cbPrint('Positions took {:.4f} sec.'.format(clock() - start_time))
+                cbPrint('Positions have been writed {:.4f} seconds.'.format(clock() - start_time))
 
                 start_time = clock()
                 self._write_normals(object_, data_, mesh_node, geometry_name)
-                cbPrint('Normals took {:.4f} sec.'.format(clock() - start_time))
+                cbPrint('Normals have been writed {:.4f} seconds.'.format(clock() - start_time))
 
                 start_time = clock()
                 self._write_uvs(object_, data_, mesh_node, geometry_name)
-                cbPrint('UVs took {:.4f} sec.'.format(clock() - start_time))
+                cbPrint('UVs have been writed {:.4f} seconds.'.format(clock() - start_time))
 
                 start_time = clock()
                 self._write_vertex_colors(object_, data_, mesh_node, geometry_name)
                 cbPrint(
-                    'Vertex colors took {:.4f} sec.'.format(
+                    'Vertex colors have been writed {:.4f} seconds.'.format(
                         clock() - start_time))
 
                 start_time = clock()
                 self._write_vertices(object_, data_, mesh_node, geometry_name)
-                cbPrint('Vertices took {:.4f} sec.'.format(clock() - start_time))
+                cbPrint('Vertices have been writed {:.4f} seconds.'.format(clock() - start_time))
 
                 start_time = clock()
                 self._write_polylist(object_, data_, mesh_node, geometry_name)
-                cbPrint('Polylist took {:.4f} sec.'.format(clock() - start_time))
+                cbPrint('Polylist have been writed {:.4f} seconds.'.format(clock() - start_time))
 
                 extra = self._create_double_sided_extra("MAYA")
                 mesh_node.appendChild(extra)
@@ -529,7 +529,7 @@ class CrytekDaeExporter:
             cbPrint("Your UV map is missing, adding...")
             bpy.ops.data_.uv_texture_add()
         else:
-            cbPrint("Found UV map.")
+            cbPrint("UV map has been found.")
 
         float_uvs = []
         for uvindex, uvlayer in enumerate(uvdata):

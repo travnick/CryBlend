@@ -406,7 +406,7 @@ class _TIFConverter:
 
 
 def run_rc(rc_path, files_to_process, params=None):
-    cbPrint(rc_path)
+    cbPrint("RC Path: {}".format(os.path.abspath(rc_path)), newline=True)
     process_params = [rc_path]
 
     if isinstance(files_to_process, list):
@@ -416,12 +416,13 @@ def run_rc(rc_path, files_to_process, params=None):
 
     process_params.extend(params)
 
-    cbPrint(params)
-    cbPrint(files_to_process)
+    cbPrint("RC Parameters: {}".format(params))
+    cbPrint("Processing File: {}".format(files_to_process))
 
     try:
         run_object = subprocess.Popen(process_params)
     except:
         raise exceptions.NoRcSelectedException
 
+    print()
     return run_object

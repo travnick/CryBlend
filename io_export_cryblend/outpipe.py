@@ -23,7 +23,10 @@ class OutPipe():
     def __init__(self):
         pass
 
-    def pump(self, message, message_type='info'):
+    def pump(self, message, message_type='info', newline=False):
+        if newline:
+            print()
+
         if message_type == 'info':
             print("[Info] CryBlend: {!r}".format(message))
 
@@ -44,5 +47,5 @@ class OutPipe():
 op = OutPipe()
 
 
-def cbPrint(msg, message_type='info'):
-    op.pump(msg, message_type)
+def cbPrint(msg, message_type='info', newline=False):
+    op.pump(msg, message_type, newline)
