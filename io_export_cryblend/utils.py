@@ -102,6 +102,26 @@ def negate_z_axis_of_matrix(matrix_local):
 
 
 #------------------------------------------------------------------------------
+# XSI Functions:
+#------------------------------------------------------------------------------
+
+def get_xsi_filetype_value(node):
+    node_type = get_node_type(node)
+    if node_type == 'cgf':
+        return "1"
+    elif node_type == 'chr':
+        return "4"
+    elif node_type == 'cga':
+        return "18"
+    elif node_type == 'skin':
+        return "32"
+    elif node_type == 'i_caf' or node_type == 'anm':
+        return "64"
+    else:
+        return "1"
+
+
+#------------------------------------------------------------------------------
 # Path Manipulations:
 #------------------------------------------------------------------------------
 
