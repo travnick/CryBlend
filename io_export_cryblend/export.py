@@ -1097,8 +1097,52 @@ class CrytekDaeExporter:
             technique.appendChild(helper)
 
         extra.appendChild(technique)
+        extra.appendChild(self._create_xsi_profile(node))
 
         return extra
+
+    def _create_xsi_profile(self, node):
+        technique_xsi = self._doc.createElement("technique")
+        technique_xsi.setAttribute("profile", "XSI")
+
+        xsi_custom_p_set = self._doc.createElement("XSI_CustomPSet")
+        xsi_custom_p_set.setAttribute("name", "ExportProperties")
+
+        propagation = self._doc.createElement("propagation")
+        propagation.appendChild(self._doc.createTextNode("NODE"))
+        xsi_custom_p_set.appendChild(propagation)
+
+        type_node = self._doc.createElement("type")
+        type_node.appendChild(self._doc.createTextNode("CryExportNodeProperties"))
+        xsi_custom_p_set.appendChild(type_node)
+
+        xsi_parameter = self._doc.createElement("XSI_Parameter")
+        xsi_parameter.setAttribute("id", "FileType")
+        xsi_parameter.setAttribute("type", "Integer")
+        xsi_parameter.setAttribute("value", utils.get_xsi_filetype_value(node))
+        xsi_custom_p_set.appendChild(xsi_parameter)
+
+        xsi_parameter = self._doc.createElement("XSI_Parameter")
+        xsi_parameter.setAttribute("id", "Filename")
+        xsi_parameter.setAttribute("type", "Text")
+        xsi_parameter.setAttribute("value", utils.get_node_name(node))
+        xsi_custom_p_set.appendChild(xsi_parameter)
+
+        xsi_parameter = self._doc.createElement("XSI_Parameter")
+        xsi_parameter.setAttribute("id", "Exportable")
+        xsi_parameter.setAttribute("type", "Boolean")
+        xsi_parameter.setAttribute("value", "1")
+        xsi_custom_p_set.appendChild(xsi_parameter)
+
+        xsi_parameter = self._doc.createElement("XSI_Parameter")
+        xsi_parameter.setAttribute("id", "MergeObjects")
+        xsi_parameter.setAttribute("type", "Boolean")
+        xsi_parameter.setAttribute("value", str(int(self._config.merge_all_nodes)))
+        xsi_custom_p_set.appendChild(xsi_parameter)
+
+        technique_xsi.appendChild(xsi_custom_p_set)
+
+        return technique_xsi
 
     def _create_user_defined_property(self, prop, node):
         if prop:
