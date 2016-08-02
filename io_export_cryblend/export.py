@@ -855,9 +855,9 @@ class CrytekDaeExporter:
                     if instance is not None:
                         node.appendChild(instance)
 
-                extra = self._create_cryengine_extra(object_)
-                if extra is not None:
-                    node.appendChild(extra)
+                udp_extra = self._create_user_defined_property(object_)
+                if udp_extra is not None:
+                    node.appendChild(udp_extra)
 
                 parent_node.appendChild(node)
 
@@ -1032,6 +1032,7 @@ class CrytekDaeExporter:
             instance_material.setAttribute('symbol', materialname)
             instance_material.setAttribute('target', '#{!s}'.format(
                 materialname))
+
             technique_common.appendChild(instance_material)
 
         bind_material.appendChild(technique_common)
@@ -1044,7 +1045,7 @@ class CrytekDaeExporter:
         technique.setAttribute("profile", "CryEngine")
         properties = self._doc.createElement("properties")
 
-        ALLOWED_NODE_TYPES = ("cgf", "cga", "chr", "skin", "anm", "i_caf")
+        ALLOWED_NODE_TYPES = ("cgf", "cga", "chr", "skin")
 
         if utils.is_export_node(node):
             node_type = utils.get_node_type(node)
@@ -1063,8 +1064,6 @@ class CrytekDaeExporter:
         else:
             if not node.rna_type.id_data.items():
                 return
-        for prop in node.rna_type.id_data.items():
-            self._create_user_defined_property(prop, properties)
 
         technique.appendChild(properties)
 
@@ -1120,19 +1119,31 @@ class CrytekDaeExporter:
 
         return technique_xsi
 
-    def _create_user_defined_property(self, prop, node):
-        if prop:
-            prop_name = prop[0]
-            if add.is_user_defined_property(prop_name):
-                udp = None
+    def _create_user_defined_property(self, object_):        
+        udp = None
+        for prop in object_.rna_type.id_data.items():
+            if prop:
+                prop_name = prop[0]
+                if add.is_user_defined_property(prop_name):
+                    udp = "\n"
 
-                if isinstance(prop[1], str):
-                    udp = self._doc.createTextNode("{!s}".format(prop[1]))
-                else:
-                    udp = self._doc.createTextNode("{!s}=".format(prop[0])
-                                                   + "{!s}".format(prop[1]))
+                    if isinstance(prop[1], str):
+                        udp += "{!s}\n".format(prop[1])
+                    else:
+                        udp += "{!s}={!s}\n".format(prop[0], prop[1])
 
-                node.appendChild(udp)
+        if udp:
+            extra = self._doc.createElement("extra")
+            technique = self._doc.createElemen("technique")
+            technique.setAttribute("profile", "CryEngine")
+            properties = self._doc.createElement("properties")
+            properties._doc.createTextNode(udp)
+            technique.appendChild(properties)
+            extra.appendChild(technique)
+            
+            return extra
+        else:
+            return None
 
     def _create_helper_joint(self, object_):
         x1, y1, z1, x2, y2, z2 = utils.get_bounding_box(object_)
