@@ -1909,11 +1909,6 @@ class Export(bpy.types.Operator, ExportHelper):
         description="For use with .chr files. Generally a good idea.",
         default=False,
     )
-    average_planar = BoolProperty(
-        name="Average Planar Face Normals",
-        description="Align face normals within 1 degree of each other.",
-        default=False,
-    )
     export_for_lumberyard = BoolProperty(
         name="Export for LumberYard",
         description="Export for LumberYard engine instead of CryEngine.",
@@ -1958,7 +1953,6 @@ class Export(bpy.types.Operator, ExportHelper):
                 'make_chrparams',
                 'make_cdf',
                 'fix_weights',
-                'average_planar',
                 'export_for_lumberyard',
                 'make_layer',
                 'disable_rc',
@@ -2030,7 +2024,6 @@ class Export(bpy.types.Operator, ExportHelper):
         box = col.box()
         box.label("Corrective", icon="BRUSH_DATA")
         box.prop(self, "fix_weights")
-        box.prop(self, "average_planar")
 
         box = col.box()
         box.label("LumberYard", icon="GAME")

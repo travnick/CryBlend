@@ -122,6 +122,68 @@ def get_xsi_filetype_value(node):
 
 
 #------------------------------------------------------------------------------
+# Geometry Functions:
+#------------------------------------------------------------------------------
+
+def get_geometry_name(group, object_):
+    node_name = get_node_name(group)
+    geometry_name = "{}_{}_geometry".format(node_name, object_.name)
+    return geometry_name
+
+
+def get_normal_array(bmesh_, use_edge_angle, use_edge_sharp, split_angle):
+    split_angle = math.degrees(split_angle)
+    float_normals = []
+    
+    for face in bmesh_.faces:
+        if not face.smooth:
+            for vertex in face.verts:
+                float_normals.extend(face.normal.normalized())
+        else:
+            for vertex in face.verts:
+                smooth_normal = face.normal.normalized()
+                for link_face in vertex.link_faces:
+                    if face.index is link_face.index:
+                        continue
+                    if link_face.smooth:
+                        if not use_edge_angle and not use_edge_sharp:
+                            smooth_normal += link_face.normal.normalized()
+
+                        elif use_edge_angle and not use_edge_sharp:
+                            face_angle = face.normal.normalized().dot(link_face.normal.normalized())
+                            face_angle = min(1.0, max(face_angle, -1.0))
+                            face_angle = math.degrees(math.acos(face_angle))
+                            if face_angle < split_angle:
+                                smooth_normal += link_face.normal.normalized()
+
+                        elif use_edge_sharp and not use_edge_angle:
+                            edge = None
+                            for edge1 in face.edges:
+                                for edge2 in link_face.edges:
+                                    if edge1.index is edge2.index:
+                                        edge = edge1
+                            if edge and edge.smooth:
+                                smooth_normal += link_face.normal.normalized()
+
+                        elif use_edge_angle and use_edge_sharp:
+                            face_angle = face.normal.normalized().dot(link_face.normal.normalized())
+                            face_angle = min(1.0, max(face_angle, -1.0))
+                            face_angle = math.degrees(math.acos(face_angle))
+                            if face_angle < split_angle:
+                                edge = None
+                                for edge1 in face.edges:
+                                    for edge2 in link_face.edges:
+                                        if edge1.index is edge2.index:
+                                            edge = edge1
+                                if edge and edge.smooth:
+                                    smooth_normal += link_face.normal.normalized()
+
+                float_normals.extend(smooth_normal.normalized())
+
+    return float_normals
+
+
+#------------------------------------------------------------------------------
 # Path Manipulations:
 #------------------------------------------------------------------------------
 
@@ -729,12 +791,6 @@ def are_duplicate_nodes():
 def get_node_name(node):
     node_type = get_node_type(node)
     return node.name[:-(len(node_type) + 1)]
-
-
-def get_geometry_name(object_)
-    node_name = get_node_name(object_)
-    geometry_name = "{}_{}_geometry".format(node_name, node_name)
-    return geometry_name
 
 
 def get_node_type(node):
@@ -1347,8 +1403,6 @@ def write_input(name, offset, type_, semantic):
     if offset is not None:
         input.setAttribute("offset", str(offset))
     input.setAttribute("semantic", semantic)
-    if semantic == "TEXCOORD":
-        input.setAttribute("set", "0")
     input.setAttribute("source", "#{!s}".format(id_))
 
     return input

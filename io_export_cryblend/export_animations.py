@@ -396,6 +396,36 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
         return parent_node
 
 
+    def _create_cryengine_extra(self, node):
+        extra = self._doc.createElement("extra")
+        technique = self._doc.createElement("technique")
+        technique.setAttribute("profile", "CryEngine")
+        properties = self._doc.createElement("properties")
+
+        node_type = utils.get_node_type(node)
+        prop = self._doc.createTextNode("fileType={}".format(node_type))
+        properties.appendChild(prop)
+
+        prop = self._doc.createTextNode("CustomExportPath=")
+        properties.appendChild(prop)
+        else:
+            if not node.rna_type.id_data.items():
+                return
+        for prop in node.rna_type.id_data.items():
+            self._create_user_defined_property(prop, properties)
+
+        technique.appendChild(properties)
+
+        if (node.name[:6] == "_joint"):
+            helper = self._create_helper_joint(node)
+            technique.appendChild(helper)
+
+        extra.appendChild(technique)
+        extra.appendChild(self._create_xsi_profile(node))
+
+        return extra
+
+
 # -------------------------------------------------------------------
 
 
