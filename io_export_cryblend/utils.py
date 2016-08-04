@@ -35,6 +35,7 @@ import subprocess
 import sys
 import xml.dom.minidom
 import time
+import bmesh
 
 
 # Globals:
@@ -129,6 +130,33 @@ def get_geometry_name(group, object_):
     node_name = get_node_name(group)
     geometry_name = "{}_{}_geometry".format(node_name, object_.name)
     return geometry_name
+
+
+def get_bmesh(object_):
+    set_active(object_)
+
+    # bmesh may be gotten only in edit mode for active object.
+    # Unfortunately Blender goes in edit mode just objects
+    # in which first layer with bpy.ops.object.mode_set(mode='EDIT')
+    # So we must temporarily activate first layer for objects which it is not 
+    # already in first layer.
+    # That lacking related with Blender, if it will fix in future that 
+    # code will be clean.
+
+    layer_state = not object_.layers[0]
+    if layer_state:
+        object_.layers[0] = True
+
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    return bmesh.from_edit_mesh(object_.data), layer_state
+
+
+def clear_bmesh(object_, layer_state):
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    if layer_state:
+        object_.layers[0] = False
 
 
 def get_normal_array(bmesh_, use_edge_angle, use_edge_sharp, split_angle):
