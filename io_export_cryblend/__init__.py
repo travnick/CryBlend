@@ -2048,11 +2048,6 @@ class ExportAnimations(bpy.types.Operator, ExportHelper):
     filename_ext = ".dae"
     filter_glob = StringProperty(default="*.dae", options={'HIDDEN'})
 
-    merge_all_nodes = BoolProperty(
-        name="Merge Nodes",
-        description="Generally not a good idea.",
-        default=False,
-    )
     export_for_lumberyard = BoolProperty(
         name="Export for LumberYard",
         description="Export for LumberYard engine instead of CryEngine.",
@@ -2073,6 +2068,7 @@ class ExportAnimations(bpy.types.Operator, ExportHelper):
         description="Select only if you want to profile CryBlend.",
         default=False,
     )
+    merge_all_nodes = True
     do_materials = False
     make_layer = False
 
@@ -2134,10 +2130,6 @@ class ExportAnimations(bpy.types.Operator, ExportHelper):
     def draw(self, context):
         layout = self.layout
         col = layout.column()
-
-        box = col.box()
-        box.label("General", icon="WORLD")
-        box.prop(self, "merge_all_nodes")
 
         box = col.box()
         box.label("LumberYard", icon="GAME")
