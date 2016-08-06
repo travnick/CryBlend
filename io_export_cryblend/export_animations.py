@@ -336,7 +336,6 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 # ---------------------------------------------------------------------
 
     def _export_library_visual_scenes(self, visual_scene, group):
-
         if utils.get_animation_export_nodes():
             if utils.are_duplicate_nodes():
                 message = "Duplicate Node Names"
@@ -387,14 +386,13 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
                 self._write_transforms(object_, node)
 
-                extra = self._create_cryengine_extra(object_)
-                if extra is not None:
-                    node.appendChild(extra)
+                udp_extra = self._create_user_defined_property(object_)
+                if udp_extra is not None:
+                    node.appendChild(udp_extra)
 
                 parent_node.appendChild(node)
 
         return parent_node
-
 
     def _create_cryengine_extra(self, node):
         extra = self._doc.createElement("extra")
@@ -408,11 +406,6 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
         prop = self._doc.createTextNode("CustomExportPath=")
         properties.appendChild(prop)
-        else:
-            if not node.rna_type.id_data.items():
-                return
-        for prop in node.rna_type.id_data.items():
-            self._create_user_defined_property(prop, properties)
 
         technique.appendChild(properties)
 
