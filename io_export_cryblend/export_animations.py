@@ -75,9 +75,11 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
 
             if node_type in ALLOWED_NODE_TYPES:
                 object_ = None
+                layers = None
 
                 if node_type == 'i_caf':
                     object_ = utils.get_armature_from_node(group)
+                    layers = utils.activate_all_bone_layers(object_)
                 elif node_type == 'anm':
                     object_ = group.objects[0]
 
@@ -103,6 +105,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                 finally:
                     if node_type == 'i_caf':
                         utils.remove_fakebones()
+                        utils.recover_bone_layers(object_, layers)
 
                     cbPrint("Animation has been processed.")
 
