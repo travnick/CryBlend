@@ -1240,6 +1240,20 @@ def get_armature_from_node(group):
     return None
 
 
+def activate_all_bone_layers(armature):
+    layers = []
+    for index in range(0, 32):
+        layers.append(armature.data.layers[index])
+        armature.data.layers[index] = True
+
+    return layers
+
+
+def recover_bone_layers(armature, layers):
+    for index in range(0, 32):
+        armature.data.layers[index] = layers[index]
+
+
 #------------------------------------------------------------------------------
 # General:
 #------------------------------------------------------------------------------
