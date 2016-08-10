@@ -248,11 +248,44 @@ class AddCryAnimationNode(bpy.types.Operator):
         default="i_caf",
     )
     node_name = StringProperty(name="Animation Name")
+    range_type = EnumProperty(
+        name="Range Type",
+        items=(
+            ("Timeline", "Timeline Editor",
+             desc.list['range_timeline']),
+            ("Values", "Limit with Values",
+             desc.list['range_values']),
+            ("Markers", "Limit with Markers",
+             desc.list['range_markers']),
+        ),
+        default="Timeline",
+    ) 
     node_start = IntProperty(name="Start Frame")
     node_end = IntProperty(name="End Frame")
-    is_use_markers = BoolProperty(name="Use Markers")
     start_m_name = StringProperty(name="Marker Start Name")
     end_m_name = StringProperty(name="Marker End Name")
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        col.prop(self, "node_type")
+        col.prop(self, "node_name")
+        col.separator()
+        col.separator()
+
+        col.prop(self, "range_type", expand=True)
+        col.separator()
+        col.separator()
+
+        col.label("Animation Range Values:")
+        col.prop(self, "node_start")
+        col.prop(self, "node_end")
+        col.separator()
+        col.separator()
+
+        col.label("Animation Range Markers:")
+        col.prop(self, "start_m_name")
+        col.prop(self, "end_m_name")
 
     def __init__(self):
         self.node_start = bpy.context.scene.frame_start
@@ -288,7 +321,14 @@ class AddCryAnimationNode(bpy.types.Operator):
             start_name = "{}_Start".format(self.node_name)
             end_name = "{}_End".format(self.node_name)
 
-            if self.is_use_markers:
+            if self.range_type == 'Values':
+                node_start = self.node_start
+                node_end = self.node_end
+
+                object_[start_name] = node_start
+                object_[end_name] = node_end
+
+            elif self.range_type == 'Markers':
                 node_start = self.start_m_name
                 node_end = self.end_m_name
 
@@ -297,12 +337,9 @@ class AddCryAnimationNode(bpy.types.Operator):
                     tm.new(name=self.start_m_name, frame=self.node_start)
                 if tm.find(self.end_m_name) == -1:
                     tm.new(name=self.end_m_name, frame=self.node_end)
-            else:
-                node_start = self.node_start
-                node_end = self.node_end
 
-            object_[start_name] = node_start
-            object_[end_name] = node_end
+                object_[start_name] = node_start
+                object_[end_name] = node_end
 
             node_name = "{}.{}".format(self.node_name, self.node_type)
             group = bpy.data.groups.get(node_name)

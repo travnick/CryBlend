@@ -1201,7 +1201,7 @@ def get_bones(armature):
     return [bone for bone in armature.data.bones]
 
 
-def get_animation_node_range(object_, node_name):
+def get_animation_node_range(object_, node_name, initial_start, initial_end):
     try:
         start_frame = object_["{}_Start".format(node_name)]
         end_frame = object_["{}_End".format(node_name)]
@@ -1215,7 +1215,7 @@ def get_animation_node_range(object_, node_name):
         else:
             return start_frame, end_frame
     except:
-        return bpy.context.scene.frame_start, bpy.context.scene.frame_end
+        return initial_start, initial_end
 
 
 def get_armature_from_node(group):
