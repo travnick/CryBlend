@@ -84,7 +84,7 @@ class CrytekDaeAnimationExporter(export.CrytekDaeExporter):
                     object_ = group.objects[0]
 
                 frame_start, frame_end = utils.get_animation_node_range(
-                    object_, node_name)
+                    object_, node_name, initial_frame_start, initial_frame_end)
                 bpy.context.scene.frame_start = frame_start
                 bpy.context.scene.frame_end = frame_end
 

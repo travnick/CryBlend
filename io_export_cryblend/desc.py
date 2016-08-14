@@ -152,6 +152,22 @@ list['notaprim'] = """A general physics proxy parameter, it keeps the physics\
  mesh from being turned into a primitive (box, cylinder). This is\
  especially important for deformable objects - the skeleton being\
  a primitive will cause a crash!"""
+
+#------------------------------------------------------------------------------
+# Animation Range Types:
+#------------------------------------------------------------------------------
+
+list['range_timeline'] = """Animation range is set from Timeline Editor.\
+ You may directly change start and end frame from Timeline Editor. This is\
+ best choice for single animation per file."""
+
+list['range_values'] = """Animation range is stored in custom properties\
+ values. You must enter animation range values. You can change start or end
+ frame from object custom properties. This is ideal for multiple animations\
+ in a blender project."""
+
+list['range_markers'] = """Animation range is stored animation markers.\
+ Markers can directly be set on Timeline Editor to change frame range."""
  
 #------------------------------------------------------------------------------
 # Export:
