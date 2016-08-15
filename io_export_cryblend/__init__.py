@@ -203,6 +203,10 @@ class AddCryExportNode(bpy.types.Operator):
     )
     node_name = StringProperty(name="Name")
 
+    def __init__(self):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        node_name = bpy.context.active_object.name
+
     def execute(self, context):
         if bpy.context.selected_objects:
             scene = bpy.context.scene
@@ -1719,6 +1723,128 @@ class AddRootBone(bpy.types.Operator):
         return self.execute(context)
 
 
+class AddLocatorLocomotion(bpy.types.Operator):
+    '''Add locator locomotion bone for movement in CryEngine.'''
+    bl_label = "Add Locator Locomotion"
+    bl_idname = "armature.add_locator_locomotion"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    forward_direction = EnumProperty(
+        name="Forward Direction",
+        items=(
+            ("y", "+Y",
+             "The Locator Locomotion is faced to positive Y direction."),
+            ("_y", "-Y",
+             "The Locator Locomotion is faced to negative Y direction."),
+            ("x", "+X",
+             "The Locator Locomotion is faced to positive X direction."),
+            ("_x", "-X",
+             "The Locator Locomotion is faced to negative Y direction."),
+            ("z", "+Z",
+             "The Locator Locomotion is faced to positive Z direction."),
+            ("_z", "-Z",
+             "The Locator Locomotion is faced to negative Z direction."),
+        ),
+        default="y",
+    )
+    
+    bone_length = FloatProperty(name="Bone Length", default=0.15,
+                        description=desc.list['locator_length'])
+    root_bone = StringProperty(name="Root Bone", default="Root",
+                        description=desc.list['locator_root'])
+    movement_bone = StringProperty(name="Movement Bone", default="hips",
+                        description=desc.list['locator_move'])
+
+    x_axis = BoolProperty(name="X Axis", default=False,
+                        description="Use X axis from movement reference bone.")
+    y_axis = BoolProperty(name="Y Axis", default=True,
+                        description="Use Y axis from movement reference bone.")
+    z_axis = BoolProperty(name="Z Axis", default=False,
+                        description="Use Z axis from movement reference bone.")
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        col.prop(self, "forward_direction")
+        col.separator()
+
+        col.prop(self, "bone_length")
+        col.separator()
+        
+        col.prop(self, "root_bone")
+        col.prop(self, "movement_bone")
+        col.separator()
+        
+        col.label("Movement Axis:")
+        col.prop(self, "x_axis")
+        col.prop(self, "y_axis")
+        col.prop(self, "z_axis")
+
+    def invoke(self, context, event):
+        return self.execute(context)
+
+    def __init__(self):
+        armature = bpy.context.active_object
+        if not armature or armature.type != 'ARMATURE':
+            self.report({'ERROR'}, "Please select a armature object!")
+            return {'FINISHED'}
+        elif armature.pose.bones.find('Locator_Locomotion') != -1:
+            message = "{} armature already has a Locator Locomotion bone!".format(armature.name)
+            self.report({'ERROR'}, message)
+            return {'FINISHED'}
+
+        root_bone = utils.get_root_bone(armature)
+        self.root_bone = root_bone.name
+        self.movement_bone = root_bone.children[0].name
+
+    def execute(self, context):
+        armature = bpy.context.active_object
+        if not armature or armature.type != 'ARMATURE':
+            self.report({'ERROR'}, "Please select a armature object!")
+            return {'FINISHED'}
+
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        bpy.ops.armature.select_all(action='DESELECT')
+        bpy.ops.armature.bone_primitive_add(name='Locator_Locomotion')
+        locator_bone = armature.data.edit_bones['Locator_Locomotion']
+        for index in range(0, 32):
+            locator_bone.layers[index] = (index == 14)
+
+        armature.data.layers[14] = True
+
+        locator_bone.parent = armature.data.edit_bones[self.root_bone]
+        locator_bone.head.zero()
+        locator_bone.tail.zero()
+        if self.forward_direction == 'y':
+            locator_bone.tail.y = self.bone_length
+        elif self.forward_direction == '_y':
+            locator_bone.tail.y = -self.bone_length
+        elif self.forward_direction == 'x':
+            locator_bone.tail.x = self.bone_length
+        elif self.forward_direction == '_x':
+            locator_bone.tail.x = -self.bone_length
+        elif self.forward_direction == 'z':
+            locator_bone.tail.z = self.bone_length
+        elif self.forward_direction == '_z':
+            locator_bone.tail.z = -self.bone_length
+
+        bpy.ops.object.mode_set(mode='POSE')
+        locator_pose_bone = armature.pose.bones['Locator_Locomotion']
+        locator_pose_bone.bone.select = True
+        armature.data.bones.active = locator_pose_bone.bone
+
+        locator_pose_bone.constraints.new(type='COPY_LOCATION')
+        copy_location = locator_pose_bone.constraints['Copy Location']
+        copy_location.use_x = self.x_axis
+        copy_location.use_y = self.y_axis
+        copy_location.use_z = self.z_axis
+        copy_location.target = armature
+        copy_location.subtarget = 'hips'
+
+        return {'FINISHED'}
+        
+
 class AddBoneGeometry(bpy.types.Operator):
     '''Add BoneGeometry for bones in selected armatures.'''
     bl_label = "Add BoneGeometry"
@@ -2295,6 +2421,7 @@ class BoneUtilitiesPanel(View3DPanel, Panel):
         col.label("Skeleton", icon="ARMATURE_DATA")
         col.separator()
         col.operator("armature.add_root_bone", text="Add Root Bone")
+        col.operator("armature.add_locator_locomotion", text="Add Locator Locomotion")
         col.operator(
             "ops.apply_animation_scaling",
             text="Apply Animation Scaling")
@@ -2517,6 +2644,10 @@ class BoneUtilitiesMenu(bpy.types.Menu):
         layout.operator(
             "armature.add_root_bone",
             text="Add Root Bone",
+            icon="BONE_DATA")
+        layout.operator(
+            "armature.add_locator_locomotion",
+            text="Add Locator Locomotion",
             icon="BONE_DATA")
         layout.operator(
             "ops.apply_animation_scaling",
@@ -2767,6 +2898,7 @@ def get_classes_to_register():
         SetMaterialNames,
         RemoveMaterialNames,
         AddRootBone,
+        AddLocatorLocomotion,
         ApplyTransforms,
         AddProxy,
         AddBreakableJoint,

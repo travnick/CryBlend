@@ -168,6 +168,19 @@ list['range_values'] = """Animation range is stored in custom properties\
 
 list['range_markers'] = """Animation range is on stored animation markers.\
  Markers can directly be set on Timeline Editor to change frame range."""
+
+#------------------------------------------------------------------------------
+# Locator Locomotion:
+#------------------------------------------------------------------------------
+
+list['locator_length'] = """The Locator Locomotion bone length to represented\
+ in 3D view."""
+
+list['locator_root'] = """Skeleton Root Bone: The Locator Locomotion bone\
+ is going to be linked/parented to that bone."""
+
+list['locator_move'] = """Movement Reference Bone: The Locator Locomotion\
+ use that bone to copy movements from selected axis."""
  
 #------------------------------------------------------------------------------
 # Export:
