@@ -166,7 +166,7 @@ list['range_values'] = """Animation range is stored in custom properties\
  frame from object custom properties. This is ideal for multiple animations\
  in a blender project."""
 
-list['range_markers'] = """Animation range is stored animation markers.\
+list['range_markers'] = """Animation range is on stored animation markers.\
  Markers can directly be set on Timeline Editor to change frame range."""
  
 #------------------------------------------------------------------------------

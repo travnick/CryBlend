@@ -232,7 +232,7 @@ class AddCryExportNode(bpy.types.Operator):
 
 
 class AddCryAnimationNode(bpy.types.Operator):
-    '''Add selected objects to an existing or new CryExportNode'''
+    '''Add animation node to selected armature or object'''
     bl_label = "Add Animation Node"
     bl_idname = "object.add_cry_animation_node"
     bl_options = {"REGISTER", "UNDO"}
@@ -271,7 +271,7 @@ class AddCryAnimationNode(bpy.types.Operator):
         col.prop(self, "node_type")
         col.prop(self, "node_name")
         col.separator()
-        col.separator()
+        col.label("Range Type:")
 
         col.prop(self, "range_type", expand=True)
         col.separator()
@@ -288,6 +288,8 @@ class AddCryAnimationNode(bpy.types.Operator):
         col.prop(self, "end_m_name")
 
     def __init__(self):
+        bpy.ops.object.mode_set(mode='OBJECT')
+
         self.node_start = bpy.context.scene.frame_start
         self.node_end = bpy.context.scene.frame_end
 
