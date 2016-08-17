@@ -149,10 +149,17 @@ for textures in .mtl file.'''
 
     def process(self, filepath):
         if not os.path.isdir(filepath):
+            filename = os.path.basename(filepath)
+            filepath = filepath[:-len(filename)]
+
+        if not filepath.endswith("\\"):
+            filepath = filepath + '\\'
+
+        if not os.path.isdir(filepath) or not os.path.exists(filepath):
             raise exceptions.NoGameDirectorySelected
 
         Configuration.game_dir = filepath
-        cbPrint("Game directory: {!r}.".format(
+        cbPrint("Game directory: {!r}".format(
             Configuration.game_dir),
             'debug')
 
