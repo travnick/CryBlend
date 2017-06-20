@@ -1680,35 +1680,105 @@ class AddRootBone(bpy.types.Operator):
     '''Click to add a root bone to the active armature.'''
     bl_label = "Add Root Bone"
     bl_idname = "armature.add_root_bone"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    forward_direction = EnumProperty(
+        name="Forward Direction",
+        items=(
+            ("y", "+Y",
+             "The Locator Locomotion is faced to positive Y direction."),
+            ("_y", "-Y",
+             "The Locator Locomotion is faced to negative Y direction."),
+            ("x", "+X",
+             "The Locator Locomotion is faced to positive X direction."),
+            ("_x", "-X",
+             "The Locator Locomotion is faced to negative Y direction."),
+            ("z", "+Z",
+             "The Locator Locomotion is faced to positive Z direction."),
+            ("_z", "-Z",
+             "The Locator Locomotion is faced to negative Z direction."),
+        ),
+        default="y",
+    )
+    
+    bone_length = FloatProperty(name="Bone Length", default=0.18,
+                        description=desc.list['locator_length'])
+    root_name = StringProperty(name="Name", default="Root")
+    hips_bone = StringProperty(name="Hips Bone", default="hips")
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        col.prop(self, "forward_direction")
+        col.separator()
+
+        col.prop(self, "bone_length")
+        col.separator()
+
+        col.prop(self, "root_name")
+        col.prop(self, "hips_bone")
+        col.separator()
+
+    def invoke(self, context, event):
+        return self.execute(context)
+
+    def __init__(self):
+        armature = bpy.context.active_object
+        if not armature or armature.type != 'ARMATURE':
+            self.report({'ERROR'}, "Please select a armature object!")
+            return {'FINISHED'}
+        elif armature.pose.bones.find('Root') != -1:
+            message = "{} armature already has a Root bone!".format(armature.name)
+            self.report({'INFO'}, message)
+            return {'FINISHED'}
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        root_bone = utils.get_root_bone(armature)
+        loc = root_bone.head
+        if loc.x == 0 and loc.y == 0 and loc.z == 0:
+            message = "Armature already has a root/center bone!"
+            self.report({'INFO'}, message)
+            return {'FINISHED'}
+        else:
+            self.hips_bone = root_bone.name
 
     def execute(self, context):
-        cbPrint("TEST")
-        active = bpy.context.active_object
-        if active is not None:
-            if active.type == "ARMATURE":
-                if utils.count_root_bones(active) == 1:
-                    root_bone = utils.get_root_bone(active)
-                    loc = root_bone.head
-                    if loc.x == 0 and loc.y == 0 and loc.z == 0:
-                        message = "Root bone already exists."
-                        self.report({'INFO'}, message)
-                        return {'FINISHED'}
-                message = "Adding root bone to armature."
-                old_mode = bpy.context.object.mode
-                bpy.ops.object.mode_set(mode="EDIT")
-                edit_bones = active.data.edit_bones
-                bpy.ops.armature.bone_primitive_add(name="root")
-                root_bone = edit_bones["root"]
-                bpy.ops.armature.select_all(action="DESELECT")
-                for edit_bone in edit_bones:
-                    if edit_bone.parent is None:
-                        edit_bone.parent = root_bone
-                bpy.ops.object.mode_set(mode="OBJECT")
-            else:
-                message = "Object is not an armature."
-        else:
-            message = "No Object Selected."
-        self.report({'INFO'}, message)
+        armature = bpy.context.active_object
+
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        bpy.ops.armature.select_all(action='DESELECT')
+        bpy.ops.armature.bone_primitive_add(name=self.root_name)
+        root_bone = armature.data.edit_bones[self.root_name]
+        for index in range(0, 32):
+            root_bone.layers[index] = (index == 15)
+
+        armature.data.layers[15] = True
+
+        root_bone.head.zero()
+        root_bone.tail.zero()
+        if self.forward_direction == 'y':
+            root_bone.tail.y = self.bone_length
+        elif self.forward_direction == '_y':
+            root_bone.tail.y = -self.bone_length
+        elif self.forward_direction == 'x':
+            root_bone.tail.x = self.bone_length
+        elif self.forward_direction == '_x':
+            root_bone.tail.x = -self.bone_length
+        elif self.forward_direction == 'z':
+            root_bone.tail.z = self.bone_length
+        elif self.forward_direction == '_z':
+            root_bone.tail.z = -self.bone_length
+
+        armature.data.edit_bones[self.hips_bone].parent = root_bone
+
+        bpy.ops.object.mode_set(mode='POSE')
+        root_pose_bone = armature.pose.bones[self.root_name]
+        root_pose_bone.bone.select = True
+        armature.data.bones.active = root_pose_bone.bone
+        
+        bpy.ops.object.mode_set(mode="OBJECT")
+
         return {'FINISHED'}
 
     def invoke(self, context, event):
