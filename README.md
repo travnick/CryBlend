@@ -14,3 +14,5 @@ Feedback place: https://github.com/travnick/CryBlend
 Place the io_export_cryblend folder into:
 
 Your_Blender_path\scripts\addons\
+
+Then, in Blender, go to file->User prefs->Add-ons and click the box to enable CryBlend, and save.
