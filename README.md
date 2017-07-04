@@ -1,5 +1,5 @@
 # CryBlend is now BCRY Exporter
-Refer to new repository for lastest code:<br>
+Refer to new repository for lastest code. You may still use CryBlend, but it is no longer actively maintained. For this reason, we recommend switching to BCRY, as it is a more updated version of CryBlend.<br>
 https://github.com/AFCStudio/BCRYExporter
 
 CryEngine Utilities and Exporter for Blender
