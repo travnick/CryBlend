@@ -1,4 +1,5 @@
 # CryBlend is now BCRY Exporter
+Refer to new repository for lastest code:<br>
 https://github.com/AFCStudio/BCRYExporter
 
 CryEngine Utilities and Exporter for Blender
