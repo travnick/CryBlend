@@ -1,18 +1,26 @@
-# CryBlend
+# CryBlend is now BCRY Exporter
+https://github.com/AFCStudio/BCRYExporter
 
-CryEngine3 Utilities and Exporter for Blender
+CryEngine Utilities and Exporter for Blender
 
+Official Web Site:      http://bcry.afcstudio.org<br>
+Official documentation: http://bcry.afcstudio.org/documents/
 
-Original source: http://www.cryengine.com/community/viewtopic.php?f=315&t=103136
-
-Official documentation: https://github.com/travnick/CryBlend/wiki
-
-Feedback place: https://github.com/travnick/CryBlend
+---
 
 ## Installation
 
-Place the io_export_cryblend folder into:
+Copy `io_bcry_exporter` folder to `blender_path\Scripts\Addons` directory.
 
-Your_Blender_path\scripts\addons\
+Example:  D:\Program Files\Steam\SteamApps\common\Blender\2.78\scripts\addons
 
-Then, in Blender, go to file->User prefs->Add-ons and click the box to enable CryBlend, and save.
+---
+
+Intallation Document:    http://bcry.afcstudio.org/documents/installation/<br>
+Configurations Document: http://bcry.afcstudio.org/documents/configurations/
+
+---
+
+Github:          https://github.com/AFCStudio/BCryExporter<br>
+Facebook:        https://www.facebook.com/afcstudios/<br>
+Youtube Channel: https://www.youtube.com/channel/UC94iNgbfEoLEjCWjfaNz0fw
